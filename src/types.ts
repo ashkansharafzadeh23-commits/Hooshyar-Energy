@@ -1,0 +1,25 @@
+export type LocationType = 'residential' | 'industrial_warehouse' | 'factory' | 'agricultural';
+
+export type TargetModule = 'solar' | 'generator' | 'powerbank';
+
+export interface SelectedAppliance {
+  id: string;
+  name: string;
+  quantity: number;
+  hours: number;
+  watt: number;
+}
+
+export interface UserFlowState {
+  targets: TargetModule[];
+  locationType: LocationType | null;
+  area: number;
+  usableArea: number;
+  city: string;
+  gridConnected: boolean;
+  gridStable: boolean;
+  appliances: SelectedAppliance[];
+  essentialAppliances: SelectedAppliance[]; // For powerbank
+  supportHours: number;
+  actualMonthlyKwh: number | null;
+}
