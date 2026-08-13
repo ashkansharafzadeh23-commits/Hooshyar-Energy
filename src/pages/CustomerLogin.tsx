@@ -38,8 +38,12 @@ export default function CustomerLogin() {
         className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative z-10"
       >
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#1F9254]/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#1F9254]">
-            <Phone size={32} />
+          <div className="w-20 h-20 rounded-2xl overflow-hidden mx-auto mb-4 border border-gray-100 shadow-sm">
+            <img 
+              src="/src/assets/images/solar_app_logo_1786611269806.jpg" 
+              alt="هوشیار انرژی - لوگو" 
+              className="w-full h-full object-cover scale-[1.35] transition-transform"
+            />
           </div>
           <h1 className="text-2xl font-black text-[#1A1D23] mb-2">
             ورود به هوشیار انرژی

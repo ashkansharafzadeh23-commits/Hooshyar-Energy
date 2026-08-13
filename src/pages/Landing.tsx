@@ -23,10 +23,13 @@ export default function Landing() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center justify-center p-3 bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl mb-8 border border-white/20"
+            className="inline-flex items-center justify-center mb-8 rounded-3xl overflow-hidden shadow-2xl border border-white/20 w-24 h-24 sm:w-32 sm:h-32"
           >
-            <Sun className="text-[#FF9E2C]" size={36} />
-            <Zap className="text-[#12B76A] -ml-2" size={36} />
+            <img 
+              src="/src/assets/images/solar_app_logo_1786611269806.jpg" 
+              alt="هوشیار انرژی - لوگو" 
+              className="w-full h-full object-cover scale-[1.35] transition-transform"
+            />
           </motion.div>
           
           <motion.h1 

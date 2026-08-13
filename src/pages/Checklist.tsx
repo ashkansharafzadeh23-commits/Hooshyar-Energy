@@ -5,7 +5,6 @@ import { APPLIANCES_CONFIG } from '../config/appliances';
 import { SelectedAppliance } from '../types';
 import { Check, ArrowLeft, Plus, Box, ListFilter } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { AdBanner } from '../components/AdBanner';
 
 export default function ChecklistPage() {
   const { state, updateState } = useAppContext();
@@ -229,8 +228,7 @@ export default function ChecklistPage() {
                           className="w-20 border border-gray-300 rounded px-2 py-1 text-center"
                         />
                       </div>
-                      <div className="mt-8 w-full max-w-4xl mx-auto"><AdBanner layout="banner" /></div>
-    </motion.div>
+                  </motion.div>
                   )}
                 </div>
               );
