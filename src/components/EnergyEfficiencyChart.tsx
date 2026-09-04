@@ -59,13 +59,15 @@ export default function EnergyEfficiencyChart({ monthlyConsumption, monthlyGener
             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717A' }} dx={-10} />
             <Tooltip 
               cursor={{ fill: '#F4F4F5' }}
-              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', textAlign: 'right' }}
               itemStyle={{ fontSize: '13px', fontWeight: 'bold' }}
               labelStyle={{ fontSize: '12px', color: '#5A6072', marginBottom: '4px', textAlign: 'right' }}
+              formatter={(value: number, name: string) => [`${value} kWh`, name]}
+              labelFormatter={(label) => `ماه ${label}`}
             />
             <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '13px' }} />
-            <Bar dataKey="تولید خورشیدی" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-            <Bar dataKey="مصرف شما" fill="#F59E0B" radius={[4, 4, 0, 0]} maxBarSize={40} />
+            <Bar dataKey="تولید خورشیدی" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={40} isAnimationActive={true} animationBegin={200} animationDuration={1500} animationEasing="ease-out" />
+            <Bar dataKey="مصرف شما" fill="#F59E0B" radius={[4, 4, 0, 0]} maxBarSize={40} isAnimationActive={true} animationBegin={400} animationDuration={1500} animationEasing="ease-out" />
           </BarChart>
         </ResponsiveContainer>
       </div>

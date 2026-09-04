@@ -37,7 +37,48 @@ interface Product {
 }
 
 
+
+export interface SolarAsset {
+  id: string;
+  projectName: string;
+  ownerId: string;
+  epcCompanyId: string | null;
+  location: { city: string; lat: number | null; lon: number | null };
+  capacityKw: number;
+  technology: string;
+  commissionDate: string | null;
+  projectStatus: "DRAFT" | "SUBMITTED" | "DOCUMENT_REVIEW" | "APPROVED" | "REJECTED";
+  projectValueIRR: number | null;
+  expectedAnnualGenerationKwh: number | null;
+  projectLifetimeYears: number;
+  verificationStatus: "not_verified" | "pending_review" | "verified";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssetDocument {
+  id: string;
+  assetId: string;
+  documentType: "ownership" | "permit" | "epc_contract" | "om_contract" | "equipment_invoice" | "other";
+  fileUrl: string;
+  uploadedBy: string;
+  verificationStatus: "pending_review" | "verified" | "rejected";
+  verificationNotes: string;
+  createdAt: string;
+}
+
+export interface AssetAuditLog {
+  id: string;
+  assetId: string;
+  userId: string;
+  action: string;
+  oldValue: any;
+  newValue: any;
+  timestamp: string;
+}
+
 export interface User {
+  roles?: string[]; // e.g. ["customer", "PROJECT_OWNER", "ADMIN"]
   id: string;
   phone: string;
   name: string;
@@ -126,6 +167,9 @@ export interface CityIrradianceCache {
 }
 
 interface DB {
+  solarAssets: SolarAsset[];
+  assetDocuments: AssetDocument[];
+  assetAuditLogs: AssetAuditLog[];
   vendors: Vendor[];
   products: Product[];
   users: User[];
@@ -133,6 +177,7 @@ interface DB {
   professionals: Professional[];
   ads: Ad[];
   analysisHistory: AnalysisHistory[];
+  aiRecommendationLogs?: any[];
   transactions: Transaction[];
   subscriptions: Subscription[];
   subscriptionPlans: SubscriptionPlan[];
@@ -140,6 +185,9 @@ interface DB {
 }
 
 const defaultDB: DB = {
+  solarAssets: [],
+  assetDocuments: [],
+  assetAuditLogs: [],
 
   users: [],
   otps: [],
@@ -282,6 +330,46 @@ function writeDB(data: DB) {
 }
 
 export const db = {
+
+  getSolarAssets: () => readDB().solarAssets || [],
+  getSolarAssetById: (id: string) => readDB().solarAssets?.find(a => a.id === id),
+  createSolarAsset: (asset: Omit<SolarAsset, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.solarAssets) data.solarAssets = [];
+    const newAsset: SolarAsset = { ...asset, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.solarAssets.push(newAsset);
+    writeDB(data);
+    return newAsset;
+  },
+  updateSolarAsset: (id: string, updates: Partial<SolarAsset>) => {
+    const data = readDB();
+    if (!data.solarAssets) data.solarAssets = [];
+    const index = data.solarAssets.findIndex(a => a.id === id);
+    if (index !== -1) {
+      data.solarAssets[index] = { ...data.solarAssets[index], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(data);
+      return data.solarAssets[index];
+    }
+    return null;
+  },
+  getAssetDocuments: (assetId: string) => (readDB().assetDocuments || []).filter(d => d.assetId === assetId),
+  createAssetDocument: (doc: Omit<AssetDocument, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.assetDocuments) data.assetDocuments = [];
+    const newDoc: AssetDocument = { ...doc, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.assetDocuments.push(newDoc);
+    writeDB(data);
+    return newDoc;
+  },
+  createAssetAuditLog: (log: Omit<AssetAuditLog, "id" | "timestamp">) => {
+    const data = readDB();
+    if (!data.assetAuditLogs) data.assetAuditLogs = [];
+    const newLog: AssetAuditLog = { ...log, id: uuidv4(), timestamp: new Date().toISOString() };
+    data.assetAuditLogs.push(newLog);
+    writeDB(data);
+    return newLog;
+  },
+
   getCityIrradianceCache: (city: string) => readDB().cityIrradianceCache?.find(c => c.city === city),
   setCityIrradianceCache: (cache: CityIrradianceCache) => {
     const data = readDB();
@@ -354,6 +442,12 @@ export const db = {
   },
   getHistoryByUserId: (userId: string) => {
     return readDB().analysisHistory.filter(h => h.userId === userId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+  addRecommendationLog: (log: any) => {
+    const data = readDB();
+    if (!data.aiRecommendationLogs) data.aiRecommendationLogs = [];
+    data.aiRecommendationLogs.push({ ...log, id: uuidv4(), createdAt: new Date().toISOString() });
+    writeDB(data);
   },
   addHistory: (history: Omit<AnalysisHistory, "id" | "createdAt">) => {
     const data = readDB();

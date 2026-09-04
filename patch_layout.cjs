@@ -1,33 +1,67 @@
 const fs = require('fs');
-let content = fs.readFileSync('src/layouts/MainLayout.tsx', 'utf-8');
+let code = fs.readFileSync('src/layouts/MainLayout.tsx', 'utf8');
 
-// Replace the header background logic
-content = content.replace(
-  /let bgGradient = 'linear-gradient[^;]+;[\s\S]*?bgGradient = 'linear-gradient[^;]+;[ \t]*\}/g,
-  `let themeColor = '#3B82F6';
-  if (state.targets.includes('solar') || location.pathname.includes('solar') || location.pathname.includes('powerplant')) {
-    themeColor = 'var(--solar-primary)';
-  } else if (state.targets.includes('generator')) {
-    themeColor = 'var(--generator-primary)';
-  } else if (state.targets.includes('powerbank')) {
-    themeColor = 'var(--powerbank-primary)';
-  }`
+code = code.replace(
+  "import { Search, LogIn, Sun, ShoppingCart, FileText, Settings, UserPlus, LayoutDashboard, Wrench, Home, Warehouse, Factory, Tractor } from 'lucide-react';",
+  "import { Search, LogIn, Sun, ShoppingCart, FileText, Settings, UserPlus, LayoutDashboard, Wrench, Home, Warehouse, Factory, Tractor, Layers } from 'lucide-react';"
 );
 
-// Update header class
-content = content.replace(
-  /<header[\s\S]*?className="sticky top-0 z-50 h-16 w-full text-white px-4 sm:px-6 flex items-center justify-between shadow-lg"[\s\S]*?style=\{\{ background: bgGradient \}\}/g,
-  `<header 
-          className="sticky top-0 z-50 h-[72px] w-full bg-white/80 backdrop-blur-lg border-b border-zinc-200/80 px-4 sm:px-8 flex items-center justify-between shadow-sm"
-`
+code = code.replace(
+  "if (location.pathname.startsWith('/powerplant-setup')) return { label: 'احداث نیروگاه', icon: <Sun size={24} />, isFlow: false };",
+  "if (location.pathname.startsWith('/powerplant-setup')) return { label: 'احداث نیروگاه', icon: <Sun size={24} />, isFlow: false };\n    if (location.pathname.startsWith('/solar-assets')) return { label: 'پروژه‌های خورشیدی', icon: <Layers size={24} />, isFlow: false };\n    if (location.pathname.startsWith('/admin/solar-assets')) return { label: 'بررسی پروژه‌ها (ادمین)', icon: <Layers size={24} />, isFlow: false };"
 );
 
-// Remove text-white dependency inside header by replacing hardcoded colors
-content = content.replace(/bg-white\/10 hover:bg-white\/20/g, 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200/80 shadow-sm');
-content = content.replace(/text-white/g, 'text-zinc-900');
-content = content.replace(/bg-white\/20/g, 'bg-zinc-100 border border-zinc-200/80');
-content = content.replace(/bg-white\/30/g, 'bg-zinc-200');
-content = content.replace(/bg-white shadow/g, 'bg-zinc-900 shadow'); // progress bar
-content = content.replace(/text-\[10px\] uppercase tracking-wider opacity-80 mb-1/g, 'text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1');
+code = code.replace(
+  "if (location.pathname === '/user-dashboard') { navigate('/target-select'); return; }",
+  "if (location.pathname === '/user-dashboard') { navigate('/target-select'); return; }\n    if (location.pathname.startsWith('/solar-assets/')) { navigate('/solar-assets'); return; }"
+);
 
-fs.writeFileSync('src/layouts/MainLayout.tsx', content);
+// Add Top Navigation inside header
+const headerReplacement = `
+            <div className="flex flex-col">
+              <h1 className="text-sm sm:text-lg font-bold leading-none">{label}</h1>
+              {isFlow && state.city && <span className="text-[10px] sm:text-xs opacity-80 font-medium mt-1">موقعیت: {state.city}</span>}
+            </div>
+          </div>
+          
+          <div className="hidden lg:flex items-center gap-6">
+            <Link to="/solar-assets" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های خورشیدی</Link>
+            <Link to="/solar-assets/my-projects" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های من</Link>
+          </div>
+`;
+
+code = code.replace(
+  /<div className="flex flex-col">[\s\S]*?<\/div>\s*<\/div>/,
+  headerReplacement
+);
+
+// Add the import Link if missing
+if (!code.includes("import { Link")) {
+  code = "import { Link } from 'react-router-dom';\n" + code;
+}
+
+// Add the banner for solar assets pages
+const mainReplacement = `
+      <main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6">
+        {(location.pathname.startsWith('/solar-assets') || location.pathname.startsWith('/admin/solar-assets')) && (
+          <div className="bg-amber-100 border border-amber-300 text-amber-800 text-xs sm:text-sm px-4 py-3 rounded-lg mb-6 flex items-start gap-2 shadow-sm font-medium">
+            <AlertTriangle className="shrink-0 mt-0.5 text-amber-600" size={16} />
+            <p>حالت شبیه‌سازی — این بخش صرفاً برای نمایش اطلاعات پروژه است. هیچ تراکنش مالی واقعی انجام نمی‌شود.</p>
+          </div>
+        )}
+        <Outlet />
+      </main>
+`;
+
+code = code.replace(
+  /<main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6">\s*<Outlet \/>\s*<\/main>/,
+  mainReplacement
+);
+
+// Add AlertTriangle to imports if missing
+code = code.replace(
+  "import { Search,",
+  "import { Search, AlertTriangle,"
+);
+
+fs.writeFileSync('src/layouts/MainLayout.tsx', code);

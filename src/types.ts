@@ -1,6 +1,6 @@
 export type LocationType = 'residential' | 'industrial_warehouse' | 'factory' | 'agricultural';
 
-export type TargetModule = 'solar' | 'generator' | 'powerbank';
+export type TargetModule = 'solar' | 'generator' | 'powerbank' | 'auto';
 
 export interface SelectedAppliance {
   id: string;
@@ -15,6 +15,7 @@ export interface UserFlowState {
   targets: TargetModule[];
   locationType: LocationType | null;
   area: number;
+  monthlyConsumptionKwh?: number;
   usableArea: number;
   city: string;
   gridConnected: boolean;

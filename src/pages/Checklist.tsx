@@ -5,6 +5,7 @@ import { APPLIANCES_CONFIG } from '../config/appliances';
 import { SelectedAppliance } from '../types';
 import { Check, ArrowLeft, Plus, Box, ListFilter } from 'lucide-react';
 import { motion } from 'framer-motion';
+import SmartAnalyzer from '../components/SmartAnalyzer';
 
 export default function ChecklistPage() {
   const { state, updateState } = useAppContext();
@@ -142,6 +143,15 @@ export default function ChecklistPage() {
         </div>
         <p className="text-gray-500">برای محاسبه دقیق مصرف، لوازمی که دارید را تیک بزنید.</p>
       </div>
+
+      <SmartAnalyzer 
+        area={state.area || 100} 
+        onAnalysisComplete={(consumption) => {
+          if (consumption > 0) {
+            updateState({ actualMonthlyKwh: consumption });
+          }
+        }} 
+      />
 
       {locationConfig.subtypes && (
         <div className="mb-8 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">

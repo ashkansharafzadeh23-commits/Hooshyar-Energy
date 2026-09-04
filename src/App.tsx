@@ -12,6 +12,7 @@ import LocationTypePage from './pages/LocationType';
 import AreaCityPage from './pages/AreaCity';
 import ChecklistPage from './pages/Checklist';
 import ConsumptionPage from './pages/Consumption';
+import RecommendationPage from './pages/Recommendation';
 import ResultPage from './pages/Result';
 import ContractorsList from './pages/ContractorsList';
 import ContractorAuth from './pages/ContractorAuth';
@@ -28,6 +29,10 @@ import VendorPortal from './pages/vendor/VendorPortal';
 import VendorStorefront from './pages/vendor/VendorStorefront';
 import SolarPlanner from './pages/SolarPlanner';
 import PowerPlantSetup from './pages/PowerPlantSetup';
+import SolarAssetsList from './pages/solar-assets/AssetList';
+import SolarAssetDetail from './pages/solar-assets/AssetDetail';
+import MyProjects from './pages/solar-assets/MyProjects';
+import AdminReview from './pages/solar-assets/AdminReview';
 import MainLayout from './layouts/MainLayout';
 import { AppProvider } from './context/AppContext';
 
@@ -41,12 +46,17 @@ export default function App() {
             <Route path="/customer-login" element={<CustomerLogin />} />
             <Route path="/user-dashboard" element={<UserDashboard />} />
             <Route path="/powerplant-setup" element={<PowerPlantSetup />} />
+            <Route path="/solar-assets" element={<SolarAssetsList />} />
+            <Route path="/solar-assets/my-projects" element={<MyProjects />} />
+            <Route path="/solar-assets/:id" element={<SolarAssetDetail />} />
+            <Route path="/admin/solar-assets" element={<AdminReview />} />
             <Route path="/solar-planner" element={<SolarPlanner />} />
             <Route path="/target-select" element={<Home />} />
             <Route path="/location-type" element={<LocationTypePage />} />
             <Route path="/area-city" element={<AreaCityPage />} />
             <Route path="/checklist" element={<ChecklistPage />} />
             <Route path="/consumption" element={<ConsumptionPage />} />
+            <Route path="/recommendation" element={<RecommendationPage />} />
             <Route path="/result" element={<ResultPage />} />
             <Route path="/sellers" element={<SellersList />} />
             <Route path="/vendors" element={<VendorsList />} />

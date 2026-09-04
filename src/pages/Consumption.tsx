@@ -10,7 +10,7 @@ export default function ConsumptionPage() {
   const { state, updateState } = useAppContext();
   const navigate = useNavigate();
 
-  const [actualMonthly, setActualMonthly] = useState<string>('');
+  const [actualMonthly, setActualMonthly] = useState<string>(state.actualMonthlyKwh ? String(state.actualMonthlyKwh) : '');
 
   const dailyKwh = useMemo(() => {
     return calculateDailyConsumption(state.appliances, state.locationType || 'residential');
@@ -24,7 +24,12 @@ export default function ConsumptionPage() {
     } else {
       updateState({ actualMonthlyKwh: null });
     }
-    navigate('/result');
+    
+    if (state.targets.includes('auto')) {
+      navigate('/recommendation');
+    } else {
+      navigate('/result');
+    }
   };
 
   return (

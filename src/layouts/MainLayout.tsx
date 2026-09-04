@@ -1,8 +1,9 @@
+import { Link } from 'react-router-dom';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { NotificationCenter } from '../components/NotificationCenter';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useAppContext } from '../context/AppContext';
-import { Home, Factory, Warehouse, Tractor, LayoutDashboard, UserPlus, LogIn, Wrench, FileText, Settings, ShoppingCart, Sun, MapPin, Search } from 'lucide-react';
+import { Home, Factory, Warehouse, Tractor, LayoutDashboard, UserPlus, LogIn, Wrench, FileText, Settings, ShoppingCart, Sun, MapPin, Search, Layers, AlertTriangle } from 'lucide-react';
 
 export default function MainLayout() {
   const { state, resetState } = useAppContext();
@@ -28,6 +29,8 @@ export default function MainLayout() {
     if (location.pathname.startsWith('/target-select')) return { label: 'انتخاب هدف', icon: <Search size={24} />, isFlow: false };
     if (location.pathname.startsWith('/customer-login')) return { label: 'ورود مشتری', icon: <LogIn size={24} />, isFlow: false };
     if (location.pathname.startsWith('/powerplant-setup')) return { label: 'احداث نیروگاه', icon: <Sun size={24} />, isFlow: false };
+    if (location.pathname.startsWith('/solar-assets')) return { label: 'پروژه‌های خورشیدی', icon: <Layers size={24} />, isFlow: false };
+    if (location.pathname.startsWith('/admin/solar-assets')) return { label: 'بررسی پروژه‌ها (ادمین)', icon: <Layers size={24} />, isFlow: false };
     if (location.pathname.startsWith('/solar-planner')) return { label: 'شبیه‌ساز سه‌بعدی', icon: <Sun size={24} />, isFlow: false };
     if (location.pathname.startsWith('/vendors')) return { label: 'فروشگاه‌ها', icon: <ShoppingCart size={24} />, isFlow: false };
     if (location.pathname.startsWith('/ads-portal')) return { label: 'ثبت آگهی', icon: <FileText size={24} />, isFlow: false };
@@ -66,6 +69,7 @@ export default function MainLayout() {
     if (location.pathname === '/contractors') { navigate(-1); return; }
     if (location.pathname === '/contractor-dashboard') { navigate('/vendors'); return; }
     if (location.pathname === '/user-dashboard') { navigate('/target-select'); return; }
+    if (location.pathname.startsWith('/solar-assets/')) { navigate('/solar-assets'); return; }
     if (location.pathname === '/technician-auth') { navigate('/target-select'); return; }
     if (location.pathname === '/vendor-auth') { navigate('/target-select'); return; }
     if (location.pathname === '/contractor-auth') { navigate('/target-select'); return; }
@@ -99,11 +103,18 @@ export default function MainLayout() {
             <div className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80 p-2 rounded-lg shrink-0 hidden sm:block">
               {icon}
             </div>
+            
             <div className="flex flex-col">
               <h1 className="text-sm sm:text-lg font-bold leading-none">{label}</h1>
               {isFlow && state.city && <span className="text-[10px] sm:text-xs opacity-80 font-medium mt-1">موقعیت: {state.city}</span>}
             </div>
           </div>
+          
+          <div className="hidden lg:flex items-center gap-6">
+            <Link to="/solar-assets" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های خورشیدی</Link>
+            <Link to="/solar-assets/my-projects" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های من</Link>
+          </div>
+
           
           <div className="flex items-center gap-2 sm:gap-4">
             {isFlow && location.pathname !== '/target-select' && state.locationType && (
@@ -131,9 +142,17 @@ export default function MainLayout() {
         </header>
       )}
       
+      
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6">
+        {(location.pathname.startsWith('/solar-assets') || location.pathname.startsWith('/admin/solar-assets')) && (
+          <div className="bg-amber-100 border border-amber-300 text-amber-800 text-xs sm:text-sm px-4 py-3 rounded-lg mb-6 flex items-start gap-2 shadow-sm font-medium">
+            <AlertTriangle className="shrink-0 mt-0.5 text-amber-600" size={16} />
+            <p>حالت شبیه‌سازی — این بخش صرفاً برای نمایش اطلاعات پروژه است. هیچ تراکنش مالی واقعی انجام نمی‌شود.</p>
+          </div>
+        )}
         <Outlet />
       </main>
+
 
       {location.pathname === '/result' && (
         <footer className="h-10 bg-white dark:bg-zinc-900 border-t border-[#E4E7EC] dark:border-zinc-800 flex items-center justify-center px-4 sm:px-6 gap-4 sm:gap-8 shrink-0">

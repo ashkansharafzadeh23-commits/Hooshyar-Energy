@@ -57,6 +57,14 @@ export default function Home() {
       </div>
       <div className="flex flex-col gap-4 w-full mb-10">
         <button
+          onClick={() => { updateState({ targets: ['auto'] }); navigate('/location-type'); }}
+          className={`relative w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-bold text-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white`}
+        >
+          <Sun size={28} className="animate-pulse" />
+          <span>پیشنهاد هوشمند (چه ترکیبی برای من بهتره؟)</span>
+        </button>
+        <div className="flex items-center justify-center my-2 text-zinc-500 font-medium">یا مسیر دلخواه خود را انتخاب کنید (می‌دانم چه می‌خواهم):</div>
+        <button
           onClick={() => toggleTarget('solar')}
           className={`relative w-full flex items-center justify-center gap-3 px-8 py-4 rounded-2xl border font-bold text-xl transition-all shadow-sm hover:shadow-md transform hover:-translate-y-1 ${
             state.targets.includes('solar')

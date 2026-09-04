@@ -1,10 +1,17 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
 import { Sun } from 'lucide-react';
+
+interface Scenario {
+  name: string;
+  monthlySunHours?: Record<string, number>;
+  systemKwp?: number;
+}
 
 interface Props {
   monthlySunHours?: Record<string, number>;
   systemKwp?: number;
+  compareScenarios?: Scenario[];
 }
 
 const persianMonths = [
@@ -34,23 +41,32 @@ const mapGregorianToJalali: Record<string, { index: number; name: string }> = {
   DEC: { index: 8, name: 'آذر' }
 };
 
-export default function MonthlyGenerationChart({ monthlySunHours, systemKwp }: Props) {
+export default function MonthlyGenerationChart({ monthlySunHours, systemKwp, compareScenarios = [] }: Props) {
   if (!monthlySunHours || !systemKwp) return null;
 
   const PERFORMANCE_RATIO = 0.775;
-  const data = new Array(12).fill({ name: '', generation: 0 });
+  const data = new Array(12).fill(null).map(() => ({ name: '', Current: 0 }));
   
   Object.entries(mapGregorianToJalali).forEach(([gregorian, jalali]) => {
     const sunHours = monthlySunHours[gregorian] || 0;
     const days = daysInMonth[jalali.index];
     const monthlyGen = systemKwp * sunHours * PERFORMANCE_RATIO * days;
-    data[jalali.index] = {
+    const item: any = {
       name: jalali.name,
-      generation: Math.round(monthlyGen)
+      'سناریوی فعلی': Math.round(monthlyGen)
     };
+    
+    compareScenarios.forEach(sc => {
+      if (sc.monthlySunHours && sc.systemKwp) {
+        const scSunHours = sc.monthlySunHours[gregorian] || 0;
+        item[sc.name] = Math.round(sc.systemKwp * scSunHours * PERFORMANCE_RATIO * days);
+      }
+    });
+
+    data[jalali.index] = item;
   });
 
-  const averageGen = Math.round(data.reduce((acc, curr) => acc + curr.generation, 0) / 12);
+  const averageGen = Math.round(data.reduce((acc, curr) => acc + curr["سناریوی فعلی"], 0) / 12);
 
   return (
     <div className="bg-white dark:bg-[#1a1b1e] rounded-xl border border-zinc-200/50 dark:border-zinc-800 p-4 lg:p-6 mt-6 shadow-sm w-full">
@@ -89,7 +105,7 @@ export default function MonthlyGenerationChart({ monthlySunHours, systemKwp }: P
                 fontFamily: 'Vazirmatn, sans-serif',
                 textAlign: 'right'
               }}
-              formatter={(value: number) => [`${value} kWh`, 'تولید برق']}
+              formatter={(value: number, name: string) => [`${value} kWh`, name]}
               labelFormatter={(label) => `ماه ${label}`}
             />
             <ReferenceLine 
@@ -104,11 +120,15 @@ export default function MonthlyGenerationChart({ monthlySunHours, systemKwp }: P
                 fontFamily: 'Vazirmatn, sans-serif'
               }} 
             />
-            <Bar 
-              dataKey="generation" 
-              fill="#3b82f6" 
-              radius={[4, 4, 0, 0]} 
-            />
+            <Bar dataKey="سناریوی فعلی" fill="#3b82f6" radius={[4, 4, 0, 0]} isAnimationActive={true} animationBegin={200} animationDuration={1500} animationEasing="ease-out" />
+            {compareScenarios.map((sc, i) => {
+              const colors = ['#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+              return (
+                <Bar key={sc.name} dataKey={sc.name} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} isAnimationActive={true} animationBegin={400 + (i * 200)} animationDuration={1500} animationEasing="ease-out" />
+              );
+            })}
+            {compareScenarios.length > 0 && <Legend wrapperStyle={{ fontFamily: 'Vazirmatn, sans-serif', fontSize: '12px' }} />}
+
           </BarChart>
         </ResponsiveContainer>
       </div>
