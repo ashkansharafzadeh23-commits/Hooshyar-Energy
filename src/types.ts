@@ -11,6 +11,7 @@ export interface SelectedAppliance {
 }
 
 export interface UserFlowState {
+  theme: 'light' | 'dark';
   targets: TargetModule[];
   locationType: LocationType | null;
   area: number;
@@ -22,4 +23,14 @@ export interface UserFlowState {
   essentialAppliances: SelectedAppliance[]; // For powerbank
   supportHours: number;
   actualMonthlyKwh: number | null;
+  notifications: AppNotification[];
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  isRead: boolean;
+  date: string;
 }

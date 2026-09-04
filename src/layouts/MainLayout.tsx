@@ -1,4 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NotificationCenter } from '../components/NotificationCenter';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { useAppContext } from '../context/AppContext';
 import { Home, Factory, Warehouse, Tractor, LayoutDashboard, UserPlus, LogIn, Wrench, FileText, Settings, ShoppingCart, Sun, MapPin, Search } from 'lucide-react';
 
@@ -81,20 +83,20 @@ export default function MainLayout() {
   const { label, icon, isFlow } = getPageInfo();
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F8FA]">
+    <div className="min-h-screen flex flex-col bg-[#F7F8FA] dark:bg-zinc-950">
       {location.pathname !== '/' && (
         <header 
-          className="sticky top-0 z-50 h-16 w-full text-white px-4 sm:px-6 flex items-center justify-between shadow-lg"
-          style={{ background: bgGradient }}
+          className="sticky top-0 z-50 h-[72px] w-full bg-white dark:bg-zinc-900/80 dark:bg-zinc-900/80 backdrop-blur-lg border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 sm:px-8 flex items-center justify-between shadow-sm"
+
         >
           <div className="flex items-center gap-3 sm:gap-4">
             <button 
               onClick={handleBack}
-              className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition-colors shrink-0 text-xs font-bold"
+              className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm px-3 py-2 rounded-lg transition-colors shrink-0 text-xs font-bold"
             >
               بازگشت
             </button>
-            <div className="bg-white/20 p-2 rounded-lg shrink-0 hidden sm:block">
+            <div className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80 p-2 rounded-lg shrink-0 hidden sm:block">
               {icon}
             </div>
             <div className="flex flex-col">
@@ -103,25 +105,29 @@ export default function MainLayout() {
             </div>
           </div>
           
-          {isFlow && location.pathname !== '/target-select' && state.locationType && (
-            <div className="flex items-center gap-4 sm:gap-6">
-              <div className="hidden sm:flex flex-col items-end">
-                <div className="text-[10px] uppercase tracking-wider opacity-80 mb-1">پیشرفت تحلیل</div>
-                <div className="w-32 sm:w-48 h-1.5 bg-white/30 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all duration-500" 
-                    style={{ width: location.pathname === '/result' ? '100%' : '50%' }}
-                  ></div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            {isFlow && location.pathname !== '/target-select' && state.locationType && (
+              <div className="flex items-center gap-4 sm:gap-6 ml-2 sm:ml-4 border-l border-zinc-200/80 dark:border-zinc-800/80 pl-2 sm:pl-4">
+                <div className="hidden sm:flex flex-col items-end">
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold mb-1">پیشرفت تحلیل</div>
+                  <div className="w-32 sm:w-48 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-zinc-900 dark:bg-zinc-100 shadow-[0_0_8px_rgba(255,255,255,0.5)] dark:shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-all duration-500" 
+                      style={{ width: location.pathname === '/result' ? '100%' : '50%' }}
+                    ></div>
+                  </div>
                 </div>
+                <button 
+                  onClick={handleReset}
+                  className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm px-3 py-1.5 rounded-md text-[10px] sm:text-xs font-medium transition-colors shrink-0 whitespace-nowrap"
+                >
+                  تغییر نوع مکان ✏️
+                </button>
               </div>
-              <button 
-                onClick={handleReset}
-                className="bg-white/10 hover:bg-white/20 border border-white/30 px-3 py-1.5 rounded-md text-[10px] sm:text-xs font-medium transition-colors shrink-0 whitespace-nowrap"
-              >
-                تغییر نوع مکان ✏️
-              </button>
-            </div>
-          )}
+            )}
+            <ThemeToggle />
+            <NotificationCenter />
+          </div>
         </header>
       )}
       
@@ -130,13 +136,13 @@ export default function MainLayout() {
       </main>
 
       {location.pathname === '/result' && (
-        <footer className="h-10 bg-white border-t border-[#E4E7EC] flex items-center justify-center px-4 sm:px-6 gap-4 sm:gap-8 shrink-0">
-          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-[#5A6072]">
+        <footer className="h-10 bg-white dark:bg-zinc-900 border-t border-[#E4E7EC] dark:border-zinc-800 flex items-center justify-center px-4 sm:px-6 gap-4 sm:gap-8 shrink-0">
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-[#5A6072] dark:text-zinc-400">
             <span className="w-2 h-2 rounded-full bg-[#1F9254]"></span>
             اتصال به دیتابیس قیمت لحظه‌ای برقرار است
           </div>
           <div className="h-3 w-px bg-[#E4E7EC] hidden sm:block"></div>
-          <div className="text-[10px] sm:text-xs text-[#5A6072] hidden sm:block">مشاور هوشمند انرژی | قدرت گرفته از مدل‌های پیشرفته</div>
+          <div className="text-[10px] sm:text-xs text-[#5A6072] dark:text-zinc-400 hidden sm:block">مشاور هوشمند انرژی | قدرت گرفته از مدل‌های پیشرفته</div>
         </footer>
       )}
     </div>

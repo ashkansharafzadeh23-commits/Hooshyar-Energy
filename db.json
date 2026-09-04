@@ -141,5 +141,6 @@
       "warrantyYears": 5,
       "createdAt": "2026-08-07T15:53:16.204Z"
     }
-  ]
+  ],
+  "cityIrradianceCache": []
 }

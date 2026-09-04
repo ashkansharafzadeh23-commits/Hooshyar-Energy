@@ -31,20 +31,20 @@ export default function EnergyEfficiencyChart({ monthlyConsumption, monthlyGener
   const efficiency = Math.min(100, Math.round((monthlyGeneration / monthlyConsumption) * 100));
 
   return (
-    <section className="col-span-12 bg-white rounded-2xl border border-[#E4E7EC] p-6 shadow-sm flex flex-col mt-4">
+    <section className="col-span-12 bg-white dark:bg-zinc-900 rounded-2xl border border-[#E4E7EC] p-6 shadow-sm flex flex-col mt-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 rounded-xl flex items-center justify-center">
             <Activity size={20} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-[#1A1D23]">تحلیل بهره‌وری انرژی</h2>
-            <p className="text-xs text-[#5A6072]">مقایسه مصرف شما با تولید سیستم پیشنهادی در طول سال</p>
+            <h2 className="text-lg font-bold text-zinc-950 dark:text-zinc-100 tracking-tight">تحلیل بهره‌وری انرژی</h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">مقایسه مصرف شما با تولید سیستم پیشنهادی در طول سال</p>
           </div>
         </div>
-        <div className="bg-green-50 px-4 py-2 rounded-xl flex items-center gap-3">
-          <span className="text-sm text-green-700 font-medium">پوشش سالانه:</span>
-          <span className="text-xl font-black text-green-700">٪{efficiency}</span>
+        <div className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-900/50 px-4 py-2 rounded-xl flex items-center gap-3">
+          <span className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">پوشش سالانه:</span>
+          <span className="text-xl font-black text-emerald-700 dark:text-emerald-400">٪{efficiency}</span>
         </div>
       </div>
       
@@ -55,17 +55,17 @@ export default function EnergyEfficiencyChart({ monthlyConsumption, monthlyGener
             margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#5A6072' }} dy={10} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#5A6072' }} dx={-10} />
+            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717A' }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717A' }} dx={-10} />
             <Tooltip 
-              cursor={{ fill: '#f7f8fa' }}
+              cursor={{ fill: '#F4F4F5' }}
               contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
               itemStyle={{ fontSize: '13px', fontWeight: 'bold' }}
               labelStyle={{ fontSize: '12px', color: '#5A6072', marginBottom: '4px', textAlign: 'right' }}
             />
             <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '13px' }} />
-            <Bar dataKey="تولید خورشیدی" fill="#1F9254" radius={[4, 4, 0, 0]} maxBarSize={40} />
-            <Bar dataKey="مصرف شما" fill="#F5A623" radius={[4, 4, 0, 0]} maxBarSize={40} />
+            <Bar dataKey="تولید خورشیدی" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+            <Bar dataKey="مصرف شما" fill="#F59E0B" radius={[4, 4, 0, 0]} maxBarSize={40} />
           </BarChart>
         </ResponsiveContainer>
       </div>
