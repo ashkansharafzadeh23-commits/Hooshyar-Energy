@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { NotificationCenter } from '../components/NotificationCenter';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useAppContext } from '../context/AppContext';
-import { Home, Factory, Warehouse, Tractor, LayoutDashboard, UserPlus, LogIn, Wrench, FileText, Settings, ShoppingCart, Sun, MapPin, Search, Layers, AlertTriangle } from 'lucide-react';
+import { Home, Factory, Warehouse, Tractor, LayoutDashboard, UserPlus, LogIn, Wrench, FileText, Settings, ShoppingCart, Sun, MapPin, Search, Layers, AlertTriangle, LogOut } from 'lucide-react';
 
 export default function MainLayout() {
   const { state, resetState } = useAppContext();
@@ -88,7 +88,7 @@ export default function MainLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F7F8FA] dark:bg-zinc-950">
-      {location.pathname !== '/' && (
+      
         <header 
           className="sticky top-0 z-50 h-[72px] w-full bg-white dark:bg-zinc-900/80 dark:bg-zinc-900/80 backdrop-blur-lg border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 sm:px-8 flex items-center justify-between shadow-sm"
 
@@ -111,8 +111,11 @@ export default function MainLayout() {
           </div>
           
           <div className="hidden lg:flex items-center gap-6">
+            <Link to="/user-dashboard" className="flex items-center gap-1 text-sm font-medium hover:text-blue-600 transition-colors"><LayoutDashboard size={16}/> داشبورد من</Link>
+            <Link to="/user-dashboard?tab=history" className="flex items-center gap-1 text-sm font-medium hover:text-blue-600 transition-colors"><FileText size={16}/> تاریخچه تحلیل‌ها</Link>
             <Link to="/solar-assets" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های خورشیدی</Link>
             <Link to="/solar-assets/my-projects" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های من</Link>
+            <button onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }} className="flex items-center gap-1 text-sm font-medium text-red-500 hover:text-red-600 transition-colors"><LogOut size={16}/> خروج</button>
           </div>
 
           
@@ -140,7 +143,6 @@ export default function MainLayout() {
             <NotificationCenter />
           </div>
         </header>
-      )}
       
       
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6">

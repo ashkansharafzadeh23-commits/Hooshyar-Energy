@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { motion } from 'framer-motion';
 import { Check, Info, AlertTriangle, ExternalLink, Zap, Share, Map, Lightbulb, MessageSquare, Send, Save, Trash2 } from 'lucide-react';
@@ -8,6 +8,8 @@ import EnergyEfficiencyChart from '../components/EnergyEfficiencyChart';
 import MonthlyGenerationChart from '../components/MonthlyGenerationChart';
 import { SmartWarning } from '../components/SmartWarning';
 import { AdBanner } from '../components/AdBanner';
+import { PanelComparisonTable } from '../components/PanelComparisonTable';
+import InstallationOptimization from '../components/InstallationOptimization';
 
 export default function ResultPage() {
   const { state } = useAppContext();
@@ -38,7 +40,16 @@ export default function ResultPage() {
     setSavedScenarios(prev => prev.filter(sc => sc.name !== nameToRemove));
   };
 
+  const location = useLocation();
+  const historyResult = location.state?.historyResult;
+
   useEffect(() => {
+    if (historyResult) {
+      setResult(historyResult);
+      setLoading(false);
+      return;
+    }
+
     const fetchAnalysis = async () => {
       try {
         const response = await fetch('/api/analyze', {
@@ -54,6 +65,23 @@ export default function ResultPage() {
         
         const data = await response.json();
         setResult(data);
+        
+        // Save to history
+        try {
+          const rawHist = localStorage.getItem('analysis_history');
+          const history = rawHist ? JSON.parse(rawHist) : [];
+          history.unshift({
+             id: Date.now().toString(),
+             date: new Date().toISOString(),
+             input: currentInput,
+             result: data,
+             title: currentInput.targets?.includes('solar') ? 'تحلیل نیروگاه خورشیدی' : 'تحلیل انرژی'
+          });
+          // keep last 10
+          localStorage.setItem('analysis_history', JSON.stringify(history.slice(0, 10)));
+        } catch (e) {
+          console.error("Failed to save history", e);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.');
       } finally {
@@ -341,6 +369,19 @@ export default function ResultPage() {
             )}
           </div>
         </section>
+        
+        {state.targets.includes('solar') && state.city && (
+          <div className="col-span-1 lg:col-span-12">
+            <InstallationOptimization />
+          </div>
+        )}
+        
+        {state.targets.includes('solar') && result?.solar?.panelOptions && (
+          <div className="col-span-1 lg:col-span-12">
+            <PanelComparisonTable panelOptions={result.solar.panelOptions} />
+          </div>
+        )}
+
         {state.targets.includes('solar') && result?.dataSource?.monthlySunHours && result?.solar?.finalKwp && (
           <div className="col-span-1 lg:col-span-12">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 bg-white dark:bg-[#1a1b1e] p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-800 shadow-sm">

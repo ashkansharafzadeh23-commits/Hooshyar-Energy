@@ -19,6 +19,7 @@ import vendorProductsHandler from "./api/vendor/products.js";
 import vendorIdHandler from "./api/vendors/[id].js";
 import recommendHandler from "./api/energy/recommend.js";
 import analyzeImagesHandler from "./api/energy/analyze-images.js";
+import optimizeLayoutHandler from "./api/energy/optimize-layout.js";
 
 const app = express();
 const PORT = 3000;
@@ -118,6 +119,7 @@ app.get("/api/vendor/products", runVercelHandler(vendorProductsHandler));
 app.get("/api/vendors/:id", runVercelHandler(vendorIdHandler));
 app.post("/api/energy/recommend", runVercelHandler(recommendHandler));
 app.post("/api/energy/analyze-images", runVercelHandler(analyzeImagesHandler));
+app.post("/api/energy/optimize-layout", runVercelHandler(optimizeLayoutHandler));
 
 app.post("/api/plan-powerplant", async (req, res) => {
   try {

@@ -36,12 +36,7 @@ export default function Home() {
       
       <AdBanner layout="hero" />
       
-      <div className="w-full mb-6">
-        <Link to="/user-dashboard" className="flex items-center justify-center gap-3 bg-white dark:bg-zinc-900 text-blue-600 border border-blue-600 px-8 py-4 rounded-2xl font-bold text-xl hover:bg-zinc-50 dark:bg-zinc-800 transition-all shadow-lg hover:shadow-xl w-full transform hover:-translate-y-1">
-          <LayoutDashboard size={24} />
-          ورود به داشبورد کاربری من (پیگیری درخواست‌ها)
-        </Link>
-      </div>
+      
       <div className="mt-8 mb-4 w-full">
         <Link to="/smart-maintenance" className="flex items-center justify-center gap-3 text-white dark:text-zinc-900 bg-zinc-900 dark:bg-zinc-100 px-8 py-4 rounded-2xl font-bold text-xl hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-lg hover:shadow-xl w-full sm:w-auto transform hover:-translate-y-1">
           <Zap size={24} className="animate-pulse" />

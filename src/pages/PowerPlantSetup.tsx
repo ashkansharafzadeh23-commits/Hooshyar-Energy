@@ -287,7 +287,11 @@ export default function PowerPlantSetup() {
             </p>
             <button 
               onClick={() => {
-                const requests = JSON.parse(localStorage.getItem('epc_requests') || '[]');
+                let requests = [];
+                try {
+                  const raw = localStorage.getItem('epc_requests');
+                  requests = raw ? JSON.parse(raw) : [];
+                } catch (e) { console.error(e); }
                 const newReq = {
                   id: Date.now().toString(),
                   userId: 'user_1',

@@ -33,32 +33,46 @@ export default function ContractorDashboard() {
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    const loadedReqs = JSON.parse(localStorage.getItem('epc_requests') || '[]');
-    setRequests(loadedReqs);
+    try {
+      const stored = localStorage.getItem('epc_requests');
+      if (stored) {
+        setRequests(stored ? JSON.parse(stored) : []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }, []);
 
   const handleReply = (reqId: string) => {
     if (!replyText[reqId]) return;
-    const currentReqs = JSON.parse(localStorage.getItem('epc_requests') || '[]');
-    const updatedReqs = currentReqs.map((req: any) => {
-      if (req.id === reqId) {
-        return {
-          ...req,
-          replies: [
-            ...(req.replies || []),
-            {
-              epcName: 'مهندسی نیروپژوهان',
-              message: replyText[reqId],
-              createdAt: new Date().toISOString()
-            }
-          ]
-        };
-      }
-      return req;
-    });
-    localStorage.setItem('epc_requests', JSON.stringify(updatedReqs));
-    setRequests(updatedReqs);
-    setReplyText({ ...replyText, [reqId]: '' });
+    try {
+      const stored = localStorage.getItem('epc_requests');
+      let currentReqs = [];
+      try {
+        currentReqs = stored ? JSON.parse(stored) : [];
+      } catch(e) { console.error(e); }
+      const updatedReqs = currentReqs.map((req: any) => {
+        if (req.id === reqId) {
+          return {
+            ...req,
+            replies: [
+              ...(req.replies || []),
+              {
+                epcName: 'مهندسی نیروپژوهان',
+                message: replyText[reqId],
+                createdAt: new Date().toISOString()
+              }
+            ]
+          };
+        }
+        return req;
+      });
+      localStorage.setItem('epc_requests', JSON.stringify(updatedReqs));
+      setRequests(updatedReqs);
+      setReplyText({ ...replyText, [reqId]: '' });
+    } catch (e) {
+      console.error(e);
+    }
   };
 
 

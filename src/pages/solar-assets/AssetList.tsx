@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Zap, Calendar, ArrowLeft } from 'lucide-react';
+import { MapPin, Zap, Calendar, ArrowLeft, Home } from 'lucide-react';
 
 export default function SolarAssetsList() {
   const [assets, setAssets] = useState<any[]>([]);
@@ -37,11 +37,15 @@ export default function SolarAssetsList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">پروژه‌های خورشیدی</h2>
           <p className="text-zinc-500 dark:text-zinc-400 mt-1">لیست دارایی‌های خورشیدی و نیروگاه‌های ثبت شده</p>
         </div>
+        <Link to="/target-select" className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-sm font-medium">
+          <Home size={16} />
+          بازگشت به خانه
+        </Link>
       </div>
 
       {loading ? (

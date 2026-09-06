@@ -77,7 +77,11 @@ export default function SmartMaintenance() {
   ]);
 
   useEffect(() => {
-    const localTechs = JSON.parse(localStorage.getItem('registered_technicians') || '[]');
+    let localTechs = [];
+    try {
+      const raw = localStorage.getItem('registered_technicians');
+      localTechs = raw ? JSON.parse(raw) : [];
+    } catch (e) { console.error(e); }
     if (localTechs.length > 0) {
       setExperts(prev => [...localTechs, ...prev]);
     }

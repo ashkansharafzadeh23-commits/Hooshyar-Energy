@@ -10,17 +10,32 @@ import {
   CheckCircle,
   Clock,
   ArrowRight,
-  Users
+  Users,
+  Sun,
+  Calendar
 } from 'lucide-react';
 
 export default function UserDashboard() {
-  const [activeTab, setActiveTab] = useState('requests');
+  
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialTab = searchParams.get('tab') || 'requests';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
   const [requests, setRequests] = useState<any[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const loadedReqs = JSON.parse(localStorage.getItem('epc_requests') || '[]');
-    setRequests(loadedReqs.filter((r: any) => r.userId === 'user_1'));
+    try {
+      const stored = localStorage.getItem('epc_requests');
+      if (stored) {
+        const loadedReqs = stored ? JSON.parse(stored) : [];
+        if (Array.isArray(loadedReqs)) {
+          setRequests(loadedReqs.filter((r: any) => r.userId === 'user_1'));
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing epc_requests", e);
+    }
   }, []);
 
   return (
@@ -47,6 +62,20 @@ export default function UserDashboard() {
             )}
           </button>
           <button 
+            onClick={() => setActiveTab('history')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'history' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            <Clock size={20} />
+            تاریخچه تحلیل‌ها
+          </button>
+          <button 
+            onClick={() => setActiveTab('assets')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'assets' ? 'bg-amber-50 text-amber-600' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            <Sun size={20} />
+            تجهیزات و پنل‌ها
+          </button>
+                    <button 
             onClick={() => setActiveTab('settings')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'settings' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
           >
@@ -54,6 +83,13 @@ export default function UserDashboard() {
             تنظیمات پروفایل
           </button>
         </nav>
+        <button 
+          onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors mt-auto mb-3"
+        >
+          <LogOut size={20} />
+          خروج از حساب
+        </button>
 
         <button onClick={() => navigate('/target-select')} className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors mt-auto mb-3">
           <ArrowRight size={20} />
@@ -73,15 +109,22 @@ export default function UserDashboard() {
             <h1 className="text-2xl sm:text-3xl font-black text-gray-800">
               {activeTab === 'requests' && 'درخواست‌های احداث من'}
               {activeTab === 'settings' && 'تنظیمات حساب کاربری'}
+              {activeTab === 'assets' && 'تجهیزات و زمان‌بندی تعویض'}
             </h1>
             <p className="text-gray-500 mt-2">وضعیت درخواست‌های خود را پیگیری کنید.</p>
           </div>
-          <Link to="/contractors" className="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-200 transition-colors hidden sm:flex items-center gap-2 font-bold shadow-sm border border-gray-200 ml-4">
-            لیست پیمانکاران
-          </Link>
-          <Link to="/powerplant-setup" className="bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors hidden sm:flex items-center gap-2 font-bold shadow-md">
-            ثبت درخواست احداث نیروگاه
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/" className="bg-white text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors hidden sm:flex items-center gap-2 font-bold shadow-sm border border-gray-200">
+              <ArrowRight size={18} />
+              خانه
+            </Link>
+            <Link to="/contractors" className="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-200 transition-colors hidden sm:flex items-center gap-2 font-bold shadow-sm border border-gray-200">
+              لیست پیمانکاران
+            </Link>
+            <Link to="/powerplant-setup" className="bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors hidden md:flex items-center gap-2 font-bold shadow-md">
+              ثبت درخواست احداث
+            </Link>
+          </div>
         </header>
 
         {activeTab === 'requests' && (
@@ -165,6 +208,130 @@ export default function UserDashboard() {
           </motion.div>
         )}
 
+        {activeTab === 'assets' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                  <Sun size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">وضعیت پنل‌های خورشیدی</h3>
+                  <p className="text-sm text-gray-500">محاسبه عمر مفید و زمان تعویض</p>
+                </div>
+              </div>
+
+              {requests.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  شما هنوز درخواست احداث تکمیل شده‌ای ندارید.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {requests.filter(r => r.status === 'تایید شده' || r.status === 'در حال بررسی').length > 0 ? requests.filter(r => r.status === 'تایید شده' || r.status === 'در حال بررسی').map((req: any) => {
+                    const installDate = req.date || new Date().toLocaleDateString('fa-IR');
+                    // Mocking lifespan: roughly 25 years. We'll show a random start year or just pretend it was installed recently.
+                    const remainingYears = 25; // 25 years default lifespan
+                    return (
+                      <div key={req.id} className="border border-gray-200 rounded-xl p-5 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-2 h-full bg-amber-500"></div>
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="font-bold text-gray-800">پروژه {req.id}</h4>
+                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                              <MapPin size={12} /> {req.location || 'تهران'}
+                            </div>
+                          </div>
+                          <div className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-xs font-bold border border-green-100">
+                            فعال
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-500">نوع سیستم:</span>
+                            <span className="font-bold">{req.systemType === 'ongrid' ? 'متصل به شبکه' : 'منفصل از شبکه'}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-500">تاریخ نصب:</span>
+                            <span className="font-bold flex items-center gap-1">
+                              <Calendar size={14} className="text-gray-400"/> {installDate}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-500">عمر مفید تخمینی:</span>
+                            <span className="font-bold text-amber-600">۲۵ سال</span>
+                          </div>
+                          
+                          <div className="mt-4 pt-4 border-t border-gray-100">
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="text-gray-500">زمان باقی‌مانده تا تعویض:</span>
+                              <span className="font-bold text-emerald-600">{remainingYears} سال</span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-2">
+                              <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '95%' }}></div>
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-2">
+                              * پیشنهاد می‌شود در سال {remainingYears - 5}ام عملکرد پنل‌ها بررسی شود.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }) : (
+                    <div className="col-span-2 text-center py-8 text-gray-500">
+                      شما هنوز پروژه فعال یا تایید شده‌ای ندارید.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+        
+        {activeTab === 'history' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">تاریخچه تحلیل‌های قبلی</h2>
+              {(() => {
+                let history = [];
+                try {
+                  const stored = localStorage.getItem('analysis_history');
+                  history = stored ? JSON.parse(stored) : [];
+                } catch(e) {}
+                
+                if (history.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      تاریخچه‌ای از تحلیل‌های قبلی شما برای نمایش وجود ندارد.
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="space-y-4">
+                    {history.map((item, idx) => (
+                      <div key={idx} className="border border-gray-200 rounded-xl p-4 flex justify-between items-center hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => {
+                        navigate('/result', { state: { historyResult: item.result } });
+                      }}>
+                        <div>
+                           <h4 className="font-bold text-gray-800">{item.title}</h4>
+                           <div className="text-sm text-gray-500 mt-1 flex gap-4">
+                             <span>{new Date(item.date).toLocaleDateString('fa-IR')} - {new Date(item.date).toLocaleTimeString('fa-IR', {hour: '2-digit', minute:'2-digit'})}</span>
+                             <span>{item.input?.city || 'مکان نامشخص'}</span>
+                           </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">مشاهده</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+        )}
+        
         {activeTab === 'settings' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm text-center py-20">
             <h2 className="text-2xl font-bold text-gray-800 mb-2">تنظیمات پروفایل</h2>
@@ -188,13 +355,21 @@ export default function UserDashboard() {
           <Settings size={24} />
           <span className="text-[10px] font-bold">تنظیمات</span>
         </button>
+        <button onClick={() => setActiveTab('history')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${activeTab === 'history' ? 'text-blue-600' : 'text-gray-500'}`}>
+          <Clock size={24} />
+          <span className="text-[10px] font-bold">تاریخچه</span>
+        </button>
         <button onClick={() => navigate('/contractors')} className="p-3 rounded-xl flex flex-col items-center gap-1 text-gray-500">
           <Users size={24} />
           <span className="text-[10px] font-bold">پیمانکاران</span>
         </button>
-        <button onClick={() => navigate('/')} className="p-3 rounded-xl flex flex-col items-center gap-1 text-gray-500">
+        <button onClick={() => navigate('/target-select')} className="p-3 rounded-xl flex flex-col items-center gap-1 text-gray-500">
           <ArrowRight size={24} />
           <span className="text-[10px] font-bold">بازگشت</span>
+        </button>
+        <button onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }} className="p-3 rounded-xl flex flex-col items-center gap-1 text-red-500">
+          <LogOut size={24} />
+          <span className="text-[10px] font-bold">خروج</span>
         </button>
       </div>
     </div>

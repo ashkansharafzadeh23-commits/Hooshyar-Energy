@@ -40,7 +40,11 @@ export default function TechnicianAuth() {
         photo: 'https://i.pravatar.cc/150?u=' + Date.now()
       };
       
-      const existing = JSON.parse(localStorage.getItem('registered_technicians') || '[]');
+      let existing = [];
+      try {
+        const raw = localStorage.getItem('registered_technicians');
+        existing = raw ? JSON.parse(raw) : [];
+      } catch (e) { console.error(e); }
       localStorage.setItem('registered_technicians', JSON.stringify([newTech, ...existing]));
       
       navigate('/technician-dashboard');

@@ -1,5 +1,5 @@
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
+import React, { useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
 import { Sun } from 'lucide-react';
 
 interface Scenario {
@@ -42,6 +42,8 @@ const mapGregorianToJalali: Record<string, { index: number; name: string }> = {
 };
 
 export default function MonthlyGenerationChart({ monthlySunHours, systemKwp, compareScenarios = [] }: Props) {
+  const [activeTab, setActiveTab] = useState('سالانه');
+
   if (!monthlySunHours || !systemKwp) return null;
 
   const PERFORMANCE_RATIO = 0.775;
@@ -51,6 +53,7 @@ export default function MonthlyGenerationChart({ monthlySunHours, systemKwp, com
     const sunHours = monthlySunHours[gregorian] || 0;
     const days = daysInMonth[jalali.index];
     const monthlyGen = systemKwp * sunHours * PERFORMANCE_RATIO * days;
+
     const item: any = {
       name: jalali.name,
       'سناریوی فعلی': Math.round(monthlyGen)
@@ -68,19 +71,48 @@ export default function MonthlyGenerationChart({ monthlySunHours, systemKwp, com
 
   const averageGen = Math.round(data.reduce((acc, curr) => acc + curr["سناریوی فعلی"], 0) / 12);
 
+  let displayData = data;
+  if (activeTab === 'بهار') {
+    displayData = data.slice(0, 3);
+  } else if (activeTab === 'تابستان') {
+    displayData = data.slice(3, 6);
+  } else if (activeTab === 'پاییز') {
+    displayData = data.slice(6, 9);
+  } else if (activeTab === 'زمستان') {
+    displayData = data.slice(9, 12);
+  }
+  
+  const tabs = ['سالانه', 'بهار', 'تابستان', 'پاییز', 'زمستان'];
+
   return (
     <div className="bg-white dark:bg-[#1a1b1e] rounded-xl border border-zinc-200/50 dark:border-zinc-800 p-4 lg:p-6 mt-6 shadow-sm w-full">
-      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-6 flex items-center gap-2 text-sm md:text-base">
-        <Sun size={18} className="text-[#F59E0B]" />
-        پیش‌بینی تولید برق ماهیانه سیستم خورشیدی (کیلووات‌ساعت)
-      </h3>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 text-sm md:text-base">
+          <Sun size={18} className="text-[#F59E0B]" />
+          پیش‌بینی تولید برق (تفکیک فصلی)
+        </h3>
+        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl">
+          {tabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                activeTab === tab 
+                  ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
       
       <div className="h-[300px] w-full" dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
+          <LineChart
+            data={displayData}
             margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-            barSize={20}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" opacity={0.5} />
             <XAxis 
@@ -97,7 +129,7 @@ export default function MonthlyGenerationChart({ monthlySunHours, systemKwp, com
               dx={-10}
             />
             <Tooltip
-              cursor={{ fill: '#f3f4f6', opacity: 0.4 }}
+              cursor={{ stroke: '#f3f4f6', strokeWidth: 2 }}
               contentStyle={{ 
                 borderRadius: '8px', 
                 border: 'none',
@@ -120,16 +152,15 @@ export default function MonthlyGenerationChart({ monthlySunHours, systemKwp, com
                 fontFamily: 'Vazirmatn, sans-serif'
               }} 
             />
-            <Bar dataKey="سناریوی فعلی" fill="#3b82f6" radius={[4, 4, 0, 0]} isAnimationActive={true} animationBegin={200} animationDuration={1500} animationEasing="ease-out" />
+            <Line type="monotone" dataKey="سناریوی فعلی" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} isAnimationActive={true} animationBegin={200} animationDuration={1500} animationEasing="ease-out" />
             {compareScenarios.map((sc, i) => {
               const colors = ['#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
               return (
-                <Bar key={sc.name} dataKey={sc.name} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} isAnimationActive={true} animationBegin={400 + (i * 200)} animationDuration={1500} animationEasing="ease-out" />
+                <Line key={sc.name} type="monotone" dataKey={sc.name} stroke={colors[i % colors.length]} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationBegin={400 + (i * 200)} animationDuration={1500} animationEasing="ease-out" />
               );
             })}
             {compareScenarios.length > 0 && <Legend wrapperStyle={{ fontFamily: 'Vazirmatn, sans-serif', fontSize: '12px' }} />}
-
-          </BarChart>
+          </LineChart>
         </ResponsiveContainer>
       </div>
       

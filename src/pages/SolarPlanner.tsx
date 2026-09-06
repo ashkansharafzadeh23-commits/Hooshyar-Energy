@@ -3,6 +3,7 @@ import { SceneCanvas } from '../components/solar/SceneCanvas';
 import { BuildingSelector } from '../components/solar/BuildingSelector';
 import { RoofOptionPanel } from '../components/solar/RoofOptionPanel';
 import { SunPathController } from '../components/solar/SunPathController';
+import { AILayoutOptimizer } from '../components/solar/AILayoutOptimizer';
 import { usePlacementStore } from '../store/usePlacementStore';
 import { Download, Trash2, ArrowRight } from 'lucide-react';
 import { exportCanvasToPNG } from '../utils/export';
@@ -51,6 +52,7 @@ export default function SolarPlanner() {
       <div className="flex flex-col lg:flex-row gap-6 flex-1 lg:h-[calc(100vh-140px)]">
         {/* Left Sidebar - Controls */}
         <div className="w-full lg:w-80 flex flex-col gap-4 shrink-0 overflow-y-auto">
+          <AILayoutOptimizer />
           <BuildingSelector />
           <RoofOptionPanel />
           <SunPathController />
