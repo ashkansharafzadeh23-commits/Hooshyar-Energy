@@ -35,6 +35,7 @@ import MyProjects from './pages/solar-assets/MyProjects';
 import AdminReview from './pages/solar-assets/AdminReview';
 import MainLayout from './layouts/MainLayout';
 import { AppProvider } from './context/AppContext';
+import ProjectDetail from './pages/projects/ProjectDetail';
 
 export default function App() {
   return (
@@ -45,6 +46,9 @@ export default function App() {
           <Route element={<MainLayout />}>
             <Route path="/customer-login" element={<CustomerLogin />} />
             <Route path="/user-dashboard" element={<UserDashboard />} />
+            <Route path="/dashboard" element={<UserDashboard />} />
+            <Route path="/projects" element={<UserDashboard />} />
+            <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/powerplant-setup" element={<PowerPlantSetup />} />
             <Route path="/solar-assets" element={<SolarAssetsList />} />
             <Route path="/solar-assets/my-projects" element={<MyProjects />} />

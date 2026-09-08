@@ -146,6 +146,7 @@ export default function ChecklistPage() {
 
       <SmartAnalyzer 
         area={state.area || 100} 
+        isSolar={state.targets.includes('solar') || state.targets.includes('auto')}
         onAnalysisComplete={(consumption) => {
           if (consumption > 0) {
             updateState({ actualMonthlyKwh: consumption });

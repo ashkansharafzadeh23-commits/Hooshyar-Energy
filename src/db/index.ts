@@ -1,4 +1,7 @@
 import fs from "fs";
+
+import { EnergyProject, ProjectMember, ProjectDocument, ProjectActivity } from '../types/project.js';
+import { Organization } from '../types/organization.js';
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
@@ -40,6 +43,7 @@ interface Product {
 
 export interface SolarAsset {
   id: string;
+  projectId?: string | null;
   projectName: string;
   ownerId: string;
   epcCompanyId: string | null;
@@ -125,6 +129,7 @@ export interface Ad {
 export interface AnalysisHistory {
   id: string;
   userId: string;
+  projectId?: string | null;
   createdAt: string;
   input: any;
   resultSummary: string;
@@ -167,6 +172,11 @@ export interface CityIrradianceCache {
 }
 
 interface DB {
+  energyProjects?: EnergyProject[];
+  projectMembers?: ProjectMember[];
+  projectDocuments?: ProjectDocument[];
+  projectActivities?: ProjectActivity[];
+  organizations?: Organization[];
   solarAssets: SolarAsset[];
   assetDocuments: AssetDocument[];
   assetAuditLogs: AssetAuditLog[];
@@ -330,6 +340,81 @@ function writeDB(data: DB) {
 }
 
 export const db = {
+  getEnergyProjects: () => readDB().energyProjects || [],
+  getEnergyProjectById: (id: string) => readDB().energyProjects?.find(p => p.id === id),
+  createEnergyProject: (project: Omit<EnergyProject, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.energyProjects) data.energyProjects = [];
+    const newProject = { ...project, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.energyProjects.push(newProject as EnergyProject);
+    writeDB(data);
+    return newProject as EnergyProject;
+  },
+  updateEnergyProject: (id: string, updates: Partial<EnergyProject>) => {
+    const data = readDB();
+    if (!data.energyProjects) data.energyProjects = [];
+    const index = data.energyProjects.findIndex(p => p.id === id);
+    if (index !== -1) {
+      data.energyProjects[index] = { ...data.energyProjects[index], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(data);
+      return data.energyProjects[index];
+    }
+    return null;
+  },
+  
+  getProjectMembers: (projectId: string) => (readDB().projectMembers || []).filter(m => m.projectId === projectId),
+  createProjectMember: (member: Omit<ProjectMember, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.projectMembers) data.projectMembers = [];
+    const newMember = { ...member, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.projectMembers.push(newMember as ProjectMember);
+    writeDB(data);
+    return newMember as ProjectMember;
+  },
+
+  getProjectDocuments: (projectId: string) => (readDB().projectDocuments || []).filter(d => d.projectId === projectId),
+  createProjectDocument: (doc: Omit<ProjectDocument, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.projectDocuments) data.projectDocuments = [];
+    const newDoc = { ...doc, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.projectDocuments.push(newDoc as ProjectDocument);
+    writeDB(data);
+    return newDoc as ProjectDocument;
+  },
+
+  getProjectActivities: (projectId: string) => (readDB().projectActivities || []).filter(a => a.projectId === projectId),
+  createProjectActivity: (activity: Omit<ProjectActivity, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.projectActivities) data.projectActivities = [];
+    const newActivity = { ...activity, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.projectActivities.push(newActivity as ProjectActivity);
+    writeDB(data);
+    return newActivity as ProjectActivity;
+  },
+
+  getOrganizations: () => readDB().organizations || [],
+  getOrganizationById: (id: string) => readDB().organizations?.find(o => o.id === id),
+  createOrganization: (org: Omit<Organization, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.organizations) data.organizations = [];
+    const newOrg = { ...org, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.organizations.push(newOrg as Organization);
+    writeDB(data);
+    return newOrg as Organization;
+  },
+  
+  updateAnalysisHistoryProjectId: (id: string, projectId: string) => {
+    const data = readDB();
+    const index = data.analysisHistory.findIndex(h => h.id === id);
+    if (index !== -1) {
+      data.analysisHistory[index].projectId = projectId;
+      writeDB(data);
+      return data.analysisHistory[index];
+    }
+    return null;
+  },
+  getAnalysisHistoryById: (id: string) => readDB().analysisHistory.find(h => h.id === id),
+
 
   getSolarAssets: () => readDB().solarAssets || [],
   getSolarAssetById: (id: string) => readDB().solarAssets?.find(a => a.id === id),

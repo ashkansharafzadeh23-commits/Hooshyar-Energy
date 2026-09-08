@@ -124,27 +124,25 @@ export default async function handler(req, res) {
   // Call Claude
   let claudeExplanation = [];
   try {
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const claudeRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620',
-        max_tokens: 1500,
-        system: SYSTEM_PROMPT,
-        messages: [{
-          role: 'user', 
-          content: `Here are the top candidates:\n${JSON.stringify(ranked.map(r => ({ systemType: r.type, score: r.score, costEstimate: r.costEstimate, technicalSummary: { solarPart: r.solarPart, generatorPart: r.generatorPart, batteryPart: r.batteryPart } })), null, 2)}\n\nPlease provide the explanation as a JSON array where each object has: "systemType" and "explanation". DO NOT wrap in markdown \`\`\`json, just return raw JSON array.`
-        }],
+        systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT}` }] },
+        contents: [].map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+        generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json"
+        }
       }),
     });
 
     if (claudeRes.ok) {
       const claudeData = await claudeRes.json();
-      let textContent = claudeData.content[0].text;
+      if (claudeData.error) throw new Error(claudeData.error.message);
+    let textContent = claudeData.candidates[0].content.parts[0].text;
       const jsonMatch = textContent.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
          claudeExplanation = JSON.parse(jsonMatch[0]);

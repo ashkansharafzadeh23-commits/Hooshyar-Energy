@@ -41,18 +41,18 @@ export default async function handler(req, res) {
 
   try {
     // 1. Extract Patch
-    const extractRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const extractRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620',
-        max_tokens: 500,
-        system: SYSTEM_PROMPT_EXTRACT,
-        messages: [{ role: 'user', content: JSON.stringify({ message, appliancesCatalog: APPLIANCES_CATALOG }) }],
+        systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT_EXTRACT}` }] },
+        contents: [].map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+        generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json"
+        }
       }),
     });
 
@@ -114,18 +114,18 @@ export default async function handler(req, res) {
     const updatedResult = ruleRes.engineResult;
 
     // 4. Generate Diff Summary
-    const diffRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const diffRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620',
-        max_tokens: 500,
-        system: SYSTEM_PROMPT_DIFF,
-        messages: [{ role: 'user', content: JSON.stringify({ previousResult, updatedResult, userMessage: message }) }],
+        systemInstruction: { parts: [{ text: `${SYSTEM_PROMPT_DIFF}` }] },
+        contents: [].map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
+        generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json"
+        }
       }),
     });
 

@@ -107,6 +107,7 @@ export default function UserDashboard() {
         <header className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-gray-800">
+              {activeTab === 'projects' && 'پروژه‌های انرژی من'}
               {activeTab === 'requests' && 'درخواست‌های احداث من'}
               {activeTab === 'settings' && 'تنظیمات حساب کاربری'}
               {activeTab === 'assets' && 'تجهیزات و زمان‌بندی تعویض'}
@@ -311,7 +312,7 @@ export default function UserDashboard() {
                   <div className="space-y-4">
                     {history.map((item, idx) => (
                       <div key={idx} className="border border-gray-200 rounded-xl p-4 flex justify-between items-center hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => {
-                        navigate('/result', { state: { historyResult: item.result } });
+                        navigate('/result', { state: { historyResult: item.result, historyResultId: item.id } });
                       }}>
                         <div>
                            <h4 className="font-bold text-gray-800">{item.title}</h4>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { provinces } from '../config/cities';
 import { ArrowLeft, ArrowRight, Sun, Loader2, MapPin, Maximize, Wallet, CheckCircle, Building2, Star, Phone, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdBanner } from '../components/AdBanner';
@@ -8,9 +9,10 @@ import Markdown from 'react-markdown';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
 
 export default function PowerPlantSetup() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     area: '',
-    city: '',
+    province: 'تهران',
+    city: 'تهران',
     budget: '',
     budgetUnit: 'million',
     connectionType: 'on-grid',
@@ -82,11 +84,38 @@ export default function PowerPlantSetup() {
                 </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">استان و شهر محل احداث</label>
-                <div className="relative">
-                  <input required name="city" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} type="text" className="w-full px-4 py-3 pl-10 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all font-medium text-gray-800" placeholder="مثال: کرمان، بم" />
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">استان</label>
+                  <div className="relative">
+                    <select
+                      value={formData.province || 'تهران'}
+                      onChange={(e) => {
+                        const newProv = e.target.value;
+                        const p = provinces.find(x => x.name === newProv);
+                        setFormData({...formData, province: newProv, city: p.cities[0]});
+                      }}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all font-medium text-gray-800 appearance-none bg-white"
+                    >
+                      {provinces.map(p => (
+                        <option key={p.name} value={p.name}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">شهر</label>
+                  <div className="relative">
+                    <select
+                      value={formData.city || 'تهران'}
+                      onChange={(e) => setFormData({...formData, city: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all font-medium text-gray-800 appearance-none bg-white"
+                    >
+                      {provinces.find(p => p.name === (formData.province || 'تهران'))?.cities.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 

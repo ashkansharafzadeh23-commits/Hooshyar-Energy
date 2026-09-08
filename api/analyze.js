@@ -53,6 +53,7 @@ export async function runRuleEngine(body) {
   
     const isSolar = targets && targets.includes("solar");
     const isGenerator = targets && targets.includes("generator");
+    const isPowerbank = targets && targets.includes("powerbank");
   
     // Sun hours mapping via NASA POWER API
     const { sunHours, monthlySunHours, source: sunHoursSource } = await getSunHoursForCity(city);
@@ -261,24 +262,58 @@ export default async function handler(req, res) {
     };
   };
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("ANTHROPIC_API_KEY تنظیم نشده است");
-    return res.status(200).json(generateFallback("ANTHROPIC_API_KEY تنظیم نشده است"));
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY تنظیم نشده است");
+    return res.status(200).json(generateFallback("GEMINI_API_KEY تنظیم نشده است"));
   }
 
   try {
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const SYSTEM_PROMPT = `شما یک مشاور هوشمند انرژی هستید.
+با توجه به نتیجه محاسبات Rule Engine و لیست محصولات کاتالوگ، باید مناسب‌ترین محصولات را برای نیاز کاربر پیشنهاد دهید و یک نتیجه JSON دقیق برگردانید.
+شما فقط باید قالب JSON برگردانید بدون هیچ متن اضافه‌ای.
+در پیشنهادات خود:
+- برای خورشیدی (solar): پنل‌های خورشیدی و اینورتر معرفی کنید.
+- برای ژنراتور (generator): ژنراتور متناسب با KVA پیشنهاد دهید.
+- برای پاوربانک (powerbank): پاوراستیشن متناسب معرفی کنید.
+- اگر نیاز بود لوازم جانبی پیشنهاد دهید.
+
+ساختار خروجی JSON:
+{
+  "summary": "توضیح کوتاه و دوستانه",
+  "dailyConsumptionEstimate": { "dailyKwh": 0, "monthlyKwh": 0 },
+  "solar": { "finalKwp": 0, "panelCount": 0, "panelOptions": [] },
+  "generator": { "finalKva": 0, "phase": "", "fuelType": "" },
+  "powerbank": { "finalWh": 0 },
+  "dataSource": { "sourceLabel": "" },
+  "recommendedProducts": [
+    { "category": "پنل/موتور/پاوربانک/...", "brand": "", "model": "", "reason": "", "price": 0, "vendorName": "", "vendorCity": "" }
+  ],
+  "requiredAccessories": [
+    { "name": "", "availableInCatalog": false, "estimatedPrice": 0 }
+  ],
+  "energySavingTips": [
+    { "title": "", "description": "" }
+  ],
+  "estimatedTotalCost": 0,
+  "warnings": [],
+  "missingInfo": [],
+  "technicalSpecs": [
+    { "label": "", "value": "" }
+  ]
+}`;
+    
+    const claudeRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620',
-        max_tokens: 2000,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: JSON.stringify({ ruleEngineResult: engineResult, catalog: { panels: req.body.catalogPanels, accessories: req.body.catalogAccessories } }) }],
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: JSON.stringify({ ruleEngineResult: engineResult, catalog: { panels: req.body.catalogPanels, accessories: req.body.catalogAccessories } }) }] }],
+        generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json"
+        }
       }),
     });
 
@@ -289,7 +324,11 @@ export default async function handler(req, res) {
     }
 
     const claudeData = await claudeRes.json();
-    let textContent = claudeData.content[0].text;
+    if (claudeData.error) {
+       console.error("Gemini API error:", claudeData.error);
+       return res.status(200).json(generateFallback("خطا در API (Gemini)"));
+    }
+    let textContent = claudeData.candidates[0].content.parts[0].text;
     
     const jsonMatch = textContent.match(/\{[\s\S]*\}/);
     if (jsonMatch) {

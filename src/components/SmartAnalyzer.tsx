@@ -4,10 +4,11 @@ import { motion } from 'framer-motion';
 
 interface Props {
   area: number;
+  isSolar?: boolean;
   onAnalysisComplete: (consumption: number, recommendation: string, capacity: number) => void;
 }
 
-export default function SmartAnalyzer({ area: defaultArea, onAnalysisComplete }: Props) {
+export default function SmartAnalyzer({ area: defaultArea, isSolar = true, onAnalysisComplete }: Props) {
   const [billImage, setBillImage] = useState<string | null>(null);
   const [siteImages, setSiteImages] = useState<string[]>([]);
   const [manualKwh, setManualKwh] = useState<string>('');
@@ -107,12 +108,13 @@ export default function SmartAnalyzer({ area: defaultArea, onAnalysisComplete }:
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-800">تحلیل هوشمند (Smart Analysis)</h2>
-          <p className="text-sm text-gray-500 mt-1">آپلود عکس محل و قبض برای پیشنهاد خودکار هوش مصنوعی</p>
+          <p className="text-sm text-gray-500 mt-1">{isSolar ? 'آپلود عکس محل و قبض' : 'آپلود عکس قبض'} برای پیشنهاد خودکار هوش مصنوعی</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className={`grid grid-cols-1 ${isSolar ? 'md:grid-cols-2' : ''} gap-6 mb-6`}>
         {/* Site Images Upload */}
+        {isSolar && (
         <div className="bg-white p-5 rounded-xl border border-indigo-50 shadow-sm relative group">
           <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center justify-between">
             <span>عکس‌های محل احداث</span>
@@ -141,6 +143,7 @@ export default function SmartAnalyzer({ area: defaultArea, onAnalysisComplete }:
             می‌توانید چندین عکس از زوایای مختلف پشت‌بام یا زمین بارگذاری کنید.
           </p>
         </div>
+        )}
 
         {/* Bill Image Upload */}
         <div className="bg-white p-5 rounded-xl border border-indigo-50 shadow-sm relative overflow-hidden group">

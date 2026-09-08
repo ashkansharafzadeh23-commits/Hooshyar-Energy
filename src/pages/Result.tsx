@@ -22,8 +22,43 @@ export default function ResultPage() {
   const [currentInput, setCurrentInput] = useState<any>(state);
   const [diffSummary, setDiffSummary] = useState<any>(null);
   const [savedScenarios, setSavedScenarios] = useState<{name: string, monthlySunHours: Record<string, number>, systemKwp: number}[]>([]);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectStatus, setProjectStatus] = useState<string | null>(null);
+  const [projectLoading, setProjectLoading] = useState(false);
+  const token = localStorage.getItem('token');
 
   
+
+  const handleConvertToProject = async () => {
+    if (!token) {
+      alert("برای ایجاد پروژه باید وارد حساب کاربری شوید.");
+      return;
+    }
+    const aId = result.analysisId || historyResultId;
+    if (!aId) {
+      alert("خطا: شناسه تحلیل یافت نشد.");
+      return;
+    }
+    
+    try {
+      setProjectLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/projects/from-analysis/${aId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "خطا در ایجاد پروژه");
+      setProjectId(data.id);
+      setProjectStatus(data.status);
+      alert("پروژه با موفقیت ایجاد شد! کد پروژه: " + data.projectCode);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setProjectLoading(false);
+    }
+  };
+
   const handleSaveScenario = () => {
     const defaultName = `سناریو ${savedScenarios.length + 1}`;
     const name = window.prompt("نام سناریو را وارد کنید (مثلاً: پنل ۵۵۰ وات، ظرفیت ۵ کیلووات):", defaultName);
@@ -42,6 +77,7 @@ export default function ResultPage() {
 
   const location = useLocation();
   const historyResult = location.state?.historyResult;
+  const historyResultId = location.state?.historyResultId;
 
   useEffect(() => {
     if (historyResult) {
@@ -198,7 +234,7 @@ export default function ResultPage() {
               />
 
               {state.targets.includes('solar') && (
-                <div className="mt-6">
+                <div className="mt-6 space-y-3">
                   <Link 
                     to="/solar-planner"
                     className="w-full bg-[#10B981] text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#167643] transition-colors shadow-[0_4px_12px_rgba(31,146,84,0.3)]"
@@ -208,6 +244,25 @@ export default function ResultPage() {
                   </Link>
                 </div>
               )}
+              
+              <div className="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                {projectId || historyResult?.projectId ? (
+                  <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl border border-blue-100 dark:border-blue-800 flex flex-col items-center gap-2">
+                    <div className="text-blue-700 dark:text-blue-400 font-bold text-sm">پروژه ایجاد شده است</div>
+                    <Link to={`/projects/${projectId || historyResult.projectId}`} className="bg-blue-600 text-white w-full text-center py-2 rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors">
+                      مشاهده پروژه
+                    </Link>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handleConvertToProject}
+                    disabled={projectLoading || (!result?.analysisId && !historyResult?.id)}
+                    className="w-full bg-[#09090B] dark:bg-zinc-100 text-white dark:text-zinc-950 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {projectLoading ? "در حال ایجاد..." : "تبدیل تحلیل به پروژه 🚀"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </section>

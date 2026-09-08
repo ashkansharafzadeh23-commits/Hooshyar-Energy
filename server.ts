@@ -10,6 +10,7 @@ import adsRouter from "./src/api/ads.js";
 import userRouter from "./src/api/user.js";
 import subscriptionRouter from "./src/api/subscription.js";
 import assetsRouter from "./src/api/assets.js";
+import projectsRouter from "./src/api/projects.js";
 
 // Vercel handlers
 import analyzeHandler from "./api/analyze.js";
@@ -34,6 +35,7 @@ app.use("/api/ads", adsRouter);
 app.use("/api/user", userRouter);
 app.use("/api/subscription", subscriptionRouter);
 app.use("/api/assets", assetsRouter);
+app.use("/api/projects", projectsRouter);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
@@ -100,12 +102,13 @@ app.post("/api/analyze", verifyAuthToken, async (req, res) => {
   const originalJson = res.json.bind(res);
   res.json = function (body) {
     if (user && res.statusCode === 200) {
-      db.addHistory({
+      const hist = db.addHistory({
         userId: user.id,
         input: req.body,
         resultSummary: body.summary || "بدون خلاصه",
         fullResult: body,
       });
+      body.analysisId = hist.id;
     }
     return originalJson(body);
   };
