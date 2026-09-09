@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { EnergyProject } from '../../types/project';
+import { FinancialTab } from './FinancialTab';
 import { ProjectStatusBadge } from '../../components/ProjectStatusBadge';
 import { ArrowRight, FileText, Activity, Users, Settings, Map } from 'lucide-react';
 
@@ -37,7 +38,7 @@ export default function ProjectDetail() {
     { id: 'overview', label: 'اطلاعات کلی' },
     { id: 'analysis', label: 'تحلیل انرژی' },
     { id: 'engineering', label: 'مهندسی' },
-    { id: 'financial', label: 'مالی' },
+    { id: 'financial', label: 'مالی و امکان‌سنجی' },
     { id: 'documents', label: 'اسناد' },
     { id: 'activity', label: 'تاریخچه فعالیت' },
     { id: 'rfq', label: 'استعلام (به‌زودی)', disabled: true },
@@ -122,7 +123,8 @@ export default function ProjectDetail() {
           </div>
         )}
         
-        {activeTab !== 'overview' && !tabs.find(t => t.id === activeTab)?.disabled && (
+        {activeTab === 'financial' && <FinancialTab project={project} />}
+        {activeTab !== 'overview' && activeTab !== 'financial' && !tabs.find(t => t.id === activeTab)?.disabled && (
           <div className="bg-white p-12 rounded-2xl border border-gray-200 shadow-sm text-center">
             <p className="text-gray-500">محتوای این بخش هنوز تکمیل نشده است.</p>
           </div>

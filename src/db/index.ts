@@ -2,6 +2,7 @@ import fs from "fs";
 
 import { EnergyProject, ProjectMember, ProjectDocument, ProjectActivity } from '../types/project.js';
 import { Organization } from '../types/organization.js';
+import { ProjectFinancialModel, FinancialAssumptionSet, FinancialScenario, ProjectProposal } from '../types/finance.js';
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
@@ -177,6 +178,10 @@ interface DB {
   projectDocuments?: ProjectDocument[];
   projectActivities?: ProjectActivity[];
   organizations?: Organization[];
+  financialModels?: ProjectFinancialModel[];
+  financialAssumptionSets?: FinancialAssumptionSet[];
+  financialScenarios?: FinancialScenario[];
+  projectProposals?: ProjectProposal[];
   solarAssets: SolarAsset[];
   assetDocuments: AssetDocument[];
   assetAuditLogs: AssetAuditLog[];
@@ -605,5 +610,57 @@ export const db = {
     data.products.push(newProduct);
     writeDB(data);
     return newProduct;
+  },
+  // Finance methods
+  getFinancialModelsByProjectId: (projectId: string) => (readDB().financialModels || []).filter(m => m.projectId === projectId),
+  getFinancialModelById: (id: string) => (readDB().financialModels || []).find(m => m.id === id),
+  createFinancialModel: (model: Omit<ProjectFinancialModel, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.financialModels) data.financialModels = [];
+    const newModel: ProjectFinancialModel = { ...model, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.financialModels.push(newModel);
+    writeDB(data);
+    return newModel;
+  },
+  updateFinancialModel: (id: string, updates: Partial<ProjectFinancialModel>) => {
+    const data = readDB();
+    if (!data.financialModels) data.financialModels = [];
+    const index = data.financialModels.findIndex(m => m.id === id);
+    if (index !== -1) {
+      data.financialModels[index] = { ...data.financialModels[index], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(data);
+      return data.financialModels[index];
+    }
+    return null;
+  },
+  
+  getFinancialAssumptionSetById: (id: string) => (readDB().financialAssumptionSets || []).find(a => a.id === id),
+  createFinancialAssumptionSet: (set: Omit<FinancialAssumptionSet, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.financialAssumptionSets) data.financialAssumptionSets = [];
+    const newSet: FinancialAssumptionSet = { ...set, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.financialAssumptionSets.push(newSet);
+    writeDB(data);
+    return newSet;
+  },
+
+  getFinancialScenariosByModelId: (modelId: string) => (readDB().financialScenarios || []).filter(s => s.financialModelId === modelId),
+  createFinancialScenario: (scenario: Omit<FinancialScenario, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.financialScenarios) data.financialScenarios = [];
+    const newScenario: FinancialScenario = { ...scenario, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.financialScenarios.push(newScenario);
+    writeDB(data);
+    return newScenario;
+  },
+  
+  getProjectProposalsByProjectId: (projectId: string) => (readDB().projectProposals || []).filter(p => p.projectId === projectId),
+  createProjectProposal: (proposal: Omit<ProjectProposal, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.projectProposals) data.projectProposals = [];
+    const newProposal: ProjectProposal = { ...proposal, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.projectProposals.push(newProposal);
+    writeDB(data);
+    return newProposal;
   }
 };
