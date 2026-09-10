@@ -16,7 +16,8 @@ export function ScenarioStudio({ project, model }: { project: EnergyProject, mod
     try {
       const res = await fetch(`/api/projects/${project.id}/financial-models/${model.id}/scenarios`);
       if (res.ok) {
-        setScenarios(await res.json());
+        if (!res.ok) throw new Error();
+      setScenarios(await res.json());
       }
     } catch (e) {
       console.error(e);

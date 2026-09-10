@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { EnergyProject } from '../../types/project';
 import { FinancialTab } from './FinancialTab';
+import { ContractTab } from './Workspace/ContractTab';
+import { MilestonesTab } from './Workspace/MilestonesTab';
+import { DataRoomTab } from './Workspace/DataRoomTab';
 import { ProjectStatusBadge } from '../../components/ProjectStatusBadge';
 import { ArrowRight, FileText, Activity, Users, Settings, Map } from 'lucide-react';
 
@@ -45,7 +48,8 @@ export default function ProjectDetail() {
     { id: 'bids', label: 'پیشنهادها (به‌زودی)', disabled: true },
     { id: 'investment', label: 'سرمایه‌گذاری (به‌زودی)', disabled: true },
     { id: 'procurement', label: 'تأمین (به‌زودی)', disabled: true },
-    { id: 'contract', label: 'قرارداد (به‌زودی)', disabled: true },
+    { id: 'contract', label: 'قرارداد (EPC)' },
+    { id: 'milestones', label: 'مایل‌استون‌ها' },
     { id: 'monitoring', label: 'مانیتورینگ (به‌زودی)', disabled: true },
   ];
 
@@ -92,6 +96,34 @@ export default function ProjectDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg text-white md:col-span-3">
+              <div className="flex items-center gap-2 mb-4 text-slate-300">
+                <Activity size={18} />
+                <h3 className="font-bold">داشبورد اجرایی هوشیار (Workspace)</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+                  <div className="text-xs text-slate-400 mb-1">وضعیت سلامت</div>
+                  <div className="text-lg font-bold text-emerald-400">در مسیر (ON_TRACK)</div>
+                </div>
+                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+                  <div className="text-xs text-slate-400 mb-1">فاز جاری</div>
+                  <div className="text-lg font-bold text-blue-400">انعقاد قرارداد EPC</div>
+                </div>
+                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+                  <div className="text-xs text-slate-400 mb-1">مایل‌استون بعدی</div>
+                  <div className="text-lg font-bold text-slate-200">تامین تجهیزات</div>
+                </div>
+                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+                  <div className="text-xs text-slate-400 mb-1">هوش مصنوعی</div>
+                  <div className="text-sm font-bold text-slate-300 line-clamp-2">
+                    «بر اساس بررسی سیستم، قرارداد آماده فعال‌سازی است و تاخیری پیش‌بینی نمی‌شود.»
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
               <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><Map size={18}/> موقعیت مکانی</h3>
               <div className="space-y-3 text-sm">

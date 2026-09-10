@@ -3,8 +3,11 @@ import fs from "fs";
 import { EnergyProject, ProjectMember, ProjectDocument, ProjectActivity } from '../types/project.js';
 import { Organization } from '../types/organization.js';
 import { ProjectFinancialModel, FinancialAssumptionSet, FinancialScenario, ProjectProposal } from '../types/finance.js';
+import { InvestmentOpportunity, LandProfile, InvestorProfile, ProjectMatch, ProjectReadinessScore } from '../types/investment.js';
+import { BillOfQuantities, BOQItem, ProcurementRFQ, ProcurementPackage, SupplierInvitation, VendorQuote, VendorQuoteItem, VendorQuoteRevision, SupplierAward, PurchaseOrder, PurchaseOrderItem, DeliveryRecord, DeliveryItem, EquipmentWarranty } from '../types/procurement.js';
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { ProjectContract, ContractParty, ContractRevision, ProjectMilestone, MilestoneDependency, ApprovalRequest, ChangeRequest, ProjectBaseline } from '../types/execution.js';
 
 const DB_PATH = path.join(process.cwd(), "db.json");
 
@@ -173,6 +176,23 @@ export interface CityIrradianceCache {
 }
 
 interface DB {
+  boqs?: BillOfQuantities[];
+  boqItems?: BOQItem[];
+  procurementPackages?: ProcurementPackage[];
+  procurementRfqs?: ProcurementRFQ[];
+  supplierInvitations?: SupplierInvitation[];
+  vendorQuotes?: VendorQuote[];
+  vendorQuoteItems?: VendorQuoteItem[];
+  vendorQuoteRevisions?: VendorQuoteRevision[];
+  supplierAwards?: SupplierAward[];
+  purchaseOrders?: PurchaseOrder[];
+  purchaseOrderItems?: PurchaseOrderItem[];
+  deliveryRecords?: DeliveryRecord[];
+  deliveryItems?: DeliveryItem[];
+  equipmentWarranties?: EquipmentWarranty[];
+  projectContracts?: ProjectContract[];
+  projectMilestones?: ProjectMilestone[];
+  approvalRequests?: ApprovalRequest[];
   energyProjects?: EnergyProject[];
   projectMembers?: ProjectMember[];
   projectDocuments?: ProjectDocument[];
@@ -182,6 +202,11 @@ interface DB {
   financialAssumptionSets?: FinancialAssumptionSet[];
   financialScenarios?: FinancialScenario[];
   projectProposals?: ProjectProposal[];
+  investmentOpportunities?: InvestmentOpportunity[];
+  landProfiles?: LandProfile[];
+  investorProfiles?: InvestorProfile[];
+  projectMatches?: ProjectMatch[];
+  projectReadinessScores?: ProjectReadinessScore[];
   solarAssets: SolarAsset[];
   assetDocuments: AssetDocument[];
   assetAuditLogs: AssetAuditLog[];
@@ -324,9 +349,8 @@ const defaultDB: DB = {
       warrantyYears: 5,
       createdAt: new Date().toISOString(),
     }
-  ]
+  ],
 };
-
 function readDB(): DB {
   if (!fs.existsSync(DB_PATH)) {
     writeDB(defaultDB);
@@ -344,7 +368,71 @@ function writeDB(data: DB) {
   fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
 }
 
-export const db = {
+export const db: any = {
+
+  // Execution & Workspace
+  getProjectContracts: (projectId: string) => readDB().projectContracts?.filter(c => c.projectId === projectId) || [],
+  getContractById: (id: string) => readDB().projectContracts?.find(c => c.id === id),
+  createContract: (contract: Omit<ProjectContract, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.projectContracts) data.projectContracts = [];
+    const newContract = { ...contract, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.projectContracts.push(newContract as ProjectContract);
+    writeDB(data);
+    return newContract;
+  },
+  updateContract: (id: string, updates: Partial<ProjectContract>) => {
+    const data = readDB();
+    if (!data.projectContracts) data.projectContracts = [];
+    const index = data.projectContracts.findIndex(c => c.id === id);
+    if (index !== -1) {
+      data.projectContracts[index] = { ...data.projectContracts[index], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(data);
+      return data.projectContracts[index];
+    }
+    return null;
+  },
+  getProjectMilestones: (projectId: string) => readDB().projectMilestones?.filter(m => m.projectId === projectId) || [],
+  createMilestone: (milestone: Omit<ProjectMilestone, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.projectMilestones) data.projectMilestones = [];
+    const newMilestone = { ...milestone, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.projectMilestones.push(newMilestone as ProjectMilestone);
+    writeDB(data);
+    return newMilestone;
+  },
+  updateMilestone: (id: string, updates: Partial<ProjectMilestone>) => {
+    const data = readDB();
+    if (!data.projectMilestones) data.projectMilestones = [];
+    const index = data.projectMilestones.findIndex(m => m.id === id);
+    if (index !== -1) {
+      data.projectMilestones[index] = { ...data.projectMilestones[index], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(data);
+      return data.projectMilestones[index];
+    }
+    return null;
+  },
+  getApprovalRequests: (projectId: string) => readDB().approvalRequests?.filter(a => a.projectId === projectId) || [],
+  createApprovalRequest: (req: Omit<ApprovalRequest, "id" | "requestedAt">) => {
+    const data = readDB();
+    if (!data.approvalRequests) data.approvalRequests = [];
+    const newReq = { ...req, id: uuidv4(), requestedAt: new Date().toISOString() };
+    data.approvalRequests.push(newReq as ApprovalRequest);
+    writeDB(data);
+    return newReq;
+  },
+  updateApprovalRequest: (id: string, updates: Partial<ApprovalRequest>) => {
+    const data = readDB();
+    if (!data.approvalRequests) data.approvalRequests = [];
+    const index = data.approvalRequests.findIndex(a => a.id === id);
+    if (index !== -1) {
+      data.approvalRequests[index] = { ...data.approvalRequests[index], ...updates };
+      writeDB(data);
+      return data.approvalRequests[index];
+    }
+    return null;
+  },
+
   getEnergyProjects: () => readDB().energyProjects || [],
   getEnergyProjectById: (id: string) => readDB().energyProjects?.find(p => p.id === id),
   createEnergyProject: (project: Omit<EnergyProject, "id" | "createdAt" | "updatedAt">) => {
@@ -662,5 +750,62 @@ export const db = {
     data.projectProposals.push(newProposal);
     writeDB(data);
     return newProposal;
-  }
+  },
+  // Investment Methods
+  getInvestmentOpportunities: () => readDB().investmentOpportunities || [],
+  getInvestmentOpportunityById: (id: string) => (readDB().investmentOpportunities || []).find(o => o.id === id),
+  createInvestmentOpportunity: (opp: Omit<InvestmentOpportunity, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.investmentOpportunities) data.investmentOpportunities = [];
+    const newOpp: InvestmentOpportunity = { ...opp, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.investmentOpportunities.push(newOpp);
+    writeDB(data);
+    return newOpp;
+  },
+  updateInvestmentOpportunity: (id: string, updates: Partial<InvestmentOpportunity>) => {
+    const data = readDB();
+    if (!data.investmentOpportunities) data.investmentOpportunities = [];
+    const index = data.investmentOpportunities.findIndex(o => o.id === id);
+    if (index !== -1) {
+      data.investmentOpportunities[index] = { ...data.investmentOpportunities[index], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(data);
+      return data.investmentOpportunities[index];
+    }
+    return null;
+  },
+
+  getInvestorProfiles: () => readDB().investorProfiles || [],
+  getInvestorProfileById: (id: string) => (readDB().investorProfiles || []).find(p => p.id === id),
+  getInvestorProfileByUserId: (userId: string) => (readDB().investorProfiles || []).find(p => p.userId === userId),
+  createInvestorProfile: (profile: Omit<InvestorProfile, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.investorProfiles) data.investorProfiles = [];
+    const newProfile: InvestorProfile = { ...profile, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.investorProfiles.push(newProfile);
+    writeDB(data);
+    return newProfile;
+  },
+  
+  getProjectMatchesForInvestor: (investorProfileId: string) => (readDB().projectMatches || []).filter(m => m.investorProfileId === investorProfileId),
+  getProjectMatchesForOpportunity: (opportunityId: string) => (readDB().projectMatches || []).filter(m => m.opportunityId === opportunityId),
+  createProjectMatch: (match: Omit<ProjectMatch, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.projectMatches) data.projectMatches = [];
+    const newMatch: ProjectMatch = { ...match, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.projectMatches.push(newMatch);
+    writeDB(data);
+    return newMatch;
+  },
+  updateProjectMatch: (id: string, updates: Partial<ProjectMatch>) => {
+    const data = readDB();
+    if (!data.projectMatches) data.projectMatches = [];
+    const index = data.projectMatches.findIndex(m => m.id === id);
+    if (index !== -1) {
+      data.projectMatches[index] = { ...data.projectMatches[index], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(data);
+      return data.projectMatches[index];
+    }
+    return null;
+  },
+
 };

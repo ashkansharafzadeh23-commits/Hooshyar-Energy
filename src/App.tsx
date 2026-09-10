@@ -37,6 +37,11 @@ import MainLayout from './layouts/MainLayout';
 import { AppProvider } from './context/AppContext';
 import ProjectDetail from './pages/projects/ProjectDetail';
 import ProjectProposal from './pages/projects/ProjectProposal';
+import InvestmentHub from './pages/investment/InvestmentHub';
+import OpportunitiesList from './pages/investment/OpportunitiesList';
+import OpportunityDetail from './pages/investment/OpportunityDetail';
+import InvestorProfileSetup from './pages/investment/InvestorProfileSetup';
+import MyMatches from './pages/investment/MyMatches';
 
 export default function App() {
   return (
@@ -51,6 +56,12 @@ export default function App() {
             <Route path="/projects" element={<UserDashboard />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="/projects/:id/proposal" element={<ProjectProposal />} />
+            <Route path="/investment-hub" element={<InvestmentHub />} />
+            <Route path="/investment-hub/opportunities" element={<OpportunitiesList />} />
+            <Route path="/investment-hub/opportunities/:id" element={<OpportunityDetail />} />
+            <Route path="/investment-hub/investor-profile" element={<InvestorProfileSetup />} />
+            <Route path="/investment-hub/matches" element={<MyMatches />} />
+
             <Route path="/powerplant-setup" element={<PowerPlantSetup />} />
             <Route path="/solar-assets" element={<SolarAssetsList />} />
             <Route path="/solar-assets/my-projects" element={<MyProjects />} />
