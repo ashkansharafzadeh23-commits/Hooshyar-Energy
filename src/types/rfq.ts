@@ -23,13 +23,26 @@ export interface ProjectRFQ {
   commercialTerms?: {
     minWarrantyYears?: number;
     penaltyPerDayLateIRR?: number;
+    preferredWarrantyYears?: number;
+    maxExecutionDays?: number;
+    lowPriceThresholdRatio?: number;
+    highPriceThresholdRatio?: number;
   };
+  scoringConfig?: RFQScoringThresholds;
   createdAt: string;
   publishedAt?: string;
   closedAt?: string;
   awardedAt?: string;
   selectedBidId?: string;
   selectedEpcOrganizationId?: string;
+}
+
+export interface RFQScoringThresholds {
+  minWarrantyYears?: number;
+  preferredWarrantyYears?: number;
+  longExecutionThresholdDays?: number;
+  lowPriceOutlierRatio?: number;
+  highPriceOutlierRatio?: number;
 }
 
 export type RFQInvitationStatus = 'INVITED' | 'VIEWED' | 'DECLINED' | 'BID_SUBMITTED' | 'EXPIRED';

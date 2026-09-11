@@ -23,6 +23,48 @@ export default function ProjectDetail() {
   const initialTab = searchParams.get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(initialTab);
 
+  const getPhaseName = (status: string): string => {
+    const PHASE_NAMES: Record<string, string> = {
+      DRAFT: 'تعریف اولیه پروژه',
+      ANALYSIS: 'تحلیل نیاز مصرف و بار الکتریکی',
+      FEASIBILITY: 'امکان‌سنجی فنی و اقتصادی',
+      READY_FOR_RFQ: 'آماده‌سازی اسناد استعلام',
+      RFQ_OPEN: 'استعلام عمومی / دریافت پیشنهادات EPC',
+      BIDS_RECEIVED: 'بررسی و ارزیابی پیشنهادات EPC',
+      EPC_SELECTED: 'مجری منتخب / تدوین قرارداد',
+      CONTRACTING: 'مذاکره و انعقاد قرارداد EPC',
+      FINANCING: 'تأمین مالی و تسهیلات',
+      PROCUREMENT: 'تأمین تجهیزات و لجستیک',
+      CONSTRUCTION: 'عملیات احداث و نصب',
+      COMMISSIONING: 'تست، راه‌اندازی و تزریق به شبکه',
+      OPERATIONAL: 'بهره‌برداری تجاری',
+      MAINTENANCE: 'بهره‌برداری و نگهداری (O&M)',
+      CANCELLED: 'پروژه متوقف شده'
+    };
+    return PHASE_NAMES[status] || status;
+  };
+
+  const getNextAction = (status: string): string => {
+    const NEXT_ACTIONS: Record<string, string> = {
+      DRAFT: 'تکمیل اطلاعات سایت و ثبت تحلیل انرژی',
+      ANALYSIS: 'بررسی محاسبات مالی و بازدهی طرح',
+      FEASIBILITY: 'تایید مشخصات فنی و انتشار اسناد استعلام',
+      READY_FOR_RFQ: 'انتشار رسمی استعلام (RFQ) و دعوت از پیمانکاران',
+      RFQ_OPEN: 'دریافت و بررسی پیشنهادات فنی و مالی پیمانکاران',
+      BIDS_RECEIVED: 'مقایسه تطبیقی و انتخاب پیمانکار منتخب',
+      EPC_SELECTED: 'نهایی‌سازی قرارداد و تبادل تضامین با مجری منتخب',
+      CONTRACTING: 'امضای رسمی قرارداد و ابلاغ شروع کار',
+      FINANCING: 'تکمیل مستندات اعتباری و تسهیلات بانکی',
+      PROCUREMENT: 'کنترل کیفی و تایید تجهیزات قبل از حمل',
+      CONSTRUCTION: 'پیشرفت عملیات اجرایی طبق نقشه و برنامه زمان‌بندی',
+      COMMISSIONING: 'اخذ تاییدیه اتصال شبکه و دیسپاچینگ',
+      OPERATIONAL: 'پایش مستمر تولید و عملکرد سامانه',
+      MAINTENANCE: 'اجرای سرویس‌های دوره‌ای و نگهداری پیشگیرانه',
+      CANCELLED: 'بدون اقدام بعدی'
+    };
+    return NEXT_ACTIONS[status] || 'بررسی وضعیت پروژه';
+  };
+
   const fetchProject = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -92,7 +134,7 @@ export default function ProjectDetail() {
                 key={tab.id}
                 disabled={tab.disabled}
                 onClick={() => setActiveTab(tab.id)}
-                className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold transition-colors \${
+                className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
                   activeTab === tab.id 
                     ? 'bg-[#09090B] text-white' 
                     : tab.disabled 
@@ -117,22 +159,28 @@ export default function ProjectDetail() {
                 <h3 className="font-bold">داشبورد اجرایی هوشیار (Workspace)</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm flex flex-col justify-between">
                   <div className="text-xs text-slate-400 mb-1">وضعیت سلامت</div>
-                  <div className="text-lg font-bold text-emerald-400">در مسیر (ON_TRACK)</div>
+                  <div className="text-sm font-medium text-slate-300 leading-snug">
+                    اطلاعات کافی برای ارزیابی وضعیت پروژه وجود ندارد.
+                  </div>
                 </div>
-                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm flex flex-col justify-between">
                   <div className="text-xs text-slate-400 mb-1">فاز جاری</div>
-                  <div className="text-lg font-bold text-blue-400">انعقاد قرارداد EPC</div>
+                  <div className="text-base font-bold text-blue-400">
+                    {getPhaseName(project.status)}
+                  </div>
                 </div>
-                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
-                  <div className="text-xs text-slate-400 mb-1">مایل‌استون بعدی</div>
-                  <div className="text-lg font-bold text-slate-200">تامین تجهیزات</div>
+                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm flex flex-col justify-between">
+                  <div className="text-xs text-slate-400 mb-1">اقدام بعدی</div>
+                  <div className="text-sm font-bold text-slate-200">
+                    {getNextAction(project.status)}
+                  </div>
                 </div>
-                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm">
-                  <div className="text-xs text-slate-400 mb-1">هوش مصنوعی</div>
-                  <div className="text-sm font-bold text-slate-300 line-clamp-2">
-                    «بر اساس بررسی سیستم، قرارداد آماده فعال‌سازی است و تاخیری پیش‌بینی نمی‌شود.»
+                <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm flex flex-col justify-between">
+                  <div className="text-xs text-slate-400 mb-1">پایش سیستم</div>
+                  <div className="text-xs text-slate-300 leading-relaxed">
+                    ارزیابی تاخیر و انحراف منوط به ثبت زمان‌بندی تفصیلی و مایل‌استون‌های اجرایی در تب مربوطه است.
                   </div>
                 </div>
               </div>
@@ -193,7 +241,7 @@ export default function ProjectDetail() {
         {activeTab === 'commissioning' && <CommissioningTab projectId={project.id} />}
         {activeTab === 'handover' && <HandoverTab projectId={project.id} />}
         {activeTab === 'asset' && <AssetTab projectId={project.id} />}
-        {activeTab !== 'overview' && activeTab !== 'financial' && activeTab !== 'financing' && activeTab !== 'contract' && activeTab !== 'milestones' && activeTab !== 'documents' && activeTab !== 'procurement' && activeTab !== 'commissioning' && activeTab !== 'handover' && activeTab !== 'asset' && !tabs.find(t => t.id === activeTab)?.disabled && (
+        {activeTab !== 'overview' && activeTab !== 'rfq' && activeTab !== 'bids' && activeTab !== 'financial' && activeTab !== 'financing' && activeTab !== 'contract' && activeTab !== 'milestones' && activeTab !== 'documents' && activeTab !== 'procurement' && activeTab !== 'commissioning' && activeTab !== 'handover' && activeTab !== 'asset' && !tabs.find(t => t.id === activeTab)?.disabled && (
           <div className="bg-white p-12 rounded-2xl border border-gray-200 shadow-sm text-center">
             <p className="text-gray-500">محتوای این بخش هنوز تکمیل نشده است.</p>
           </div>

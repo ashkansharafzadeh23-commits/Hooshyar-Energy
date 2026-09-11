@@ -5,7 +5,8 @@ import {
   BidScoreBreakdown, 
   BidRiskFlag, 
   BidComparison, 
-  RankedBidEntry 
+  RankedBidEntry,
+  RFQScoringThresholds
 } from '../types/rfq.js';
 import { Organization } from '../types/organization.js';
 
@@ -19,6 +20,42 @@ export const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
   commercial: 5
 };
 
+export interface ConcreteScoringThresholds {
+  minWarrantyYears: number;
+  preferredWarrantyYears: number;
+  longExecutionThresholdDays: number;
+  lowPriceOutlierRatio: number;
+  highPriceOutlierRatio: number;
+}
+
+export const DEFAULT_SCORING_THRESHOLDS: ConcreteScoringThresholds = {
+  minWarrantyYears: 3,
+  preferredWarrantyYears: 5,
+  longExecutionThresholdDays: 120,
+  lowPriceOutlierRatio: 0.65,
+  highPriceOutlierRatio: 1.45
+};
+
+/**
+ * Resolve effective scoring and risk thresholds.
+ * RFQ-specific commercial terms or scoringConfig override global defaults.
+ */
+export function resolveRFQThresholds(
+  rfq?: Partial<ProjectRFQ>, 
+  customOverrides?: Partial<RFQScoringThresholds>
+): ConcreteScoringThresholds {
+  const comm = rfq?.commercialTerms;
+  const cfg = rfq?.scoringConfig;
+
+  return {
+    minWarrantyYears: customOverrides?.minWarrantyYears ?? comm?.minWarrantyYears ?? cfg?.minWarrantyYears ?? DEFAULT_SCORING_THRESHOLDS.minWarrantyYears,
+    preferredWarrantyYears: customOverrides?.preferredWarrantyYears ?? comm?.preferredWarrantyYears ?? cfg?.preferredWarrantyYears ?? DEFAULT_SCORING_THRESHOLDS.preferredWarrantyYears,
+    longExecutionThresholdDays: customOverrides?.longExecutionThresholdDays ?? comm?.maxExecutionDays ?? cfg?.longExecutionThresholdDays ?? DEFAULT_SCORING_THRESHOLDS.longExecutionThresholdDays,
+    lowPriceOutlierRatio: customOverrides?.lowPriceOutlierRatio ?? comm?.lowPriceThresholdRatio ?? cfg?.lowPriceOutlierRatio ?? DEFAULT_SCORING_THRESHOLDS.lowPriceOutlierRatio,
+    highPriceOutlierRatio: customOverrides?.highPriceOutlierRatio ?? comm?.highPriceThresholdRatio ?? cfg?.highPriceOutlierRatio ?? DEFAULT_SCORING_THRESHOLDS.highPriceOutlierRatio,
+  };
+}
+
 /**
  * Deterministically detect risk flags for a bid.
  * AI or advertising MUST NOT influence this.
@@ -27,9 +64,11 @@ export function evaluateBidRisks(
   bid: EPCBid, 
   rfq: ProjectRFQ, 
   allBids: EPCBid[], 
-  epcOrg?: Organization
+  epcOrg?: Organization,
+  customThresholds?: Partial<RFQScoringThresholds>
 ): BidRiskFlag[] {
   const flags: BidRiskFlag[] = [];
+  const thresholds = resolveRFQThresholds(rfq, customThresholds);
 
   // 1. Check Missing Documents
   const requiredDocs = rfq.requiredDocuments || [];
@@ -46,43 +85,44 @@ export function evaluateBidRisks(
   const validPrices = allBids.map(b => b.totalPrice).filter(p => p > 0);
   if (validPrices.length >= 2) {
     const avgPrice = validPrices.reduce((a, b) => a + b, 0) / validPrices.length;
-    if (bid.totalPrice < avgPrice * 0.65) {
+    if (bid.totalPrice < avgPrice * thresholds.lowPriceOutlierRatio) {
       flags.push({
         type: 'PRICE_OUTLIER',
         severity: 'HIGH',
-        description: 'قیمت پیشنهادی به‌طور غیرعادی پایین‌تر از میانگین بازار است (احتمال عدم پوشش کامل آیتم‌های اجرایی یا تجهیزات غیراصل).'
+        description: 'قیمت این پیشنهاد به‌طور معناداری از میانگین پیشنهادهای دریافت‌شده پایین‌تر است و نیازمند بررسی دامنه کار، مشخصات تجهیزات و استثنائات پیشنهاد است.'
       });
-    } else if (bid.totalPrice > avgPrice * 1.45) {
+    } else if (bid.totalPrice > avgPrice * thresholds.highPriceOutlierRatio) {
+      const pctOver = Math.round((thresholds.highPriceOutlierRatio - 1) * 100);
       flags.push({
         type: 'PRICE_OUTLIER',
         severity: 'MEDIUM',
-        description: 'قیمت پیشنهادی بیش از ۴۵٪ از میانگین سایر پیمانکاران بالاتر است.'
+        description: `قیمت پیشنهادی بیش از ${pctOver}٪ از میانگین سایر پیشنهادهای دریافت‌شده بالاتر است.`
       });
     }
   }
 
-  // 3. Check Short Warranty
-  if (bid.warrantyYears < 3) {
+  // 3. Check Short Warranty against configured RFQ requirements
+  if (bid.warrantyYears < thresholds.minWarrantyYears) {
     flags.push({
       type: 'SHORT_WARRANTY',
       severity: 'HIGH',
-      description: `دوره گارانتی پیشنهادی (${bid.warrantyYears} سال) کمتر از حداقل استاندارد نیروگاه‌های خورشیدی است.`
+      description: `دوره گارانتی پیشنهادی (${bid.warrantyYears} سال) کمتر از حداقل دوره تعیین‌شده در الزامات استعلام (${thresholds.minWarrantyYears} سال) است.`
     });
-  } else if (bid.warrantyYears < 5) {
+  } else if (bid.warrantyYears < thresholds.preferredWarrantyYears) {
     flags.push({
       type: 'SHORT_WARRANTY',
       severity: 'LOW',
-      description: `دوره گارانتی پیشنهادی (${bid.warrantyYears} سال) متوسط است؛ استاندارد بهینه حداقل ۵ تا ۱۰ سال است.`
+      description: `دوره گارانتی پیشنهادی (${bid.warrantyYears} سال) کمتر از سطح گارانتی ترجیحی استعلام (${thresholds.preferredWarrantyYears} سال) است.`
     });
   }
 
-  // 4. Check Long Execution
+  // 4. Check Long Execution against configured threshold
   const executionDays = bid.executionDays || 0;
-  if (executionDays > 120) {
+  if (executionDays > thresholds.longExecutionThresholdDays) {
     flags.push({
       type: 'LONG_EXECUTION',
       severity: 'MEDIUM',
-      description: `مدت زمان اجرای پروژه (${executionDays} روز) طولانی ارزیابی می‌شود.`
+      description: `مدت زمان اجرای پروژه (${executionDays} روز) از سقف زمانی تعیین‌شده در الزامات استعلام (${thresholds.longExecutionThresholdDays} روز) بیشتر است.`
     });
   }
 
@@ -126,9 +166,11 @@ export function scoreBid(
   rfq: ProjectRFQ, 
   allBids: EPCBid[], 
   epcOrg?: Organization,
-  customWeights?: Partial<ScoringWeights>
+  customWeights?: Partial<ScoringWeights>,
+  customThresholds?: Partial<RFQScoringThresholds>
 ): { breakdown: BidScoreBreakdown; risks: BidRiskFlag[]; totalScore: number } {
   const weights: ScoringWeights = { ...DEFAULT_SCORING_WEIGHTS, ...(customWeights || {}) };
+  const thresholds = resolveRFQThresholds(rfq, customThresholds);
 
   // 1. Price Score (25% default)
   const allPrices = allBids.map(b => b.totalPrice).filter(p => p > 0);
@@ -174,12 +216,12 @@ export function scoreBid(
 
   // 4. Warranty Score (10% default)
   let warrantyScore = 0;
-  if (bid.warrantyYears >= 10) {
+  if (bid.warrantyYears >= thresholds.preferredWarrantyYears * 2) {
     warrantyScore = weights.warranty;
-  } else if (bid.warrantyYears >= 5) {
-    warrantyScore = Math.round(weights.warranty * 0.8 * 10) / 10;
-  } else if (bid.warrantyYears >= 3) {
-    warrantyScore = Math.round(weights.warranty * 0.5 * 10) / 10;
+  } else if (bid.warrantyYears >= thresholds.preferredWarrantyYears) {
+    warrantyScore = Math.round(weights.warranty * 0.85 * 10) / 10;
+  } else if (bid.warrantyYears >= thresholds.minWarrantyYears) {
+    warrantyScore = Math.round(weights.warranty * 0.6 * 10) / 10;
   } else {
     warrantyScore = Math.round(weights.warranty * 0.2 * 10) / 10;
   }
@@ -233,7 +275,7 @@ export function scoreBid(
     totalScore
   };
 
-  const risks = evaluateBidRisks(bid, rfq, allBids, epcOrg);
+  const risks = evaluateBidRisks(bid, rfq, allBids, epcOrg, customThresholds);
 
   return { breakdown, risks, totalScore };
 }
@@ -245,7 +287,8 @@ export function compareBids(
   rfq: ProjectRFQ, 
   bids: EPCBid[], 
   organizations: Organization[],
-  customWeights?: Partial<ScoringWeights>
+  customWeights?: Partial<ScoringWeights>,
+  customThresholds?: Partial<RFQScoringThresholds>
 ): BidComparison {
   const weights: ScoringWeights = { ...DEFAULT_SCORING_WEIGHTS, ...(customWeights || {}) };
   const orgMap = new Map<string, Organization>();
@@ -255,7 +298,7 @@ export function compareBids(
 
   const scoredEntries: Array<Omit<RankedBidEntry, "rank">> = bids.map(bid => {
     const org = orgMap.get(bid.epcOrganizationId);
-    const { breakdown, risks, totalScore } = scoreBid(bid, rfq, bids, org, weights);
+    const { breakdown, risks, totalScore } = scoreBid(bid, rfq, bids, org, weights, customThresholds);
 
     // Update bid object reference with score breakdown
     bid.scoreBreakdown = breakdown;

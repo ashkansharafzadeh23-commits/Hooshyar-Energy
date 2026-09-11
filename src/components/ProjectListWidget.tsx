@@ -12,7 +12,7 @@ export default function ProjectListWidget() {
       try {
         const token = localStorage.getItem('token');
         const res = await fetch('/api/projects', {
-          headers: { 'Authorization': `Bearer \${token}` }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
@@ -53,7 +53,7 @@ export default function ProjectListWidget() {
             </p>
             <p className="text-xs text-gray-400">آخرین بروزرسانی: {new Date(p.updatedAt).toLocaleDateString('fa-IR')}</p>
           </div>
-          <Link to={`/projects/\${p.id}`} className="w-full md:w-auto text-center bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 px-6 py-2.5 rounded-xl font-bold transition-colors">
+          <Link to={`/projects/${p.id}`} className="w-full md:w-auto text-center bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 px-6 py-2.5 rounded-xl font-bold transition-colors">
             مشاهده پروژه
           </Link>
         </div>

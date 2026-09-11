@@ -39,7 +39,7 @@ const STATUS_COLORS: Record<ProjectStatus, string> = {
 
 export const ProjectStatusBadge: React.FC<{ status: ProjectStatus }> = ({ status }) => {
   return (
-    <span className={`px-2 py-1 rounded-md text-xs font-bold \${STATUS_COLORS[status]}`}>
+    <span className={`px-2 py-1 rounded-md text-xs font-bold ${STATUS_COLORS[status]}`}>
       {STATUS_LABELS[status]}
     </span>
   );
