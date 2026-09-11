@@ -5,6 +5,10 @@ import { FinancialTab } from './FinancialTab';
 import { ContractTab } from './Workspace/ContractTab';
 import { MilestonesTab } from './Workspace/MilestonesTab';
 import { DataRoomTab } from './Workspace/DataRoomTab';
+import { ProcurementTab } from './Workspace/ProcurementTab';
+import { CommissioningTab } from './Workspace/CommissioningTab';
+import { HandoverTab } from './Workspace/HandoverTab';
+import { AssetTab } from './Workspace/AssetTab';
 import { ProjectStatusBadge } from '../../components/ProjectStatusBadge';
 import { ArrowRight, FileText, Activity, Users, Settings, Map } from 'lucide-react';
 
@@ -47,7 +51,10 @@ export default function ProjectDetail() {
     { id: 'rfq', label: 'استعلام (به‌زودی)', disabled: true },
     { id: 'bids', label: 'پیشنهادها (به‌زودی)', disabled: true },
     { id: 'investment', label: 'سرمایه‌گذاری (به‌زودی)', disabled: true },
-    { id: 'procurement', label: 'تأمین (به‌زودی)', disabled: true },
+    { id: 'procurement', label: 'تأمین', disabled: false },
+    { id: 'commissioning', label: 'راه‌اندازی', disabled: false },
+    { id: 'handover', label: 'تحویل', disabled: false },
+    { id: 'asset', label: 'دارایی انرژی', disabled: false },
     { id: 'contract', label: 'قرارداد (EPC)' },
     { id: 'milestones', label: 'مایل‌استون‌ها' },
     { id: 'monitoring', label: 'مانیتورینگ (به‌زودی)', disabled: true },
@@ -156,7 +163,14 @@ export default function ProjectDetail() {
         )}
         
         {activeTab === 'financial' && <FinancialTab project={project} />}
-        {activeTab !== 'overview' && activeTab !== 'financial' && !tabs.find(t => t.id === activeTab)?.disabled && (
+        {activeTab === 'contract' && <ContractTab projectId={project.id} />}
+        {activeTab === 'milestones' && <MilestonesTab projectId={project.id} />}
+        {activeTab === 'documents' && <DataRoomTab projectId={project.id} />}
+        {activeTab === 'procurement' && <ProcurementTab projectId={project.id} />}
+        {activeTab === 'commissioning' && <CommissioningTab projectId={project.id} />}
+        {activeTab === 'handover' && <HandoverTab projectId={project.id} />}
+        {activeTab === 'asset' && <AssetTab projectId={project.id} />}
+        {activeTab !== 'overview' && activeTab !== 'financial' && activeTab !== 'contract' && activeTab !== 'milestones' && activeTab !== 'documents' && activeTab !== 'procurement' && activeTab !== 'commissioning' && activeTab !== 'handover' && activeTab !== 'asset' && !tabs.find(t => t.id === activeTab)?.disabled && (
           <div className="bg-white p-12 rounded-2xl border border-gray-200 shadow-sm text-center">
             <p className="text-gray-500">محتوای این بخش هنوز تکمیل نشده است.</p>
           </div>

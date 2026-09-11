@@ -17,8 +17,8 @@ export const ContractTab: React.FC<ContractTabProps> = ({ projectId }) => {
   const fetchContracts = async () => {
     try {
       const res = await fetch(`/api/execution/${projectId}/contracts`);
-      if (res.ok) if (!res.ok) throw new Error();
-      setContracts(await res.json());
+      if (res.ok) {
+      setContracts(await res.json()); }
     } catch (e) {
       console.error(e);
     } finally {

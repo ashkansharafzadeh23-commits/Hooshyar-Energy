@@ -1,190 +1,201 @@
-import express from "express";
-import { db } from "../db/index.js";
-import { verifyAuthToken } from "./auth.js";
+import express from 'express';
+import { db } from '../db/index.js';
+import { v4 as uuidv4 } from 'uuid';
 
-const router = express.Router();
+const procurementRouter = express.Router();
 
-// BOQ Endpoints
-router.get("/projects/:projectId/boqs", verifyAuthToken, (req, res) => {
+// BOQs
+procurementRouter.get('/projects/:projectId/boqs', (req, res) => {
   const boqs = db.getBOQs(req.params.projectId);
   res.json(boqs);
 });
 
-router.post("/projects/:projectId/boqs", verifyAuthToken, (req, res) => {
+procurementRouter.post('/projects/:projectId/boqs', (req, res) => {
   const boq = db.createBOQ({
-    ...req.body,
     projectId: req.params.projectId,
-    createdByUserId: (req as any).user.id,
-    status: 'DRAFT'
+    ...req.body
   });
   res.json(boq);
 });
 
-router.get("/boqs/:boqId/items", verifyAuthToken, (req, res) => {
+procurementRouter.get('/boqs/:boqId', (req, res) => {
+  const boq = db.getBOQById(req.params.boqId);
+  if (!boq) return res.status(404).json({ error: 'Not found' });
   const items = db.getBOQItems(req.params.boqId);
-  res.json(items);
+  res.json({ ...boq, items });
 });
 
-router.post("/boqs/:boqId/items", verifyAuthToken, (req, res) => {
+procurementRouter.patch('/boqs/:boqId', (req, res) => {
+  const boq = db.updateBOQ(req.params.boqId, req.body);
+  res.json(boq);
+});
+
+procurementRouter.post('/boqs/:boqId/items', (req, res) => {
   const item = db.createBOQItem({
-    ...req.body,
-    boqId: req.params.boqId
+    boqId: req.params.boqId,
+    projectId: req.body.projectId, // normally from BOQ
+    ...req.body
   });
   res.json(item);
 });
 
-router.post("/boqs/:boqId/approve", verifyAuthToken, (req, res) => {
-  const boq = db.updateBOQ(req.params.boqId, {
-    status: 'APPROVED',
-    approvedAt: new Date().toISOString()
-  });
-  // Also create a project activity
-  if (boq) {
-    db.createProjectActivity({
-      projectId: boq.projectId,
-      type: 'DOCUMENT_APPROVED',
-      title: 'BOQ Approved',
-      description: `BOQ ${boq.boqCode} has been approved.`,
-      performedByUserId: (req as any).user.id
-    });
-  }
-  res.json(boq);
+procurementRouter.patch('/boq-items/:id', (req, res) => {
+  const item = db.updateBOQItem(req.params.id, req.body);
+  res.json(item);
 });
 
+procurementRouter.delete('/boq-items/:id', (req, res) => {
+  db.deleteBOQItem(req.params.id);
+  res.json({ success: true });
+});
 
-// RFQ Endpoints
-router.get("/projects/:projectId/procurement-rfqs", verifyAuthToken, (req, res) => {
+// RFQs
+procurementRouter.get('/projects/:projectId/rfqs', (req, res) => {
   const rfqs = db.getProcurementRFQs(req.params.projectId);
   res.json(rfqs);
 });
 
-router.post("/projects/:projectId/procurement-rfqs", verifyAuthToken, (req, res) => {
+procurementRouter.post('/projects/:projectId/rfqs', (req, res) => {
   const rfq = db.createProcurementRFQ({
-    ...req.body,
     projectId: req.params.projectId,
-    createdByUserId: (req as any).user.id,
-    status: 'DRAFT'
+    ...req.body
   });
   res.json(rfq);
 });
 
-router.post("/procurement-rfqs/:rfqId/publish", verifyAuthToken, (req, res) => {
-  const rfq = db.updateProcurementRFQ(req.params.rfqId, {
-    status: 'PUBLISHED',
-    publishedAt: new Date().toISOString()
-  });
+procurementRouter.get('/rfqs/:id', (req, res) => {
+  const rfq = db.getProcurementRFQById(req.params.id);
+  if (!rfq) return res.status(404).json({ error: 'Not found' });
+  // Include invitations and quote summaries
+  const invitations = db.getSupplierInvitations(req.params.id);
+  const quotes = db.getVendorQuotes(req.params.id);
+  res.json({ ...rfq, invitations, quotes });
+});
+
+procurementRouter.patch('/rfqs/:id', (req, res) => {
+  const rfq = db.updateProcurementRFQ(req.params.id, req.body);
   res.json(rfq);
 });
 
-router.get("/procurement-rfqs/:rfqId/quotes", verifyAuthToken, (req, res) => {
-  const quotes = db.getVendorQuotes(req.params.rfqId);
-  const quotesWithItems = quotes.map(q => {
-    return {
-      ...q,
-      items: db.getVendorQuoteItems(q.id)
-    };
-  });
-  res.json(quotesWithItems);
+procurementRouter.post('/rfqs/:id/publish', (req, res) => {
+  const rfq = db.updateProcurementRFQ(req.params.id, { status: 'PUBLISHED', publishedAt: new Date().toISOString() });
+  res.json(rfq);
 });
 
-router.post("/procurement-rfqs/:rfqId/invite", verifyAuthToken, (req, res) => {
-  const { vendorId } = req.body;
-  const invitation = db.createSupplierInvitation({
-    procurementRfqId: req.params.rfqId,
-    vendorId,
+procurementRouter.post('/rfqs/:id/invite', (req, res) => {
+  const inv = db.createSupplierInvitation({
+    procurementRfqId: req.params.id,
+    vendorId: req.body.vendorId,
     status: 'INVITED'
   });
-  res.json(invitation);
+  res.json(inv);
 });
 
-// Quote submission (by vendor)
-router.post("/procurement-rfqs/:rfqId/quotes", verifyAuthToken, (req, res) => {
-  const userId = (req as any).user.id;
-  const rfq = db.getProcurementRFQById(req.params.rfqId);
-  
-  if (!rfq) return res.status(404).json({ error: "RFQ not found" });
+// Quotes
+procurementRouter.get('/rfqs/:id/quotes', (req, res) => {
+  const quotes = db.getVendorQuotes(req.params.id);
+  res.json(quotes);
+});
 
-  const { items, ...quoteData } = req.body;
-
+procurementRouter.post('/rfqs/:id/quotes', (req, res) => {
   const quote = db.createVendorQuote({
-    ...quoteData,
-    procurementRfqId: req.params.rfqId,
-    projectId: rfq.projectId,
-    createdByUserId: userId,
-    status: 'SUBMITTED',
-    submittedAt: new Date().toISOString()
+    procurementRfqId: req.params.id,
+    projectId: req.body.projectId,
+    vendorId: req.body.vendorId,
+    status: 'DRAFT',
+    ...req.body
   });
-
-  if (items && Array.isArray(items)) {
-    items.forEach(item => {
-      db.createVendorQuoteItem({
-        ...item,
-        quoteId: quote.id
-      });
-    });
-  }
-  
-  // Calculate compliance simple dummy logic for now
-  db.createProjectActivity({
-    projectId: rfq.projectId,
-    type: 'QUOTE_RECEIVED',
-    title: 'New Vendor Quote',
-    description: `Quote received for RFQ ${rfq.procurementRfqCode}`,
-    performedByUserId: userId
-  });
-
   res.json(quote);
 });
 
-// Award & PO
-router.post("/procurement-rfqs/:rfqId/award", verifyAuthToken, (req, res) => {
-  const rfq = db.getProcurementRFQById(req.params.rfqId);
-  const award = db.createSupplierAward({
-    ...req.body,
-    procurementRfqId: req.params.rfqId,
-    projectId: rfq?.projectId,
-    status: 'AWARDED'
-  });
-  
-  db.updateProcurementRFQ(req.params.rfqId, { status: 'AWARDED' });
-
-  // Generate PO
-  const po = db.createPurchaseOrder({
-    projectId: rfq?.projectId,
-    vendorId: req.body.vendorId, // pass vendorId in request
-    supplierAwardId: award.id,
-    status: 'DRAFT',
-    currency: req.body.currency,
-    totalValue: req.body.awardedValue,
-    createdByUserId: (req as any).user.id
-  });
-
-  res.json({ award, po });
+procurementRouter.get('/quotes/:id', (req, res) => {
+  const quote = db.getVendorQuoteById(req.params.id);
+  if (!quote) return res.status(404).json({ error: 'Not found' });
+  const items = db.getVendorQuoteItems(req.params.id);
+  res.json({ ...quote, items });
 });
 
-router.get("/projects/:projectId/purchase-orders", verifyAuthToken, (req, res) => {
+procurementRouter.patch('/quotes/:id', (req, res) => {
+  const quote = db.updateVendorQuote(req.params.id, req.body);
+  res.json(quote);
+});
+
+procurementRouter.post('/quotes/:id/submit', (req, res) => {
+  const quote = db.updateVendorQuote(req.params.id, { status: 'SUBMITTED', submittedAt: new Date().toISOString() });
+  res.json(quote);
+});
+
+procurementRouter.post('/quotes/:quoteId/items', (req, res) => {
+  const item = db.createVendorQuoteItem({
+    quoteId: req.params.quoteId,
+    ...req.body
+  });
+  res.json(item);
+});
+
+// Supplier Award
+procurementRouter.post('/rfqs/:id/award', (req, res) => {
+  const award = db.createSupplierAward({
+    procurementRfqId: req.params.id,
+    projectId: req.body.projectId,
+    vendorQuoteId: req.body.vendorQuoteId,
+    boqItemIds: req.body.boqItemIds,
+    awardedValue: req.body.awardedValue,
+    status: 'DRAFT'
+  });
+  res.json(award);
+});
+
+// Purchase Orders
+procurementRouter.get('/projects/:projectId/purchase-orders', (req, res) => {
   const pos = db.getPurchaseOrders(req.params.projectId);
   res.json(pos);
 });
 
-router.post("/purchase-orders/:poId/issue", verifyAuthToken, (req, res) => {
-  const po = db.updatePurchaseOrder(req.params.poId, {
-    status: 'ISSUED',
-    issueDate: new Date().toISOString()
+procurementRouter.post('/projects/:projectId/purchase-orders', (req, res) => {
+  const po = db.createPurchaseOrder({
+    projectId: req.params.projectId,
+    status: 'DRAFT',
+    ...req.body
   });
   res.json(po);
 });
 
-router.post("/purchase-orders/:poId/deliveries", verifyAuthToken, (req, res) => {
-  const po = db.getPurchaseOrderById(req.params.poId);
+procurementRouter.get('/purchase-orders/:id', (req, res) => {
+  const po = db.getPurchaseOrderById(req.params.id);
+  if (!po) return res.status(404).json({ error: 'Not found' });
+  const items = db.getPurchaseOrderItems(req.params.id);
+  const deliveries = db.getDeliveryRecords(req.params.id);
+  res.json({ ...po, items, deliveries });
+});
+
+procurementRouter.patch('/purchase-orders/:id', (req, res) => {
+  const po = db.updatePurchaseOrder(req.params.id, req.body);
+  res.json(po);
+});
+
+procurementRouter.post('/purchase-orders/:id/issue', (req, res) => {
+  const po = db.updatePurchaseOrder(req.params.id, { status: 'ISSUED' });
+  res.json(po);
+});
+
+// Deliveries
+procurementRouter.post('/purchase-orders/:id/deliveries', (req, res) => {
   const delivery = db.createDeliveryRecord({
-    ...req.body,
-    purchaseOrderId: req.params.poId,
-    projectId: po?.projectId,
+    purchaseOrderId: req.params.id,
+    projectId: req.body.projectId,
     status: 'EXPECTED',
-    deliveryNumber: 'DEL-HSE-' + Date.now()
+    ...req.body
   });
   res.json(delivery);
 });
 
-export default router;
+procurementRouter.patch('/deliveries/:id', (req, res) => {
+  const delivery = db.updateDeliveryRecord(req.params.id, req.body);
+  res.json(delivery);
+});
+
+
+
+
+export default procurementRouter;

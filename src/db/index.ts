@@ -4,7 +4,8 @@ import { EnergyProject, ProjectMember, ProjectDocument, ProjectActivity } from '
 import { Organization } from '../types/organization.js';
 import { ProjectFinancialModel, FinancialAssumptionSet, FinancialScenario, ProjectProposal } from '../types/finance.js';
 import { InvestmentOpportunity, LandProfile, InvestorProfile, ProjectMatch, ProjectReadinessScore } from '../types/investment.js';
-import { BillOfQuantities, BOQItem, ProcurementRFQ, ProcurementPackage, SupplierInvitation, VendorQuote, VendorQuoteItem, VendorQuoteRevision, SupplierAward, PurchaseOrder, PurchaseOrderItem, DeliveryRecord, DeliveryItem, EquipmentWarranty } from '../types/procurement.js';
+import { BillOfQuantities, BOQItem, ProcurementRFQ, ProcurementPackage, SupplierInvitation, VendorQuote, VendorQuoteItem, VendorQuoteRevision, SupplierAward, PurchaseOrder, PurchaseOrderItem, DeliveryRecord, DeliveryItem } from '../types/procurement.js';
+import { EnergyAsset, AssetComponent, EquipmentWarranty, CommissioningRecord, CommissioningTest, AssetOwnershipRecord, AssetPassportSnapshot, AssetPerformanceBaseline, ProjectHandover, FinalProjectCostSummary } from '../types/asset.js';
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { ProjectContract, ContractParty, ContractRevision, ProjectMilestone, MilestoneDependency, ApprovalRequest, ChangeRequest, ProjectBaseline } from '../types/execution.js';
@@ -176,6 +177,16 @@ export interface CityIrradianceCache {
 }
 
 interface DB {
+  energyAssets?: EnergyAsset[];
+  assetComponents?: AssetComponent[];
+  
+  commissioningRecords?: CommissioningRecord[];
+  commissioningTests?: CommissioningTest[];
+  assetOwnershipRecords?: AssetOwnershipRecord[];
+  assetPassportSnapshots?: AssetPassportSnapshot[];
+  assetPerformanceBaselines?: AssetPerformanceBaseline[];
+  projectHandovers?: ProjectHandover[];
+  finalProjectCostSummaries?: FinalProjectCostSummary[];
   boqs?: BillOfQuantities[];
   boqItems?: BOQItem[];
   procurementPackages?: ProcurementPackage[];
@@ -807,5 +818,63 @@ export const db: any = {
     }
     return null;
   },
-
+  // Procurement
+  getBOQs: (projectId: string) => readDB().boqs?.filter((b: any) => b.projectId === projectId) || [],
+  getBOQById: (id: string) => readDB().boqs?.find((b: any) => b.id === id),
+  createBOQ: (boq: any) => { const d = readDB(); if(!d.boqs) d.boqs = []; const n = { ...boq, id: require('uuid').v4(), boqCode: 'BOQ-HSE-' + Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.boqs.push(n); writeDB(d); return n; },
+  updateBOQ: (id: string, updates: any) => { const d = readDB(); if(!d.boqs) d.boqs = []; const idx = d.boqs.findIndex((b: any) => b.id === id); if(idx > -1) { d.boqs[idx] = { ...d.boqs[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.boqs[idx]; } return null; },
+  getBOQItems: (boqId: string) => readDB().boqItems?.filter((i: any) => i.boqId === boqId) || [],
+  createBOQItem: (item: any) => { const d = readDB(); if(!d.boqItems) d.boqItems = []; const n = { ...item, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.boqItems.push(n); writeDB(d); return n; },
+  updateBOQItem: (id: string, updates: any) => { const d = readDB(); if(!d.boqItems) d.boqItems = []; const idx = d.boqItems.findIndex((i: any) => i.id === id); if(idx > -1) { d.boqItems[idx] = { ...d.boqItems[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.boqItems[idx]; } return null; },
+  deleteBOQItem: (id: string) => { const d = readDB(); if(!d.boqItems) return; d.boqItems = d.boqItems.filter((i: any) => i.id !== id); writeDB(d); },
+  getProcurementRFQs: (projectId: string) => readDB().procurementRfqs?.filter((r: any) => r.projectId === projectId) || [],
+  getProcurementRFQById: (id: string) => readDB().procurementRfqs?.find((r: any) => r.id === id),
+  createProcurementRFQ: (rfq: any) => { const d = readDB(); if(!d.procurementRfqs) d.procurementRfqs = []; const n = { ...rfq, id: require('uuid').v4(), procurementRfqCode: 'PRFQ-HSE-' + Date.now(), createdAt: new Date().toISOString() }; d.procurementRfqs.push(n); writeDB(d); return n; },
+  updateProcurementRFQ: (id: string, updates: any) => { const d = readDB(); if(!d.procurementRfqs) d.procurementRfqs = []; const idx = d.procurementRfqs.findIndex((r: any) => r.id === id); if(idx > -1) { d.procurementRfqs[idx] = { ...d.procurementRfqs[idx], ...updates }; writeDB(d); return d.procurementRfqs[idx]; } return null; },
+  getSupplierInvitations: (rfqId: string) => readDB().supplierInvitations?.filter((i: any) => i.procurementRfqId === rfqId) || [],
+  getSupplierInvitationByVendorId: (vendorId: string) => readDB().supplierInvitations?.filter((i: any) => i.vendorId === vendorId) || [],
+  createSupplierInvitation: (inv: any) => { const d = readDB(); if(!d.supplierInvitations) d.supplierInvitations = []; const n = { ...inv, id: require('uuid').v4(), invitedAt: new Date().toISOString() }; d.supplierInvitations.push(n); writeDB(d); return n; },
+  updateSupplierInvitation: (id: string, updates: any) => { const d = readDB(); if(!d.supplierInvitations) d.supplierInvitations = []; const idx = d.supplierInvitations.findIndex((i: any) => i.id === id); if(idx > -1) { d.supplierInvitations[idx] = { ...d.supplierInvitations[idx], ...updates }; writeDB(d); return d.supplierInvitations[idx]; } return null; },
+  getVendorQuotes: (rfqId: string) => readDB().vendorQuotes?.filter((q: any) => q.procurementRfqId === rfqId) || [],
+  getVendorQuoteById: (id: string) => readDB().vendorQuotes?.find((q: any) => q.id === id),
+  createVendorQuote: (quote: any) => { const d = readDB(); if(!d.vendorQuotes) d.vendorQuotes = []; const n = { ...quote, id: require('uuid').v4(), quoteCode: 'VQ-HSE-' + Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.vendorQuotes.push(n); writeDB(d); return n; },
+  updateVendorQuote: (id: string, updates: any) => { const d = readDB(); if(!d.vendorQuotes) d.vendorQuotes = []; const idx = d.vendorQuotes.findIndex((q: any) => q.id === id); if(idx > -1) { d.vendorQuotes[idx] = { ...d.vendorQuotes[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.vendorQuotes[idx]; } return null; },
+  getVendorQuoteItems: (quoteId: string) => readDB().vendorQuoteItems?.filter((i: any) => i.quoteId === quoteId) || [],
+  createVendorQuoteItem: (item: any) => { const d = readDB(); if(!d.vendorQuoteItems) d.vendorQuoteItems = []; const n = { ...item, id: require('uuid').v4() }; d.vendorQuoteItems.push(n); writeDB(d); return n; },
+  updateVendorQuoteItem: (id: string, updates: any) => { const d = readDB(); if(!d.vendorQuoteItems) d.vendorQuoteItems = []; const idx = d.vendorQuoteItems.findIndex((i: any) => i.id === id); if(idx > -1) { d.vendorQuoteItems[idx] = { ...d.vendorQuoteItems[idx], ...updates }; writeDB(d); return d.vendorQuoteItems[idx]; } return null; },
+  getSupplierAwards: (rfqId: string) => readDB().supplierAwards?.filter((a: any) => a.procurementRfqId === rfqId) || [],
+  createSupplierAward: (award: any) => { const d = readDB(); if(!d.supplierAwards) d.supplierAwards = []; const n = { ...award, id: require('uuid').v4(), createdAt: new Date().toISOString() }; d.supplierAwards.push(n); writeDB(d); return n; },
+  updateSupplierAward: (id: string, updates: any) => { const d = readDB(); if(!d.supplierAwards) d.supplierAwards = []; const idx = d.supplierAwards.findIndex((a: any) => a.id === id); if(idx > -1) { d.supplierAwards[idx] = { ...d.supplierAwards[idx], ...updates }; writeDB(d); return d.supplierAwards[idx]; } return null; },
+  getPurchaseOrders: (projectId: string) => readDB().purchaseOrders?.filter((p: any) => p.projectId === projectId) || [],
+  getPurchaseOrderById: (id: string) => readDB().purchaseOrders?.find((p: any) => p.id === id),
+  createPurchaseOrder: (po: any) => { const d = readDB(); if(!d.purchaseOrders) d.purchaseOrders = []; const n = { ...po, id: require('uuid').v4(), poCode: 'PO-HSE-' + Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.purchaseOrders.push(n); writeDB(d); return n; },
+  updatePurchaseOrder: (id: string, updates: any) => { const d = readDB(); if(!d.purchaseOrders) d.purchaseOrders = []; const idx = d.purchaseOrders.findIndex((p: any) => p.id === id); if(idx > -1) { d.purchaseOrders[idx] = { ...d.purchaseOrders[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.purchaseOrders[idx]; } return null; },
+  getPurchaseOrderItems: (poId: string) => readDB().purchaseOrderItems?.filter((i: any) => i.purchaseOrderId === poId) || [],
+  createPurchaseOrderItem: (item: any) => { const d = readDB(); if(!d.purchaseOrderItems) d.purchaseOrderItems = []; const n = { ...item, id: require('uuid').v4() }; d.purchaseOrderItems.push(n); writeDB(d); return n; },
+  getDeliveryRecords: (poId: string) => readDB().deliveryRecords?.filter((d: any) => d.purchaseOrderId === poId) || [],
+  createDeliveryRecord: (rec: any) => { const d = readDB(); if(!d.deliveryRecords) d.deliveryRecords = []; const n = { ...rec, id: require('uuid').v4(), createdAt: new Date().toISOString() }; d.deliveryRecords.push(n); writeDB(d); return n; },
+  updateDeliveryRecord: (id: string, updates: any) => { const d = readDB(); if(!d.deliveryRecords) d.deliveryRecords = []; const idx = d.deliveryRecords.findIndex((dr: any) => dr.id === id); if(idx > -1) { d.deliveryRecords[idx] = { ...d.deliveryRecords[idx], ...updates }; writeDB(d); return d.deliveryRecords[idx]; } return null; },
+  // Asset
+  getAssets: () => readDB().energyAssets || [],
+  getAssetById: (id: string) => readDB().energyAssets?.find((a: any) => a.id === id),
+  getAssetsByProjectId: (projectId: string) => readDB().energyAssets?.filter((a: any) => a.projectId === projectId) || [],
+  createAsset: (asset: any) => { const d = readDB(); if(!d.energyAssets) d.energyAssets = []; const n = { ...asset, id: require('uuid').v4(), assetCode: 'HEA-IR-' + Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.energyAssets.push(n); writeDB(d); return n; },
+  updateAsset: (id: string, updates: any) => { const d = readDB(); if(!d.energyAssets) d.energyAssets = []; const idx = d.energyAssets.findIndex((a: any) => a.id === id); if(idx > -1) { d.energyAssets[idx] = { ...d.energyAssets[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.energyAssets[idx]; } return null; },
+  getAssetComponents: (assetId: string) => readDB().assetComponents?.filter((c: any) => c.assetId === assetId) || [],
+  createAssetComponent: (comp: any) => { const d = readDB(); if(!d.assetComponents) d.assetComponents = []; const n = { ...comp, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.assetComponents.push(n); writeDB(d); return n; },
+  updateAssetComponent: (id: string, updates: any) => { const d = readDB(); if(!d.assetComponents) d.assetComponents = []; const idx = d.assetComponents.findIndex((c: any) => c.id === id); if(idx > -1) { d.assetComponents[idx] = { ...d.assetComponents[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.assetComponents[idx]; } return null; },
+  getEquipmentWarranties: (assetId: string) => readDB().equipmentWarranties?.filter((w: any) => w.assetId === assetId) || [],
+  createEquipmentWarranty: (warranty: any) => { const d = readDB(); if(!d.equipmentWarranties) d.equipmentWarranties = []; const n = { ...warranty, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.equipmentWarranties.push(n); writeDB(d); return n; },
+  updateEquipmentWarranty: (id: string, updates: any) => { const d = readDB(); if(!d.equipmentWarranties) d.equipmentWarranties = []; const idx = d.equipmentWarranties.findIndex((w: any) => w.id === id); if(idx > -1) { d.equipmentWarranties[idx] = { ...d.equipmentWarranties[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.equipmentWarranties[idx]; } return null; },
+  getCommissioningRecords: (projectId: string) => readDB().commissioningRecords?.filter((r: any) => r.projectId === projectId) || [],
+  createCommissioningRecord: (record: any) => { const d = readDB(); if(!d.commissioningRecords) d.commissioningRecords = []; const n = { ...record, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.commissioningRecords.push(n); writeDB(d); return n; },
+  updateCommissioningRecord: (id: string, updates: any) => { const d = readDB(); if(!d.commissioningRecords) d.commissioningRecords = []; const idx = d.commissioningRecords.findIndex((r: any) => r.id === id); if(idx > -1) { d.commissioningRecords[idx] = { ...d.commissioningRecords[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.commissioningRecords[idx]; } return null; },
+  getCommissioningTests: (recordId: string) => readDB().commissioningTests?.filter((t: any) => t.commissioningRecordId === recordId) || [],
+  createCommissioningTest: (test: any) => { const d = readDB(); if(!d.commissioningTests) d.commissioningTests = []; const n = { ...test, id: require('uuid').v4() }; d.commissioningTests.push(n); writeDB(d); return n; },
+  updateCommissioningTest: (id: string, updates: any) => { const d = readDB(); if(!d.commissioningTests) d.commissioningTests = []; const idx = d.commissioningTests.findIndex((t: any) => t.id === id); if(idx > -1) { d.commissioningTests[idx] = { ...d.commissioningTests[idx], ...updates }; writeDB(d); return d.commissioningTests[idx]; } return null; },
+  getProjectHandover: (projectId: string) => readDB().projectHandovers?.find((h: any) => h.projectId === projectId),
+  createProjectHandover: (handover: any) => { const d = readDB(); if(!d.projectHandovers) d.projectHandovers = []; const n = { ...handover, id: require('uuid').v4() }; d.projectHandovers.push(n); writeDB(d); return n; },
+  updateProjectHandover: (id: string, updates: any) => { const d = readDB(); if(!d.projectHandovers) d.projectHandovers = []; const idx = d.projectHandovers.findIndex((h: any) => h.id === id); if(idx > -1) { d.projectHandovers[idx] = { ...d.projectHandovers[idx], ...updates }; writeDB(d); return d.projectHandovers[idx]; } return null; },
+  getAssetPassportSnapshots: (assetId: string) => readDB().assetPassportSnapshots?.filter((s: any) => s.assetId === assetId) || [],
+  createAssetPassportSnapshot: (snapshot: any) => { const d = readDB(); if(!d.assetPassportSnapshots) d.assetPassportSnapshots = []; const n = { ...snapshot, id: require('uuid').v4(), generatedAt: new Date().toISOString() }; d.assetPassportSnapshots.push(n); writeDB(d); return n; }
 };

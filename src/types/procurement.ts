@@ -1,13 +1,13 @@
 export type BOQStatus = 'DRAFT' | 'UNDER_REVIEW' | 'APPROVED' | 'SUPERSEDED' | 'ARCHIVED';
-export type BOQCategory = 'SOLAR_PANEL' | 'INVERTER' | 'BATTERY' | 'GENERATOR' | 'MOUNTING_STRUCTURE' | 'DC_CABLE' | 'AC_CABLE' | 'CONNECTOR' | 'COMBINER_BOX' | 'DC_PROTECTION' | 'AC_PROTECTION' | 'TRANSFORMER' | 'METERING' | 'MONITORING_SYSTEM' | 'EARTHING' | 'LIGHTNING_PROTECTION' | 'SWITCHGEAR' | 'CONTROL_PANEL' | 'CIVIL_MATERIAL' | 'SPARE_PART' | 'OTHER';
+export type BOQItemCategory = 'SOLAR_PANEL' | 'INVERTER' | 'BATTERY' | 'GENERATOR' | 'MOUNTING_STRUCTURE' | 'DC_CABLE' | 'AC_CABLE' | 'CONNECTOR' | 'COMBINER_BOX' | 'DC_PROTECTION' | 'AC_PROTECTION' | 'TRANSFORMER' | 'METERING' | 'MONITORING_SYSTEM' | 'EARTHING' | 'LIGHTNING_PROTECTION' | 'SWITCHGEAR' | 'CONTROL_PANEL' | 'CIVIL_MATERIAL' | 'SPARE_PART' | 'OTHER';
 export type BOQUnit = 'PCS' | 'SET' | 'METER' | 'KM' | 'KG' | 'TON' | 'LOT' | 'KWH' | 'KW' | 'KVA' | 'M2' | 'OTHER';
 
 export interface BOQItem {
   id: string;
   boqId: string;
   projectId: string;
-  category: BOQCategory;
-  itemType?: string;
+  category: BOQItemCategory;
+  itemType: string;
   description: string;
   manufacturerPreference?: string;
   brandPreference?: string;
@@ -17,7 +17,7 @@ export interface BOQItem {
   unit: BOQUnit;
   estimatedUnitPrice?: number;
   estimatedTotalPrice?: number;
-  currency?: string;
+  currency: string;
   requiredDeliveryDate?: string;
   requiredWarrantyYears?: number;
   isSubstitutionAllowed: boolean;
@@ -35,27 +35,16 @@ export interface BillOfQuantities {
   engineeringDesignId?: string;
   title: string;
   status: BOQStatus;
-  version: string;
+  version: number;
   currencyPreference: string;
   createdByUserId: string;
   createdAt: string;
   updatedAt: string;
   approvedAt?: string;
-  changeSummary?: string;
 }
 
 export type ProcurementRFQStatus = 'DRAFT' | 'PUBLISHED' | 'OPEN' | 'QUOTES_RECEIVED' | 'CLOSED' | 'AWARDED' | 'CANCELLED';
 export type ProcurementRFQVisibility = 'INVITED_ONLY' | 'VERIFIED_VENDORS' | 'PUBLIC_MARKETPLACE';
-
-export interface ProcurementPackage {
-  id: string;
-  projectId: string;
-  boqId: string;
-  name: string;
-  packageType?: string;
-  boqItemIds: string[];
-  status: string;
-}
 
 export interface ProcurementRFQ {
   id: string;
@@ -65,18 +54,27 @@ export interface ProcurementRFQ {
   createdByUserId: string;
   status: ProcurementRFQStatus;
   title: string;
-  description?: string;
-  submissionDeadline?: string;
-  deliveryLocation?: string;
+  description: string;
+  submissionDeadline: string;
+  deliveryLocation: string;
   currency: string;
   paymentTermPreference?: string;
   deliveryTerm?: string;
   warrantyRequirement?: string;
   visibility: ProcurementRFQVisibility;
-  includedBoqItemIds: string[]; 
   createdAt: string;
   publishedAt?: string;
   closedAt?: string;
+}
+
+export interface ProcurementPackage {
+  id: string;
+  projectId: string;
+  boqId: string;
+  name: string;
+  packageType: string;
+  boqItemIds: string[];
+  status: string;
 }
 
 export type SupplierInvitationStatus = 'INVITED' | 'VIEWED' | 'DECLINED' | 'QUOTE_SUBMITTED' | 'EXPIRED';
@@ -92,6 +90,35 @@ export interface SupplierInvitation {
 }
 
 export type VendorQuoteStatus = 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'SHORTLISTED' | 'SELECTED' | 'REJECTED' | 'WITHDRAWN';
+
+export interface VendorQuote {
+  id: string;
+  quoteCode: string;
+  procurementRfqId: string;
+  projectId: string;
+  vendorId: string;
+  organizationId?: string;
+  status: VendorQuoteStatus;
+  currency: string;
+  subtotal: number;
+  tax: number;
+  transportationCost: number;
+  otherCost: number;
+  totalPrice: number;
+  deliveryLeadTimeDays: number;
+  validUntil: string;
+  paymentTerms: string;
+  warrantySummary: string;
+  quoteItems: string[]; // array of VendorQuoteItem IDs
+  attachments: string[];
+  assumptions?: string;
+  exclusions?: string;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt?: string;
+}
+
 export type StockStatus = 'IN_STOCK' | 'LIMITED' | 'ORDER_REQUIRED' | 'IMPORT_REQUIRED' | 'UNKNOWN';
 
 export interface VendorQuoteItem {
@@ -112,56 +139,16 @@ export interface VendorQuoteItem {
   stockStatus: StockStatus;
   isEquivalent: boolean;
   equivalenceNotes?: string;
-  complianceStatus?: 'COMPLIANT' | 'PARTIALLY_COMPLIANT' | 'NON_COMPLIANT' | 'REQUIRES_REVIEW';
-  complianceNotes?: string;
 }
 
-export interface VendorQuote {
-  id: string;
-  quoteCode: string;
-  procurementRfqId: string;
-  projectId: string;
-  vendorId: string;
-  status: VendorQuoteStatus;
-  currency: string;
-  subtotal: number;
-  tax: number;
-  transportationCost: number;
-  otherCost: number;
-  totalPrice: number;
-  deliveryLeadTimeDays?: number;
-  validUntil?: string;
-  paymentTerms?: string;
-  warrantySummary?: string;
-  assumptions?: string;
-  exclusions?: string;
-  createdByUserId: string;
-  createdAt: string;
-  updatedAt: string;
-  submittedAt?: string;
-  
-  // Risk flags computed upon submission/review
-  riskFlags?: string[]; 
-  hooshyarScore?: number;
-}
-
-export interface VendorQuoteRevision {
-  id: string;
-  quoteId: string;
-  revisionNumber: number;
-  snapshot: any; 
-  changeSummary?: string;
-  createdAt: string;
-}
-
-export type SupplierAwardStatus = 'AWARDED' | 'CANCELLED';
+export type SupplierAwardStatus = 'DRAFT' | 'APPROVED' | 'CANCELLED';
 
 export interface SupplierAward {
   id: string;
   projectId: string;
   procurementRfqId: string;
   vendorQuoteId: string;
-  boqItemIds: string[]; 
+  boqItemIds: string[];
   awardedValue: number;
   status: SupplierAwardStatus;
   createdAt: string;
@@ -179,38 +166,50 @@ export interface PurchaseOrder {
   status: PurchaseOrderStatus;
   currency: string;
   totalValue: number;
-  issueDate?: string;
-  expectedDeliveryDate?: string;
-  deliveryLocation?: string;
-  paymentTermsSummary?: string;
-  warrantySummary?: string;
+  issueDate: string;
+  expectedDeliveryDate: string;
+  deliveryLocation: string;
+  paymentTermsSummary: string;
+  warrantySummary: string;
+  items: any[];
   createdByUserId: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface PurchaseOrderItem {
-  id: string;
-  purchaseOrderId: string;
-  boqItemId: string;
-  vendorQuoteItemId: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-}
-
-export type DeliveryStatus = 'EXPECTED' | 'PARTIAL' | 'RECEIVED' | 'REJECTED' | 'DAMAGED';
+export type DeliveryRecordStatus = 'EXPECTED' | 'PARTIAL' | 'RECEIVED' | 'REJECTED' | 'DAMAGED';
 
 export interface DeliveryRecord {
   id: string;
   purchaseOrderId: string;
   projectId: string;
   deliveryNumber: string;
-  status: DeliveryStatus;
-  deliveryDate?: string;
-  receivedByUserId?: string;
+  status: DeliveryRecordStatus;
+  deliveryDate: string;
+  receivedByUserId: string;
+  items: any[];
+  documents: string[];
   notes?: string;
   createdAt: string;
+}
+
+export interface VendorQuoteRevision {
+  id: string;
+  quoteId: string;
+  revisionNumber: number;
+  snapshot: any;
+  changeSummary?: string;
+  createdAt: string;
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  purchaseOrderId: string;
+  boqItemId: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  currency: string;
 }
 
 export interface DeliveryItem {
@@ -232,8 +231,8 @@ export interface EquipmentWarranty {
   boqItemId: string;
   manufacturer: string;
   model: string;
-  warrantyStart?: string;
-  warrantyEnd?: string;
-  warrantyType?: string;
+  warrantyStart: string;
+  warrantyEnd: string;
+  warrantyType: string;
   documentId?: string;
 }

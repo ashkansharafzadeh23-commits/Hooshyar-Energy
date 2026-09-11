@@ -142,5 +142,29 @@
       "createdAt": "2026-08-07T15:53:16.204Z"
     }
   ],
-  "cityIrradianceCache": []
+  "cityIrradianceCache": [
+    {
+      "city": "تهران",
+      "sunHours": 5.1895,
+      "fetchedAt": 1789118136508,
+      "coords": {
+        "lat": 35.6892,
+        "lon": 51.389
+      },
+      "monthlySunHours": {
+        "JAN": 2.7142,
+        "FEB": 3.5107,
+        "MAR": 4.6918,
+        "APR": 5.6738,
+        "MAY": 6.9542,
+        "JUN": 8.0153,
+        "JUL": 7.6253,
+        "AUG": 7.1381,
+        "SEP": 6.0204,
+        "OCT": 4.421,
+        "NOV": 2.9712,
+        "DEC": 2.4504
+      }
+    }
+  ]
 }

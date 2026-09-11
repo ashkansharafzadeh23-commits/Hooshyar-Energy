@@ -131,7 +131,7 @@ export function FinancialTab({ project }: { project: EnergyProject }) {
         body: JSON.stringify({ model: newModel, assumptions: newAssumptions })
       });
       
-      const models = await res.json();
+      const data = await res.json();
       
       // Now trigger calculation
       const calcRes = await fetch(`/api/projects/${project.id}/financial-models/${data.model.id}/calculate`, {

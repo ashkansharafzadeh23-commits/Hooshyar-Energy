@@ -15,7 +15,7 @@ export default function OpportunitiesList() {
     try {
       const res = await fetch('/api/investment/opportunities');
       if (res.ok) {
-        if (!res.ok) throw new Error();
+        
       setOpportunities(await res.json());
       }
     } catch (e) {
