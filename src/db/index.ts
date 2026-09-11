@@ -476,6 +476,56 @@ export const db: any = {
     }
     return null;
   },
+  deleteMilestone: (id: string) => {
+    const data = readDB();
+    if (!data.projectMilestones) return false;
+    const initialLen = data.projectMilestones.length;
+    data.projectMilestones = data.projectMilestones.filter(m => m.id !== id);
+    if (data.projectMilestones.length !== initialLen) {
+      writeDB(data);
+      return true;
+    }
+    return false;
+  },
+  getContractParties: (contractId: string) => readDB().contractParties?.filter((p: any) => p.contractId === contractId) || [],
+  createContractParty: (party: Omit<ContractParty, "id">) => {
+    const data = readDB();
+    if (!data.contractParties) data.contractParties = [];
+    const newParty = { ...party, id: uuidv4() };
+    data.contractParties.push(newParty as ContractParty);
+    writeDB(data);
+    return newParty;
+  },
+  getChangeRequests: (contractId: string) => readDB().changeRequests?.filter((c: any) => c.contractId === contractId) || [],
+  getChangeRequestsByProjectId: (projectId: string) => readDB().changeRequests?.filter((c: any) => c.projectId === projectId) || [],
+  createChangeRequest: (cr: Omit<ChangeRequest, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.changeRequests) data.changeRequests = [];
+    const newCR = { ...cr, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.changeRequests.push(newCR as ChangeRequest);
+    writeDB(data);
+    return newCR;
+  },
+  updateChangeRequest: (id: string, updates: Partial<ChangeRequest>) => {
+    const data = readDB();
+    if (!data.changeRequests) data.changeRequests = [];
+    const index = data.changeRequests.findIndex((c: any) => c.id === id);
+    if (index !== -1) {
+      data.changeRequests[index] = { ...data.changeRequests[index], ...updates };
+      writeDB(data);
+      return data.changeRequests[index];
+    }
+    return null;
+  },
+  getProjectBaseline: (projectId: string) => readDB().projectBaselines?.find((b: any) => b.projectId === projectId) || null,
+  createProjectBaseline: (bl: Omit<ProjectBaseline, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.projectBaselines) data.projectBaselines = [];
+    const newBaseline = { ...bl, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.projectBaselines.push(newBaseline as ProjectBaseline);
+    writeDB(data);
+    return newBaseline;
+  },
   getApprovalRequests: (projectId: string) => readDB().approvalRequests?.filter(a => a.projectId === projectId) || [],
   createApprovalRequest: (req: Omit<ApprovalRequest, "id" | "requestedAt">) => {
     const data = readDB();
@@ -941,6 +991,7 @@ export const db: any = {
     }
     return null;
   },
+  getInvestmentOpportunityByProjectId: (projectId: string) => (readDB().investmentOpportunities || []).find((o: any) => o.projectId === projectId),
 
   getInvestorProfiles: () => readDB().investorProfiles || [],
   getInvestorProfileById: (id: string) => (readDB().investorProfiles || []).find(p => p.id === id),

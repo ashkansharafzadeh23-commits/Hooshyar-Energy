@@ -1,58 +1,104 @@
 import { FinancialAssumptionSet, ProjectFinancialModel, FinancialResults, FinancialScenario, MoneyAmount, ReplacementEvent } from '../types/finance.js';
 
+export function normalizeMoney(m: MoneyAmount | undefined, targetUnit: 'RIAL' | 'TOMAN'): number {
+  if (!m || typeof m.amount !== 'number' || isNaN(m.amount)) return 0;
+  if (m.unit === targetUnit) return m.amount;
+  if (m.unit === 'TOMAN' && targetUnit === 'RIAL') return m.amount * 10;
+  if (m.unit === 'RIAL' && targetUnit === 'TOMAN') return m.amount / 10;
+  return m.amount;
+}
+
 export const financeService = {
   calculateModel: (model: ProjectFinancialModel, assumptions: FinancialAssumptionSet): FinancialResults => {
-    // 1. Calculate CAPEX
+    const unit = model.displayCurrencyUnit || 'TOMAN';
+
+    // 1. Calculate CAPEX with strict currency unit normalization
     const capexObject = model.capex;
     const totalCapexAmount = 
-      capexObject.engineering.amount + 
-      capexObject.solarPanels.amount + 
-      capexObject.inverters.amount + 
-      capexObject.battery.amount + 
-      capexObject.generator.amount + 
-      capexObject.mountingStructure.amount + 
-      capexObject.electricalEquipment.amount + 
-      capexObject.cables.amount + 
-      capexObject.protection.amount + 
-      capexObject.monitoring.amount + 
-      capexObject.transportation.amount + 
-      capexObject.installation.amount + 
-      capexObject.commissioning.amount + 
-      capexObject.gridConnection.amount + 
-      capexObject.permits.amount + 
-      capexObject.civilWorks.amount + 
-      capexObject.tax.amount + 
-      capexObject.contingency.amount + 
-      capexObject.other.amount;
+      normalizeMoney(capexObject.engineering, unit) + 
+      normalizeMoney(capexObject.solarPanels, unit) + 
+      normalizeMoney(capexObject.inverters, unit) + 
+      normalizeMoney(capexObject.battery, unit) + 
+      normalizeMoney(capexObject.generator, unit) + 
+      normalizeMoney(capexObject.mountingStructure, unit) + 
+      normalizeMoney(capexObject.electricalEquipment, unit) + 
+      normalizeMoney(capexObject.cables, unit) + 
+      normalizeMoney(capexObject.protection, unit) + 
+      normalizeMoney(capexObject.monitoring, unit) + 
+      normalizeMoney(capexObject.transportation, unit) + 
+      normalizeMoney(capexObject.installation, unit) + 
+      normalizeMoney(capexObject.commissioning, unit) + 
+      normalizeMoney(capexObject.gridConnection, unit) + 
+      normalizeMoney(capexObject.permits, unit) + 
+      normalizeMoney(capexObject.civilWorks, unit) + 
+      normalizeMoney(capexObject.tax, unit) + 
+      normalizeMoney(capexObject.contingency, unit) + 
+      normalizeMoney(capexObject.other, unit);
     
-    const totalCapex: MoneyAmount = { amount: totalCapexAmount, currency: 'IRR', unit: model.displayCurrencyUnit };
+    const totalCapex: MoneyAmount = { amount: totalCapexAmount, currency: 'IRR', unit };
 
     // 2. Calculate OPEX Year 1
     const opexObject = model.opex;
     const totalOpexYear1Amount = 
-      opexObject.maintenance.amount + 
-      opexObject.cleaning.amount + 
-      opexObject.insurance.amount + 
-      opexObject.monitoring.amount + 
-      opexObject.landLease.amount + 
-      opexObject.staff.amount + 
-      opexObject.security.amount + 
-      opexObject.administration.amount + 
-      opexObject.other.amount;
+      normalizeMoney(opexObject.maintenance, unit) + 
+      normalizeMoney(opexObject.cleaning, unit) + 
+      normalizeMoney(opexObject.insurance, unit) + 
+      normalizeMoney(opexObject.monitoring, unit) + 
+      normalizeMoney(opexObject.landLease, unit) + 
+      normalizeMoney(opexObject.staff, unit) + 
+      normalizeMoney(opexObject.security, unit) + 
+      normalizeMoney(opexObject.batteryReplacementReserve, unit) + 
+      normalizeMoney(opexObject.inverterReplacementReserve, unit) + 
+      normalizeMoney(opexObject.administration, unit) + 
+      normalizeMoney(opexObject.other, unit);
     
-    const totalOpexYear1: MoneyAmount = { amount: totalOpexYear1Amount, currency: 'IRR', unit: model.displayCurrencyUnit };
+    const totalOpexYear1: MoneyAmount = { amount: totalOpexYear1Amount, currency: 'IRR', unit };
 
     // 3. Year 1 Energy Benefits
-    const generationKwh = model.energyEconomics.annualGenerationKwh;
-    const selfConsumptionKwh = generationKwh * (model.energyEconomics.selfConsumptionRatio / 100);
-    const exportKwh = generationKwh * (model.energyEconomics.exportRatio / 100);
+    const generationKwh = model.energyEconomics?.annualGenerationKwh || 0;
+    const selfConsumptionRatio = model.energyEconomics?.selfConsumptionRatio || 0;
+    const exportRatio = model.energyEconomics?.exportRatio || 0;
+    const selfConsumptionKwh = generationKwh * (selfConsumptionRatio / 100);
+    const exportKwh = generationKwh * (exportRatio / 100);
 
-    const year1SavingsAmount = selfConsumptionKwh * model.energyEconomics.customerTariff.unitPricePerKwh.amount;
-    const year1ExportRevenueAmount = exportKwh * model.energyEconomics.exportTariff.unitPricePerKwh.amount;
+    const customerTariffUnitAmount = normalizeMoney(model.energyEconomics?.customerTariff?.unitPricePerKwh, unit);
+    const exportTariffUnitAmount = normalizeMoney(model.energyEconomics?.exportTariff?.unitPricePerKwh, unit);
+
+    const year1SavingsAmount = selfConsumptionKwh * customerTariffUnitAmount;
+    const year1ExportRevenueAmount = exportKwh * exportTariffUnitAmount;
     const year1TotalBenefitAmount = year1SavingsAmount + year1ExportRevenueAmount;
 
+    // Safety checks for insufficient data
+    if (totalCapexAmount <= 0 || generationKwh <= 0) {
+      return {
+        totalCapex,
+        annualOpexYear1: totalOpexYear1,
+        annualGenerationYear1Kwh: generationKwh,
+        annualSavingsYear1: { amount: year1SavingsAmount, currency: 'IRR', unit },
+        annualExportRevenueYear1: { amount: year1ExportRevenueAmount, currency: 'IRR', unit },
+        annualNetBenefitYear1: { amount: year1TotalBenefitAmount, currency: 'IRR', unit },
+        simplePaybackYears: 'NO_PAYBACK_WITHIN_PROJECT_LIFE',
+        discountedPaybackYears: 'NO_PAYBACK_WITHIN_PROJECT_LIFE',
+        npv: { amount: 0, currency: 'IRR', unit },
+        irrPercent: 'IRR_NOT_AVAILABLE',
+        lifetimeRoiPercent: 0,
+        lcoePerKwh: { amount: 0, currency: 'IRR', unit },
+        totalLifetimeRevenue: { amount: 0, currency: 'IRR', unit },
+        totalLifetimeOpex: { amount: 0, currency: 'IRR', unit },
+        totalLifetimeNetCashFlow: { amount: 0, currency: 'IRR', unit }
+      };
+    }
+
     // 4. Cash Flows Generation
-    const cashFlows = financeService.generateCashFlows(totalCapexAmount, totalOpexYear1Amount, year1TotalBenefitAmount, assumptions, model.replacements);
+    const normalizedReplacements = (model.replacements || []).map(r => ({
+      ...r,
+      estimatedCost: {
+        ...r.estimatedCost,
+        amount: normalizeMoney(r.estimatedCost, unit),
+        unit
+      }
+    }));
+    const cashFlows = financeService.generateCashFlows(totalCapexAmount, totalOpexYear1Amount, year1TotalBenefitAmount, assumptions, normalizedReplacements);
     
     // 5. Payback
     const simplePayback = financeService.calculatePayback(cashFlows.netCashFlows, false, assumptions.discountRatePercent);
@@ -63,32 +109,32 @@ export const financeService = {
     const irrPercent = financeService.calculateIRR(cashFlows.netCashFlows);
     
     // 7. LCOE
-    const lcoeAmount = financeService.calculateLCOE(totalCapexAmount, totalOpexYear1Amount, generationKwh, assumptions, model.replacements);
+    const lcoeAmount = financeService.calculateLCOE(totalCapexAmount, totalOpexYear1Amount, generationKwh, assumptions, normalizedReplacements);
 
     // 8. Totals
     const totalLifetimeRevenue = cashFlows.grossBenefits.reduce((sum, v) => sum + v, 0);
     const totalLifetimeOpex = cashFlows.totalOpex.reduce((sum, v) => sum + v, 0);
     const totalLifetimeNetCashFlow = cashFlows.netCashFlows.reduce((sum, v) => sum + v, 0);
-    const lifetimeRoiPercent = ((totalLifetimeNetCashFlow) / totalCapexAmount) * 100; // note: totalLifetimeNetCashFlow already has initial -capex
+    const lifetimeRoiPercent = totalCapexAmount > 0 ? (totalLifetimeNetCashFlow / totalCapexAmount) * 100 : 0;
     
     return {
       totalCapex,
-      annualOpexYear1: { amount: totalOpexYear1Amount, currency: 'IRR', unit: model.displayCurrencyUnit },
+      annualOpexYear1: { amount: totalOpexYear1Amount, currency: 'IRR', unit },
       annualGenerationYear1Kwh: generationKwh,
-      annualSavingsYear1: { amount: year1SavingsAmount, currency: 'IRR', unit: model.displayCurrencyUnit },
-      annualExportRevenueYear1: { amount: year1ExportRevenueAmount, currency: 'IRR', unit: model.displayCurrencyUnit },
-      annualNetBenefitYear1: { amount: year1TotalBenefitAmount, currency: 'IRR', unit: model.displayCurrencyUnit },
+      annualSavingsYear1: { amount: year1SavingsAmount, currency: 'IRR', unit },
+      annualExportRevenueYear1: { amount: year1ExportRevenueAmount, currency: 'IRR', unit },
+      annualNetBenefitYear1: { amount: year1TotalBenefitAmount, currency: 'IRR', unit },
       
       simplePaybackYears: simplePayback,
       discountedPaybackYears: discountedPayback,
-      npv: { amount: npvAmount, currency: 'IRR', unit: model.displayCurrencyUnit },
+      npv: { amount: npvAmount, currency: 'IRR', unit },
       irrPercent,
       lifetimeRoiPercent,
-      lcoePerKwh: { amount: lcoeAmount, currency: 'IRR', unit: model.displayCurrencyUnit },
+      lcoePerKwh: { amount: lcoeAmount, currency: 'IRR', unit },
       
-      totalLifetimeRevenue: { amount: totalLifetimeRevenue, currency: 'IRR', unit: model.displayCurrencyUnit },
-      totalLifetimeOpex: { amount: totalLifetimeOpex, currency: 'IRR', unit: model.displayCurrencyUnit },
-      totalLifetimeNetCashFlow: { amount: totalLifetimeNetCashFlow, currency: 'IRR', unit: model.displayCurrencyUnit }
+      totalLifetimeRevenue: { amount: totalLifetimeRevenue, currency: 'IRR', unit },
+      totalLifetimeOpex: { amount: totalLifetimeOpex, currency: 'IRR', unit },
+      totalLifetimeNetCashFlow: { amount: totalLifetimeNetCashFlow, currency: 'IRR', unit }
     };
   },
 

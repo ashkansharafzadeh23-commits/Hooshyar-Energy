@@ -10,6 +10,7 @@ import { CommissioningTab } from './Workspace/CommissioningTab';
 import { HandoverTab } from './Workspace/HandoverTab';
 import { AssetTab } from './Workspace/AssetTab';
 import { FinancingTab } from './Workspace/FinancingTab';
+import { InvestmentTab } from './Workspace/InvestmentTab';
 import RFQTab from './Workspace/RFQTab';
 import BidsTab from './Workspace/BidsTab';
 import { ProjectStatusBadge } from '../../components/ProjectStatusBadge';
@@ -99,7 +100,7 @@ export default function ProjectDetail() {
     { id: 'financing', label: 'تأمین مالی و تسهیلات', disabled: false },
     { id: 'documents', label: 'اسناد' },
     { id: 'activity', label: 'تاریخچه فعالیت' },
-    { id: 'investment', label: 'سرمایه‌گذاری (به‌زودی)', disabled: true },
+    { id: 'investment', label: 'سرمایه‌گذاری و مشارکت', disabled: false },
     { id: 'procurement', label: 'تأمین', disabled: false },
     { id: 'commissioning', label: 'راه‌اندازی', disabled: false },
     { id: 'handover', label: 'تحویل', disabled: false },
@@ -234,6 +235,7 @@ export default function ProjectDetail() {
         )}
         {activeTab === 'financial' && <FinancialTab project={project} />}
         {activeTab === 'financing' && <FinancingTab projectId={project.id} project={project} />}
+        {activeTab === 'investment' && <InvestmentTab project={project} />}
         {activeTab === 'contract' && <ContractTab projectId={project.id} />}
         {activeTab === 'milestones' && <MilestonesTab projectId={project.id} />}
         {activeTab === 'documents' && <DataRoomTab projectId={project.id} />}
@@ -241,7 +243,7 @@ export default function ProjectDetail() {
         {activeTab === 'commissioning' && <CommissioningTab projectId={project.id} />}
         {activeTab === 'handover' && <HandoverTab projectId={project.id} />}
         {activeTab === 'asset' && <AssetTab projectId={project.id} />}
-        {activeTab !== 'overview' && activeTab !== 'rfq' && activeTab !== 'bids' && activeTab !== 'financial' && activeTab !== 'financing' && activeTab !== 'contract' && activeTab !== 'milestones' && activeTab !== 'documents' && activeTab !== 'procurement' && activeTab !== 'commissioning' && activeTab !== 'handover' && activeTab !== 'asset' && !tabs.find(t => t.id === activeTab)?.disabled && (
+        {activeTab !== 'overview' && activeTab !== 'rfq' && activeTab !== 'bids' && activeTab !== 'financial' && activeTab !== 'financing' && activeTab !== 'investment' && activeTab !== 'contract' && activeTab !== 'milestones' && activeTab !== 'documents' && activeTab !== 'procurement' && activeTab !== 'commissioning' && activeTab !== 'handover' && activeTab !== 'asset' && !tabs.find(t => t.id === activeTab)?.disabled && (
           <div className="bg-white p-12 rounded-2xl border border-gray-200 shadow-sm text-center">
             <p className="text-gray-500">محتوای این بخش هنوز تکمیل نشده است.</p>
           </div>

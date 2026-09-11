@@ -654,6 +654,109 @@ router.get('/bids/:bidId/revisions', (req, res) => {
   res.json(revisions);
 });
 
+// 13.1 POST /api/rfq/bids/:bidId/select (Select/Award bid directly)
+router.post('/bids/:bidId/select', (req, res) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  const winningBid = rfqRepository.getBidById(req.params.bidId);
+  if (!winningBid) return res.status(404).json({ error: "پیشنهاد مورد نظر یافت نشد" });
+
+  const rfq = rfqRepository.findRFQById(winningBid.rfqId);
+  if (!rfq) return res.status(404).json({ error: "استعلام مرتبط با این پیشنهاد یافت نشد" });
+
+  const project = projectRepository.findById(rfq.projectId);
+  if (!project || (project.ownerId !== user.id && user.role !== 'admin')) {
+    return res.status(403).json({ error: "تنها کارفرما یا مدیر سامانه می‌تواند پیمانکار نهایی را برگزیند" });
+  }
+
+  // 1. Update winning bid status to SELECTED
+  rfqRepository.updateBid(winningBid.id, { status: 'SELECTED' });
+
+  // 2. Update losing bids status to REJECTED
+  const allBids = rfqRepository.getBidsByRfqId(rfq.id);
+  for (const b of allBids) {
+    if (b.id !== winningBid.id && b.status !== 'WITHDRAWN') {
+      rfqRepository.updateBid(b.id, { status: 'REJECTED' });
+    }
+  }
+
+  // 3. Update RFQ status to AWARDED
+  const awardedRfq = rfqRepository.updateRFQ(rfq.id, {
+    status: 'AWARDED',
+    awardedAt: new Date().toISOString(),
+    selectedBidId: winningBid.id,
+    selectedEpcOrganizationId: winningBid.epcOrganizationId
+  });
+
+  // 4. Update Project status to EPC_SELECTED
+  projectRepository.update(project.id, { status: 'EPC_SELECTED' });
+
+  // 5. Add EPC organization to ProjectMember as 'EPC'
+  const org = db.getOrganizationById?.(winningBid.epcOrganizationId);
+  const epcUserId = org?.createdById || winningBid.epcOrganizationId;
+
+  const existingMembers = projectRepository.getMembers(project.id);
+  const alreadyMember = existingMembers.find(m => m.organizationId === winningBid.epcOrganizationId || m.userId === epcUserId);
+
+  if (!alreadyMember) {
+    projectRepository.addMember({
+      projectId: project.id,
+      userId: epcUserId,
+      organizationId: winningBid.epcOrganizationId,
+      role: 'EPC',
+      status: 'ACTIVE'
+    });
+  }
+
+  // 6. Record ProjectActivity: EPC_SELECTED
+  projectRepository.addActivity({
+    projectId: project.id,
+    actorUserId: user.id,
+    actorOrganizationId: winningBid.epcOrganizationId,
+    eventType: 'EPC_SELECTED',
+    entityType: 'EnergyProject',
+    entityId: project.id,
+    metadata: {
+      rfqCode: rfq.rfqCode,
+      bidCode: winningBid.bidCode,
+      epcOrganizationId: winningBid.epcOrganizationId,
+      epcName: org?.tradeName || org?.legalName || 'پیمانکار منتخب EPC',
+      totalPrice: winningBid.totalPrice,
+      rationale: req.body.rationale || 'انتخاب به عنوان مجری منتخب پروژه'
+    }
+  });
+
+  res.json({
+    success: true,
+    message: "پیمانکار EPC با موفقیت برگزیده شد و وضعیت پروژه به EPC_SELECTED ارتقا یافت.",
+    awardedRfq,
+    winningBid,
+    newProjectStatus: 'EPC_SELECTED'
+  });
+});
+
+// 13.2 PATCH /api/rfq/bids/:bidId/status (Update bid review status)
+router.patch('/bids/:bidId/status', (req, res) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  const bid = rfqRepository.getBidById(req.params.bidId);
+  if (!bid) return res.status(404).json({ error: "پیشنهاد یافت نشد" });
+
+  const rfq = rfqRepository.findRFQById(bid.rfqId);
+  const project = rfq ? projectRepository.findById(rfq.projectId) : null;
+  if (!project || (project.ownerId !== user.id && user.role !== 'admin')) {
+    return res.status(403).json({ error: "تنها کارفرما مجاز به تغییر وضعیت بررسی پیشنهاد است" });
+  }
+
+  const { status } = req.body;
+  if (!status) return res.status(400).json({ error: "وضعیت جدید مشخص نشده است" });
+
+  const updatedBid = rfqRepository.updateBid(bid.id, { status });
+  res.json(updatedBid);
+});
+
 // 14. POST /api/rfq/:rfqId/select-epc (Award RFQ to EPC)
 router.post('/:rfqId/select-epc', (req, res) => {
   const user = req.user;

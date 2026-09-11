@@ -3,8 +3,80 @@ import { db } from "../db/index.js";
 import { verifyAuthToken } from "./auth.js";
 import { projectReadinessService } from "../services/projectReadinessService.js";
 import { projectMatchingService } from "../services/projectMatchingService.js";
+import { projectRepository } from "../repositories/projectRepository.js";
 
 const router = Router();
+
+// Get opportunity for a specific project
+router.get("/projects/:projectId/opportunity", (req, res) => {
+  const { projectId } = req.params;
+  const opp = db.getInvestmentOpportunityByProjectId(projectId);
+  if (!opp) return res.status(404).json({ error: "Opportunity not found for this project" });
+  res.json(opp);
+});
+
+// Create or update opportunity for a specific project
+router.post("/projects/:projectId/opportunity", (req, res) => {
+  const { projectId } = req.params;
+  const project = projectRepository.findById(projectId);
+  if (!project) return res.status(404).json({ error: "Project not found" });
+
+  const existing = db.getInvestmentOpportunityByProjectId(projectId);
+  if (existing) {
+    const updated = db.updateInvestmentOpportunity(existing.id, req.body);
+    return res.json(updated);
+  }
+
+  const user = (req as any).user;
+  const newOpp = db.createInvestmentOpportunity({
+    ...req.body,
+    projectId,
+    createdByUserId: user?.id || project.ownerId || 'unknown',
+    opportunityCode: 'OPP-PRJ-' + Math.floor(Math.random() * 100000).toString().padStart(5, '0'),
+    status: req.body.status || 'PUBLISHED',
+    visibility: req.body.visibility || 'PUBLIC_SUMMARY',
+    riskDisclosure: [
+      'سودآوری طرح منوط به شرایط تابش خورشیدی و راندمان واقعی تجهیزات است.',
+      'نرخ خرید تضمینی ساتبا بر اساس فرمول تعدیل رسمی محاسبه می‌شود و تابع تورم است.',
+      'این معرفی صرفاً بستر ارتباط حقوقی B2B است و تضمین بازدهی قطعی تلقی نمی‌گردد.'
+    ]
+  });
+
+  res.status(201).json(newOpp);
+});
+
+// Project readiness calculation
+router.get("/projects/:projectId/readiness", (req, res) => {
+  const { projectId } = req.params;
+  const project = projectRepository.findById(projectId);
+  const opp = db.getInvestmentOpportunityByProjectId(projectId);
+  
+  if (!opp && !project) return res.status(404).json({ error: "Project not found" });
+
+  const mockOpp = opp || {
+    id: 'temp',
+    opportunityCode: 'TEMP',
+    type: 'PROJECT_SEEKING_CAPITAL',
+    status: 'DRAFT',
+    title: project?.title || 'پروژه انرژی',
+    summary: '',
+    location: { province: project?.location?.province || 'نامشخص', city: project?.location?.city || 'نامشخص' },
+    projectStage: project?.status || 'FEASIBILITY',
+    landStatus: project?.site?.type ? 'OWNED' : 'UNKNOWN',
+    permitStatus: 'IN_PROGRESS',
+    gridConnectionStatus: project?.energyRequirement?.gridConnected ? 'APPROVED' : 'REQUESTED',
+    engineeringStatus: 'IN_PROGRESS',
+    financialModelStatus: 'COMPLETE',
+    epcStatus: project?.status === 'EPC_SELECTED' ? 'SELECTED' : 'IN_PROGRESS',
+    visibility: 'PUBLIC_SUMMARY',
+    riskDisclosure: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  const score = projectReadinessService.calculateReadiness(project, mockOpp as any);
+  res.json(score);
+});
 
 // Get all public/verified opportunities
 router.get("/opportunities", (req, res) => {
