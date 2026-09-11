@@ -12,6 +12,7 @@ export interface Organization {
   address?: string;
   logoUrl?: string;
   verificationStatus: VerificationStatus;
+  type?: string;
   createdAt: string;
   updatedAt: string;
 }

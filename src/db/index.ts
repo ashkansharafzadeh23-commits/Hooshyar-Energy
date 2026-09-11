@@ -1,6 +1,7 @@
 import fs from "fs";
 
 import { EnergyProject, ProjectMember, ProjectDocument, ProjectActivity } from '../types/project.js';
+import { ProjectRFQ, RFQInvitation, EPCBid, EPCBidRevision } from '../types/rfq.js';
 import { Organization } from '../types/organization.js';
 import { ProjectFinancialModel, FinancialAssumptionSet, FinancialScenario, ProjectProposal } from '../types/finance.js';
 import { InvestmentOpportunity, LandProfile, InvestorProfile, ProjectMatch, ProjectReadinessScore } from '../types/investment.js';
@@ -216,6 +217,10 @@ interface DB {
   projectContracts?: ProjectContract[];
   projectMilestones?: ProjectMilestone[];
   approvalRequests?: ApprovalRequest[];
+  projectRfqs?: ProjectRFQ[];
+  rfqInvitations?: RFQInvitation[];
+  epcBids?: EPCBid[];
+  epcBidRevisions?: EPCBidRevision[];
   energyProjects?: EnergyProject[];
   projectMembers?: ProjectMember[];
   projectDocuments?: ProjectDocument[];
@@ -391,6 +396,42 @@ function writeDB(data: DB) {
   fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
 }
 
+const defaultEPCs: Organization[] = [
+  {
+    id: "org_epc_001",
+    legalName: "مهندسی توسعه انرژی‌های نوید خورشید پارس (سهامی خاص)",
+    tradeName: "پارس سولار EPC",
+    type: "EPC_CONTRACTOR",
+    registrationNumber: "452109",
+    nationalId: "14005891230",
+    verificationStatus: "VERIFIED",
+    createdAt: "2025-01-10T10:00:00.000Z",
+    updatedAt: "2025-01-10T10:00:00.000Z"
+  },
+  {
+    id: "org_epc_002",
+    legalName: "شرکت صنایع نیروگاهی و انرژی پاک البرز",
+    tradeName: "البرز کلین انرژی",
+    type: "EPC_CONTRACTOR",
+    registrationNumber: "389211",
+    nationalId: "14003217890",
+    verificationStatus: "VERIFIED",
+    createdAt: "2025-01-12T11:00:00.000Z",
+    updatedAt: "2025-01-12T11:00:00.000Z"
+  },
+  {
+    id: "org_epc_003",
+    legalName: "گروه مهندسی خورشید تابان آریا",
+    tradeName: "آریا سولار",
+    type: "EPC_CONTRACTOR",
+    registrationNumber: "512490",
+    nationalId: "14008923451",
+    verificationStatus: "VERIFIED",
+    createdAt: "2025-01-15T09:30:00.000Z",
+    updatedAt: "2025-01-15T09:30:00.000Z"
+  }
+];
+
 export const db: any = {
 
   // Execution & Workspace
@@ -508,8 +549,23 @@ export const db: any = {
     return newActivity as ProjectActivity;
   },
 
-  getOrganizations: () => readDB().organizations || [],
-  getOrganizationById: (id: string) => readDB().organizations?.find(o => o.id === id),
+  getOrganizations: () => {
+    const list = readDB().organizations || [];
+    if (list.length === 0) return defaultEPCs;
+    // ensure default EPCs are also included if not already
+    const ids = new Set(list.map(o => o.id));
+    const merged = [...list];
+    for (const epc of defaultEPCs) {
+      if (!ids.has(epc.id)) merged.push(epc);
+    }
+    return merged;
+  },
+  getOrganizationById: (id: string) => {
+    const list = readDB().organizations || [];
+    const found = list.find(o => o.id === id);
+    if (found) return found;
+    return defaultEPCs.find(o => o.id === id);
+  },
   createOrganization: (org: Omit<Organization, "id" | "createdAt" | "updatedAt">) => {
     const data = readDB();
     if (!data.organizations) data.organizations = [];
@@ -517,6 +573,95 @@ export const db: any = {
     data.organizations.push(newOrg as Organization);
     writeDB(data);
     return newOrg as Organization;
+  },
+
+  // Project RFQs (Phase 1)
+  getProjectRFQs: () => readDB().projectRfqs || [],
+  getProjectRFQsByProjectId: (projectId: string) => (readDB().projectRfqs || []).filter(r => r.projectId === projectId),
+  getProjectRFQById: (id: string) => readDB().projectRfqs?.find(r => r.id === id),
+  createProjectRFQ: (rfq: Omit<ProjectRFQ, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.projectRfqs) data.projectRfqs = [];
+    const newRfq = { ...rfq, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.projectRfqs.push(newRfq as ProjectRFQ);
+    writeDB(data);
+    return newRfq as ProjectRFQ;
+  },
+  updateProjectRFQ: (id: string, updates: Partial<ProjectRFQ>) => {
+    const data = readDB();
+    if (!data.projectRfqs) data.projectRfqs = [];
+    const index = data.projectRfqs.findIndex(r => r.id === id);
+    if (index !== -1) {
+      data.projectRfqs[index] = { ...data.projectRfqs[index], ...updates };
+      writeDB(data);
+      return data.projectRfqs[index];
+    }
+    return null;
+  },
+
+  // RFQ Invitations
+  getRFQInvitations: (rfqId: string) => (readDB().rfqInvitations || []).filter(i => i.rfqId === rfqId),
+  getRFQInvitationsByEpcOrg: (epcOrgId: string) => (readDB().rfqInvitations || []).filter(i => i.epcOrganizationId === epcOrgId),
+  createRFQInvitation: (inv: Omit<RFQInvitation, "id" | "invitedAt">) => {
+    const data = readDB();
+    if (!data.rfqInvitations) data.rfqInvitations = [];
+    const newInv = { ...inv, id: uuidv4(), invitedAt: new Date().toISOString() };
+    data.rfqInvitations.push(newInv as RFQInvitation);
+    writeDB(data);
+    return newInv as RFQInvitation;
+  },
+  updateRFQInvitation: (id: string, updates: Partial<RFQInvitation>) => {
+    const data = readDB();
+    if (!data.rfqInvitations) data.rfqInvitations = [];
+    const index = data.rfqInvitations.findIndex(i => i.id === id);
+    if (index !== -1) {
+      data.rfqInvitations[index] = { ...data.rfqInvitations[index], ...updates };
+      writeDB(data);
+      return data.rfqInvitations[index];
+    }
+    return null;
+  },
+
+  // EPC Bids
+  getEPCBids: () => readDB().epcBids || [],
+  getEPCBidsByRfqId: (rfqId: string) => (readDB().epcBids || []).filter(b => b.rfqId === rfqId),
+  getEPCBidsByProjectId: (projectId: string) => (readDB().epcBids || []).filter(b => b.projectId === projectId),
+  getEPCBidsByEpcOrgId: (epcOrgId: string) => (readDB().epcBids || []).filter(b => b.epcOrganizationId === epcOrgId),
+  getEPCBidById: (id: string) => readDB().epcBids?.find(b => b.id === id),
+  createEPCBid: (bid: Omit<EPCBid, "id" | "createdAt" | "currentRevisionNumber">) => {
+    const data = readDB();
+    if (!data.epcBids) data.epcBids = [];
+    const newBid: EPCBid = { 
+      ...bid, 
+      id: uuidv4(), 
+      currentRevisionNumber: 1, 
+      createdAt: new Date().toISOString() 
+    };
+    data.epcBids.push(newBid);
+    writeDB(data);
+    return newBid;
+  },
+  updateEPCBid: (id: string, updates: Partial<EPCBid>) => {
+    const data = readDB();
+    if (!data.epcBids) data.epcBids = [];
+    const index = data.epcBids.findIndex(b => b.id === id);
+    if (index !== -1) {
+      data.epcBids[index] = { ...data.epcBids[index], ...updates };
+      writeDB(data);
+      return data.epcBids[index];
+    }
+    return null;
+  },
+
+  // EPC Bid Revisions (Immutable snapshots)
+  getEPCBidRevisions: (bidId: string) => (readDB().epcBidRevisions || []).filter(r => r.bidId === bidId),
+  createEPCBidRevision: (rev: Omit<EPCBidRevision, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.epcBidRevisions) data.epcBidRevisions = [];
+    const newRev = { ...rev, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.epcBidRevisions.push(newRev as EPCBidRevision);
+    writeDB(data);
+    return newRev as EPCBidRevision;
   },
   
   updateAnalysisHistoryProjectId: (id: string, projectId: string) => {

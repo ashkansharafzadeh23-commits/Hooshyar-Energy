@@ -10,6 +10,8 @@ import { CommissioningTab } from './Workspace/CommissioningTab';
 import { HandoverTab } from './Workspace/HandoverTab';
 import { AssetTab } from './Workspace/AssetTab';
 import { FinancingTab } from './Workspace/FinancingTab';
+import RFQTab from './Workspace/RFQTab';
+import BidsTab from './Workspace/BidsTab';
 import { ProjectStatusBadge } from '../../components/ProjectStatusBadge';
 import { ArrowRight, FileText, Activity, Users, Settings, Map } from 'lucide-react';
 
@@ -17,25 +19,28 @@ export default function ProjectDetail() {
   const { id } = useParams();
   const [project, setProject] = useState<EnergyProject | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialTab = searchParams.get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  const fetchProject = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/projects/${id}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProject(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`/api/projects/\${id}`, {
-          headers: { 'Authorization': `Bearer \${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setProject(data);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchProject();
   }, [id]);
 
@@ -44,14 +49,14 @@ export default function ProjectDetail() {
 
   const tabs = [
     { id: 'overview', label: 'اطلاعات کلی' },
+    { id: 'rfq', label: 'استعلام (RFQ)', disabled: false },
+    { id: 'bids', label: 'پیشنهادهای EPC', disabled: false },
     { id: 'analysis', label: 'تحلیل انرژی' },
     { id: 'engineering', label: 'مهندسی' },
     { id: 'financial', label: 'مالی و امکان‌سنجی' },
     { id: 'financing', label: 'تأمین مالی و تسهیلات', disabled: false },
     { id: 'documents', label: 'اسناد' },
     { id: 'activity', label: 'تاریخچه فعالیت' },
-    { id: 'rfq', label: 'استعلام (به‌زودی)', disabled: true },
-    { id: 'bids', label: 'پیشنهادها (به‌زودی)', disabled: true },
     { id: 'investment', label: 'سرمایه‌گذاری (به‌زودی)', disabled: true },
     { id: 'procurement', label: 'تأمین', disabled: false },
     { id: 'commissioning', label: 'راه‌اندازی', disabled: false },
@@ -164,6 +169,21 @@ export default function ProjectDetail() {
           </div>
         )}
         
+        {activeTab === 'rfq' && (
+          <RFQTab 
+            projectId={project.id} 
+            project={project} 
+            onNavigateToBids={() => setActiveTab('bids')}
+            onProjectUpdate={fetchProject}
+          />
+        )}
+        {activeTab === 'bids' && (
+          <BidsTab 
+            projectId={project.id} 
+            project={project} 
+            onProjectUpdate={fetchProject}
+          />
+        )}
         {activeTab === 'financial' && <FinancialTab project={project} />}
         {activeTab === 'financing' && <FinancingTab projectId={project.id} project={project} />}
         {activeTab === 'contract' && <ContractTab projectId={project.id} />}
