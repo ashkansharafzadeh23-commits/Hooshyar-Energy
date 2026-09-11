@@ -9,6 +9,7 @@ import { ProcurementTab } from './Workspace/ProcurementTab';
 import { CommissioningTab } from './Workspace/CommissioningTab';
 import { HandoverTab } from './Workspace/HandoverTab';
 import { AssetTab } from './Workspace/AssetTab';
+import { FinancingTab } from './Workspace/FinancingTab';
 import { ProjectStatusBadge } from '../../components/ProjectStatusBadge';
 import { ArrowRight, FileText, Activity, Users, Settings, Map } from 'lucide-react';
 
@@ -46,6 +47,7 @@ export default function ProjectDetail() {
     { id: 'analysis', label: 'تحلیل انرژی' },
     { id: 'engineering', label: 'مهندسی' },
     { id: 'financial', label: 'مالی و امکان‌سنجی' },
+    { id: 'financing', label: 'تأمین مالی و تسهیلات', disabled: false },
     { id: 'documents', label: 'اسناد' },
     { id: 'activity', label: 'تاریخچه فعالیت' },
     { id: 'rfq', label: 'استعلام (به‌زودی)', disabled: true },
@@ -163,6 +165,7 @@ export default function ProjectDetail() {
         )}
         
         {activeTab === 'financial' && <FinancialTab project={project} />}
+        {activeTab === 'financing' && <FinancingTab projectId={project.id} project={project} />}
         {activeTab === 'contract' && <ContractTab projectId={project.id} />}
         {activeTab === 'milestones' && <MilestonesTab projectId={project.id} />}
         {activeTab === 'documents' && <DataRoomTab projectId={project.id} />}
@@ -170,7 +173,7 @@ export default function ProjectDetail() {
         {activeTab === 'commissioning' && <CommissioningTab projectId={project.id} />}
         {activeTab === 'handover' && <HandoverTab projectId={project.id} />}
         {activeTab === 'asset' && <AssetTab projectId={project.id} />}
-        {activeTab !== 'overview' && activeTab !== 'financial' && activeTab !== 'contract' && activeTab !== 'milestones' && activeTab !== 'documents' && activeTab !== 'procurement' && activeTab !== 'commissioning' && activeTab !== 'handover' && activeTab !== 'asset' && !tabs.find(t => t.id === activeTab)?.disabled && (
+        {activeTab !== 'overview' && activeTab !== 'financial' && activeTab !== 'financing' && activeTab !== 'contract' && activeTab !== 'milestones' && activeTab !== 'documents' && activeTab !== 'procurement' && activeTab !== 'commissioning' && activeTab !== 'handover' && activeTab !== 'asset' && !tabs.find(t => t.id === activeTab)?.disabled && (
           <div className="bg-white p-12 rounded-2xl border border-gray-200 shadow-sm text-center">
             <p className="text-gray-500">محتوای این بخش هنوز تکمیل نشده است.</p>
           </div>

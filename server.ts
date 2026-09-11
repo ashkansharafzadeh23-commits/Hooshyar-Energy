@@ -16,6 +16,7 @@ import executionRouter from "./src/api/execution.js";
 import financeRouter from "./src/api/finance.js";
 import procurementRouter from "./src/api/procurement.js";
 import assetRouter from "./src/api/asset.js";
+import financingRouter from "./src/api/financing.js";
 
 // Vercel handlers
 import analyzeHandler from "./api/analyze.js";
@@ -46,6 +47,7 @@ app.use("/api/execution", executionRouter);
 app.use("/api", financeRouter);
 app.use("/api", procurementRouter);
 app.use("/api", assetRouter);
+app.use("/api", financingRouter);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });

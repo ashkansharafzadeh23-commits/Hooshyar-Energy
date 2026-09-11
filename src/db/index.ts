@@ -6,6 +6,7 @@ import { ProjectFinancialModel, FinancialAssumptionSet, FinancialScenario, Proje
 import { InvestmentOpportunity, LandProfile, InvestorProfile, ProjectMatch, ProjectReadinessScore } from '../types/investment.js';
 import { BillOfQuantities, BOQItem, ProcurementRFQ, ProcurementPackage, SupplierInvitation, VendorQuote, VendorQuoteItem, VendorQuoteRevision, SupplierAward, PurchaseOrder, PurchaseOrderItem, DeliveryRecord, DeliveryItem } from '../types/procurement.js';
 import { EnergyAsset, AssetComponent, EquipmentWarranty, CommissioningRecord, CommissioningTest, AssetOwnershipRecord, AssetPassportSnapshot, AssetPerformanceBaseline, ProjectHandover, FinalProjectCostSummary } from '../types/asset.js';
+import { FinancialPartnerProfile, FinancingProduct, FinancingRequest, FinanceReadinessSnapshot, FinancialPartnerMatch, FinancingSubmission, FinanceInformationRequest, FinancingOffer, ProjectFinancingRecord, FinanceReviewNote, FinanceDueDiligenceChecklist } from '../types/financing.js';
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { ProjectContract, ContractParty, ContractRevision, ProjectMilestone, MilestoneDependency, ApprovalRequest, ChangeRequest, ProjectBaseline } from '../types/execution.js';
@@ -177,6 +178,17 @@ export interface CityIrradianceCache {
 }
 
 interface DB {
+  financialPartnerProfiles?: FinancialPartnerProfile[];
+  financingProducts?: FinancingProduct[];
+  financingRequests?: FinancingRequest[];
+  financeReadinessSnapshots?: FinanceReadinessSnapshot[];
+  financialPartnerMatches?: FinancialPartnerMatch[];
+  financingSubmissions?: FinancingSubmission[];
+  financeInformationRequests?: FinanceInformationRequest[];
+  financingOffers?: FinancingOffer[];
+  projectFinancingRecords?: ProjectFinancingRecord[];
+  financeReviewNotes?: FinanceReviewNote[];
+  financeDueDiligenceChecklists?: FinanceDueDiligenceChecklist[];
   energyAssets?: EnergyAsset[];
   assetComponents?: AssetComponent[];
   
@@ -876,5 +888,195 @@ export const db: any = {
   createProjectHandover: (handover: any) => { const d = readDB(); if(!d.projectHandovers) d.projectHandovers = []; const n = { ...handover, id: require('uuid').v4() }; d.projectHandovers.push(n); writeDB(d); return n; },
   updateProjectHandover: (id: string, updates: any) => { const d = readDB(); if(!d.projectHandovers) d.projectHandovers = []; const idx = d.projectHandovers.findIndex((h: any) => h.id === id); if(idx > -1) { d.projectHandovers[idx] = { ...d.projectHandovers[idx], ...updates }; writeDB(d); return d.projectHandovers[idx]; } return null; },
   getAssetPassportSnapshots: (assetId: string) => readDB().assetPassportSnapshots?.filter((s: any) => s.assetId === assetId) || [],
-  createAssetPassportSnapshot: (snapshot: any) => { const d = readDB(); if(!d.assetPassportSnapshots) d.assetPassportSnapshots = []; const n = { ...snapshot, id: require('uuid').v4(), generatedAt: new Date().toISOString() }; d.assetPassportSnapshots.push(n); writeDB(d); return n; }
+  createAssetPassportSnapshot: (snapshot: any) => { const d = readDB(); if(!d.assetPassportSnapshots) d.assetPassportSnapshots = []; const n = { ...snapshot, id: require('uuid').v4(), generatedAt: new Date().toISOString() }; d.assetPassportSnapshots.push(n); writeDB(d); return n; },
+  // --- Phase 8 Financing Marketplace & Workflow Methods ---
+  getFinancialPartnerProfiles: () => readDB().financialPartnerProfiles || [],
+  getFinancialPartnerProfileById: (id: string) => readDB().financialPartnerProfiles?.find((p: any) => p.id === id),
+  createFinancialPartnerProfile: (profile: any) => {
+    const d = readDB();
+    if (!d.financialPartnerProfiles) d.financialPartnerProfiles = [];
+    const n = { ...profile, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    d.financialPartnerProfiles.push(n);
+    writeDB(d);
+    return n;
+  },
+  getFinancingProducts: () => readDB().financingProducts || [],
+  getFinancingProductsByPartnerId: (partnerId: string) => readDB().financingProducts?.filter((p: any) => p.financialPartnerProfileId === partnerId) || [],
+  createFinancingProduct: (prod: any) => {
+    const d = readDB();
+    if (!d.financingProducts) d.financingProducts = [];
+    const n = { ...prod, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    d.financingProducts.push(n);
+    writeDB(d);
+    return n;
+  },
+  getFinancingRequests: (projectId?: string) => {
+    const all = readDB().financingRequests || [];
+    return projectId ? all.filter((r: any) => r.projectId === projectId) : all;
+  },
+  getFinancingRequestById: (id: string) => readDB().financingRequests?.find((r: any) => r.id === id),
+  createFinancingRequest: (req: any) => {
+    const d = readDB();
+    if (!d.financingRequests) d.financingRequests = [];
+    const codeNum = String(d.financingRequests.length + 1).padStart(6, '0');
+    const n = {
+      ...req,
+      id: require('uuid').v4(),
+      requestCode: `FIN-HSE-${codeNum}`,
+      currency: 'IRR',
+      status: req.status || 'DRAFT',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    d.financingRequests.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateFinancingRequest: (id: string, updates: any) => {
+    const d = readDB();
+    if (!d.financingRequests) d.financingRequests = [];
+    const idx = d.financingRequests.findIndex((r: any) => r.id === id);
+    if (idx > -1) {
+      d.financingRequests[idx] = { ...d.financingRequests[idx], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(d);
+      return d.financingRequests[idx];
+    }
+    return null;
+  },
+  getFinanceReadinessSnapshots: (requestId: string) => readDB().financeReadinessSnapshots?.filter((s: any) => s.financingRequestId === requestId) || [],
+  createFinanceReadinessSnapshot: (snapshot: any) => {
+    const d = readDB();
+    if (!d.financeReadinessSnapshots) d.financeReadinessSnapshots = [];
+    const n = { ...snapshot, id: require('uuid').v4(), evaluatedAt: new Date().toISOString() };
+    d.financeReadinessSnapshots.push(n);
+    writeDB(d);
+    return n;
+  },
+  getFinancialPartnerMatches: (requestId: string) => readDB().financialPartnerMatches?.filter((m: any) => m.financingRequestId === requestId) || [],
+  saveFinancialPartnerMatches: (requestId: string, matches: any[]) => {
+    const d = readDB();
+    if (!d.financialPartnerMatches) d.financialPartnerMatches = [];
+    // Remove existing matches for this request
+    d.financialPartnerMatches = d.financialPartnerMatches.filter((m: any) => m.financingRequestId !== requestId);
+    d.financialPartnerMatches.push(...matches);
+    writeDB(d);
+    return matches;
+  },
+  getFinancingSubmissions: (requestId?: string) => {
+    const all = readDB().financingSubmissions || [];
+    return requestId ? all.filter((s: any) => s.financingRequestId === requestId) : all;
+  },
+  getFinancingSubmissionById: (id: string) => readDB().financingSubmissions?.find((s: any) => s.id === id),
+  createFinancingSubmission: (sub: any) => {
+    const d = readDB();
+    if (!d.financingSubmissions) d.financingSubmissions = [];
+    const n = { ...sub, id: require('uuid').v4(), status: sub.status || 'SUBMITTED', submittedAt: new Date().toISOString() };
+    d.financingSubmissions.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateFinancingSubmission: (id: string, updates: any) => {
+    const d = readDB();
+    if (!d.financingSubmissions) d.financingSubmissions = [];
+    const idx = d.financingSubmissions.findIndex((s: any) => s.id === id);
+    if (idx > -1) {
+      d.financingSubmissions[idx] = { ...d.financingSubmissions[idx], ...updates };
+      writeDB(d);
+      return d.financingSubmissions[idx];
+    }
+    return null;
+  },
+  getFinanceInformationRequests: (submissionId: string) => readDB().financeInformationRequests?.filter((r: any) => r.financingSubmissionId === submissionId) || [],
+  createFinanceInformationRequest: (req: any) => {
+    const d = readDB();
+    if (!d.financeInformationRequests) d.financeInformationRequests = [];
+    const n = { ...req, id: require('uuid').v4(), status: 'OPEN', createdAt: new Date().toISOString() };
+    d.financeInformationRequests.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateFinanceInformationRequest: (id: string, updates: any) => {
+    const d = readDB();
+    if (!d.financeInformationRequests) d.financeInformationRequests = [];
+    const idx = d.financeInformationRequests.findIndex((r: any) => r.id === id);
+    if (idx > -1) {
+      d.financeInformationRequests[idx] = { ...d.financeInformationRequests[idx], ...updates };
+      writeDB(d);
+      return d.financeInformationRequests[idx];
+    }
+    return null;
+  },
+  getFinancingOffers: (requestId?: string) => {
+    const all = readDB().financingOffers || [];
+    return requestId ? all.filter((o: any) => o.financingRequestId === requestId) : all;
+  },
+  getFinancingOfferById: (id: string) => readDB().financingOffers?.find((o: any) => o.id === id),
+  createFinancingOffer: (offer: any) => {
+    const d = readDB();
+    if (!d.financingOffers) d.financingOffers = [];
+    const codeNum = String(d.financingOffers.length + 1).padStart(6, '0');
+    const n = {
+      ...offer,
+      id: require('uuid').v4(),
+      offerCode: `FO-HSE-${codeNum}`,
+      currency: 'IRR',
+      status: offer.status || 'SUBMITTED',
+      createdAt: new Date().toISOString(),
+      submittedAt: new Date().toISOString()
+    };
+    d.financingOffers.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateFinancingOffer: (id: string, updates: any) => {
+    const d = readDB();
+    if (!d.financingOffers) d.financingOffers = [];
+    const idx = d.financingOffers.findIndex((o: any) => o.id === id);
+    if (idx > -1) {
+      d.financingOffers[idx] = { ...d.financingOffers[idx], ...updates };
+      writeDB(d);
+      return d.financingOffers[idx];
+    }
+    return null;
+  },
+  getProjectFinancingRecords: (projectId?: string) => {
+    const all = readDB().projectFinancingRecords || [];
+    return projectId ? all.filter((r: any) => r.projectId === projectId) : all;
+  },
+  createProjectFinancingRecord: (rec: any) => {
+    const d = readDB();
+    if (!d.projectFinancingRecords) d.projectFinancingRecords = [];
+    const n = {
+      ...rec,
+      id: require('uuid').v4(),
+      status: rec.status || 'APPROVED',
+      currency: 'IRR',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    d.projectFinancingRecords.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateProjectFinancingRecord: (id: string, updates: any) => {
+    const d = readDB();
+    if (!d.projectFinancingRecords) d.projectFinancingRecords = [];
+    const idx = d.projectFinancingRecords.findIndex((r: any) => r.id === id);
+    if (idx > -1) {
+      d.projectFinancingRecords[idx] = { ...d.projectFinancingRecords[idx], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(d);
+      return d.projectFinancingRecords[idx];
+    }
+    return null;
+  },
+  getFinanceReviewNotes: (submissionId: string) => readDB().financeReviewNotes?.filter((n: any) => n.financingSubmissionId === submissionId) || [],
+  createFinanceReviewNote: (note: any) => {
+    const d = readDB();
+    if (!d.financeReviewNotes) d.financeReviewNotes = [];
+    const n = { ...note, id: require('uuid').v4(), createdAt: new Date().toISOString() };
+    d.financeReviewNotes.push(n);
+    writeDB(d);
+    return n;
+  }
+
 };
