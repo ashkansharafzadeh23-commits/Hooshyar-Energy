@@ -236,3 +236,70 @@ export interface EquipmentWarranty {
   warrantyType: string;
   documentId?: string;
 }
+
+export interface QuoteComparisonItem {
+  quoteId: string;
+  quoteCode: string;
+  vendorId: string;
+  vendorName?: string;
+  totalPrice: number;
+  currency: string;
+  deliveryLeadTimeDays: number;
+  warrantySummary: string;
+  paymentTerms: string;
+  itemCount: number;
+  status: VendorQuoteStatus;
+  subtotal: number;
+  tax: number;
+  transportationCost: number;
+}
+
+export interface QuoteComparison {
+  rfqId: string;
+  projectId: string;
+  rfqCode: string;
+  quotes: QuoteComparisonItem[];
+  cheapestQuoteId?: string;
+  fastestLeadTimeQuoteId?: string;
+  generatedAt: string;
+}
+
+export interface ProcurementProgressMetrics {
+  projectId: string;
+  totalBoqItemsCount: number;
+  orderedItemsCount: number;
+  deliveredItemsCount: number;
+  acceptedItemsCount: number;
+  
+  estimatedTotalCost: number;
+  orderedCost: number;
+  deliveredCost: number;
+  acceptedCost: number;
+  
+  orderedQuantity: number;
+  deliveredQuantity: number;
+  acceptedQuantity: number;
+  
+  completionPercentage: number;
+  hasInsufficientData: boolean;
+  currency: string;
+}
+
+export interface DeliveryInspection {
+  id: string;
+  deliveryRecordId: string;
+  projectId: string;
+  purchaseOrderId: string;
+  inspectedByUserId: string;
+  inspectionDate: string;
+  status: 'PASSED' | 'FAILED' | 'CONDITIONALLY_ACCEPTED';
+  notes?: string;
+  items: {
+    deliveryItemId: string;
+    acceptedQuantity: number;
+    rejectedQuantity: number;
+    defectReason?: string;
+  }[];
+  createdAt: string;
+}
+

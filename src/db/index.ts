@@ -1074,15 +1074,32 @@ export const db: any = {
   // Procurement
   getBOQs: (projectId: string) => readDB().boqs?.filter((b: any) => b.projectId === projectId) || [],
   getBOQById: (id: string) => readDB().boqs?.find((b: any) => b.id === id),
-  createBOQ: (boq: any) => { const d = readDB(); if(!d.boqs) d.boqs = []; const n = { ...boq, id: require('uuid').v4(), boqCode: 'BOQ-HSE-' + Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.boqs.push(n); writeDB(d); return n; },
+  createBOQ: (boq: any) => { 
+    const d = readDB(); 
+    if(!d.boqs) d.boqs = []; 
+    const codeNum = String(d.boqs.length + 1).padStart(6, '0');
+    const n = { ...boq, id: require('uuid').v4(), boqCode: boq.boqCode || `BOQ-HSE-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    d.boqs.push(n); 
+    writeDB(d); 
+    return n; 
+  },
   updateBOQ: (id: string, updates: any) => { const d = readDB(); if(!d.boqs) d.boqs = []; const idx = d.boqs.findIndex((b: any) => b.id === id); if(idx > -1) { d.boqs[idx] = { ...d.boqs[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.boqs[idx]; } return null; },
   getBOQItems: (boqId: string) => readDB().boqItems?.filter((i: any) => i.boqId === boqId) || [],
+  getBOQItemsByProjectId: (projectId: string) => readDB().boqItems?.filter((i: any) => i.projectId === projectId) || [],
   createBOQItem: (item: any) => { const d = readDB(); if(!d.boqItems) d.boqItems = []; const n = { ...item, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.boqItems.push(n); writeDB(d); return n; },
   updateBOQItem: (id: string, updates: any) => { const d = readDB(); if(!d.boqItems) d.boqItems = []; const idx = d.boqItems.findIndex((i: any) => i.id === id); if(idx > -1) { d.boqItems[idx] = { ...d.boqItems[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.boqItems[idx]; } return null; },
   deleteBOQItem: (id: string) => { const d = readDB(); if(!d.boqItems) return; d.boqItems = d.boqItems.filter((i: any) => i.id !== id); writeDB(d); },
   getProcurementRFQs: (projectId: string) => readDB().procurementRfqs?.filter((r: any) => r.projectId === projectId) || [],
   getProcurementRFQById: (id: string) => readDB().procurementRfqs?.find((r: any) => r.id === id),
-  createProcurementRFQ: (rfq: any) => { const d = readDB(); if(!d.procurementRfqs) d.procurementRfqs = []; const n = { ...rfq, id: require('uuid').v4(), procurementRfqCode: 'PRFQ-HSE-' + Date.now(), createdAt: new Date().toISOString() }; d.procurementRfqs.push(n); writeDB(d); return n; },
+  createProcurementRFQ: (rfq: any) => { 
+    const d = readDB(); 
+    if(!d.procurementRfqs) d.procurementRfqs = []; 
+    const codeNum = String(d.procurementRfqs.length + 1).padStart(6, '0');
+    const n = { ...rfq, id: require('uuid').v4(), procurementRfqCode: rfq.procurementRfqCode || `PRFQ-HSE-${codeNum}`, createdAt: new Date().toISOString() }; 
+    d.procurementRfqs.push(n); 
+    writeDB(d); 
+    return n; 
+  },
   updateProcurementRFQ: (id: string, updates: any) => { const d = readDB(); if(!d.procurementRfqs) d.procurementRfqs = []; const idx = d.procurementRfqs.findIndex((r: any) => r.id === id); if(idx > -1) { d.procurementRfqs[idx] = { ...d.procurementRfqs[idx], ...updates }; writeDB(d); return d.procurementRfqs[idx]; } return null; },
   getSupplierInvitations: (rfqId: string) => readDB().supplierInvitations?.filter((i: any) => i.procurementRfqId === rfqId) || [],
   getSupplierInvitationByVendorId: (vendorId: string) => readDB().supplierInvitations?.filter((i: any) => i.vendorId === vendorId) || [],
@@ -1090,46 +1107,108 @@ export const db: any = {
   updateSupplierInvitation: (id: string, updates: any) => { const d = readDB(); if(!d.supplierInvitations) d.supplierInvitations = []; const idx = d.supplierInvitations.findIndex((i: any) => i.id === id); if(idx > -1) { d.supplierInvitations[idx] = { ...d.supplierInvitations[idx], ...updates }; writeDB(d); return d.supplierInvitations[idx]; } return null; },
   getVendorQuotes: (rfqId: string) => readDB().vendorQuotes?.filter((q: any) => q.procurementRfqId === rfqId) || [],
   getVendorQuoteById: (id: string) => readDB().vendorQuotes?.find((q: any) => q.id === id),
-  createVendorQuote: (quote: any) => { const d = readDB(); if(!d.vendorQuotes) d.vendorQuotes = []; const n = { ...quote, id: require('uuid').v4(), quoteCode: 'VQ-HSE-' + Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.vendorQuotes.push(n); writeDB(d); return n; },
+  createVendorQuote: (quote: any) => { 
+    const d = readDB(); 
+    if(!d.vendorQuotes) d.vendorQuotes = []; 
+    const codeNum = String(d.vendorQuotes.length + 1).padStart(6, '0');
+    const n = { ...quote, id: require('uuid').v4(), quoteCode: quote.quoteCode || `VQ-HSE-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    d.vendorQuotes.push(n); 
+    writeDB(d); 
+    return n; 
+  },
   updateVendorQuote: (id: string, updates: any) => { const d = readDB(); if(!d.vendorQuotes) d.vendorQuotes = []; const idx = d.vendorQuotes.findIndex((q: any) => q.id === id); if(idx > -1) { d.vendorQuotes[idx] = { ...d.vendorQuotes[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.vendorQuotes[idx]; } return null; },
   getVendorQuoteItems: (quoteId: string) => readDB().vendorQuoteItems?.filter((i: any) => i.quoteId === quoteId) || [],
   createVendorQuoteItem: (item: any) => { const d = readDB(); if(!d.vendorQuoteItems) d.vendorQuoteItems = []; const n = { ...item, id: require('uuid').v4() }; d.vendorQuoteItems.push(n); writeDB(d); return n; },
   updateVendorQuoteItem: (id: string, updates: any) => { const d = readDB(); if(!d.vendorQuoteItems) d.vendorQuoteItems = []; const idx = d.vendorQuoteItems.findIndex((i: any) => i.id === id); if(idx > -1) { d.vendorQuoteItems[idx] = { ...d.vendorQuoteItems[idx], ...updates }; writeDB(d); return d.vendorQuoteItems[idx]; } return null; },
   getSupplierAwards: (rfqId: string) => readDB().supplierAwards?.filter((a: any) => a.procurementRfqId === rfqId) || [],
+  getSupplierAwardsByProjectId: (projectId: string) => readDB().supplierAwards?.filter((a: any) => a.projectId === projectId) || [],
   createSupplierAward: (award: any) => { const d = readDB(); if(!d.supplierAwards) d.supplierAwards = []; const n = { ...award, id: require('uuid').v4(), createdAt: new Date().toISOString() }; d.supplierAwards.push(n); writeDB(d); return n; },
   updateSupplierAward: (id: string, updates: any) => { const d = readDB(); if(!d.supplierAwards) d.supplierAwards = []; const idx = d.supplierAwards.findIndex((a: any) => a.id === id); if(idx > -1) { d.supplierAwards[idx] = { ...d.supplierAwards[idx], ...updates }; writeDB(d); return d.supplierAwards[idx]; } return null; },
   getPurchaseOrders: (projectId: string) => readDB().purchaseOrders?.filter((p: any) => p.projectId === projectId) || [],
   getPurchaseOrderById: (id: string) => readDB().purchaseOrders?.find((p: any) => p.id === id),
-  createPurchaseOrder: (po: any) => { const d = readDB(); if(!d.purchaseOrders) d.purchaseOrders = []; const n = { ...po, id: require('uuid').v4(), poCode: 'PO-HSE-' + Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.purchaseOrders.push(n); writeDB(d); return n; },
+  createPurchaseOrder: (po: any) => { 
+    const d = readDB(); 
+    if(!d.purchaseOrders) d.purchaseOrders = []; 
+    const codeNum = String(d.purchaseOrders.length + 1).padStart(6, '0');
+    const n = { ...po, id: require('uuid').v4(), poCode: po.poCode || `PO-HSE-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    d.purchaseOrders.push(n); 
+    writeDB(d); 
+    return n; 
+  },
   updatePurchaseOrder: (id: string, updates: any) => { const d = readDB(); if(!d.purchaseOrders) d.purchaseOrders = []; const idx = d.purchaseOrders.findIndex((p: any) => p.id === id); if(idx > -1) { d.purchaseOrders[idx] = { ...d.purchaseOrders[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.purchaseOrders[idx]; } return null; },
   getPurchaseOrderItems: (poId: string) => readDB().purchaseOrderItems?.filter((i: any) => i.purchaseOrderId === poId) || [],
   createPurchaseOrderItem: (item: any) => { const d = readDB(); if(!d.purchaseOrderItems) d.purchaseOrderItems = []; const n = { ...item, id: require('uuid').v4() }; d.purchaseOrderItems.push(n); writeDB(d); return n; },
   getDeliveryRecords: (poId: string) => readDB().deliveryRecords?.filter((d: any) => d.purchaseOrderId === poId) || [],
-  createDeliveryRecord: (rec: any) => { const d = readDB(); if(!d.deliveryRecords) d.deliveryRecords = []; const n = { ...rec, id: require('uuid').v4(), createdAt: new Date().toISOString() }; d.deliveryRecords.push(n); writeDB(d); return n; },
+  getDeliveryRecordsByProjectId: (projectId: string) => readDB().deliveryRecords?.filter((d: any) => d.projectId === projectId) || [],
+  getDeliveryRecordById: (id: string) => readDB().deliveryRecords?.find((d: any) => d.id === id),
+  createDeliveryRecord: (rec: any) => { 
+    const d = readDB(); 
+    if(!d.deliveryRecords) d.deliveryRecords = []; 
+    const codeNum = String(d.deliveryRecords.length + 1).padStart(6, '0');
+    const n = { ...rec, id: require('uuid').v4(), deliveryNumber: rec.deliveryNumber || `DLV-HSE-${codeNum}`, createdAt: new Date().toISOString() }; 
+    d.deliveryRecords.push(n); 
+    writeDB(d); 
+    return n; 
+  },
   updateDeliveryRecord: (id: string, updates: any) => { const d = readDB(); if(!d.deliveryRecords) d.deliveryRecords = []; const idx = d.deliveryRecords.findIndex((dr: any) => dr.id === id); if(idx > -1) { d.deliveryRecords[idx] = { ...d.deliveryRecords[idx], ...updates }; writeDB(d); return d.deliveryRecords[idx]; } return null; },
-  // Asset
+  getDeliveryItems: (deliveryRecordId: string) => readDB().deliveryItems?.filter((i: any) => i.deliveryRecordId === deliveryRecordId) || [],
+  createDeliveryItem: (item: any) => { const d = readDB(); if(!d.deliveryItems) d.deliveryItems = []; const n = { ...item, id: require('uuid').v4() }; d.deliveryItems.push(n); writeDB(d); return n; },
+  updateDeliveryItem: (id: string, updates: any) => { const d = readDB(); if(!d.deliveryItems) d.deliveryItems = []; const idx = d.deliveryItems.findIndex((i: any) => i.id === id); if(idx > -1) { d.deliveryItems[idx] = { ...d.deliveryItems[idx], ...updates }; writeDB(d); return d.deliveryItems[idx]; } return null; },
+  getDeliveryInspections: (deliveryRecordId: string) => readDB().deliveryInspections?.filter((i: any) => i.deliveryRecordId === deliveryRecordId) || [],
+  createDeliveryInspection: (inspection: any) => { const d = readDB(); if(!d.deliveryInspections) d.deliveryInspections = []; const n = { ...inspection, id: require('uuid').v4(), createdAt: new Date().toISOString() }; d.deliveryInspections.push(n); writeDB(d); return n; },
+
+  // Asset & Commissioning
   getAssets: () => readDB().energyAssets || [],
   getAssetById: (id: string) => readDB().energyAssets?.find((a: any) => a.id === id),
   getAssetsByProjectId: (projectId: string) => readDB().energyAssets?.filter((a: any) => a.projectId === projectId) || [],
-  createAsset: (asset: any) => { const d = readDB(); if(!d.energyAssets) d.energyAssets = []; const n = { ...asset, id: require('uuid').v4(), assetCode: 'HEA-IR-' + Date.now(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.energyAssets.push(n); writeDB(d); return n; },
+  createAsset: (asset: any) => { 
+    const d = readDB(); 
+    if(!d.energyAssets) d.energyAssets = []; 
+    const codeNum = String(d.energyAssets.length + 1).padStart(6, '0');
+    const n = { ...asset, id: require('uuid').v4(), assetCode: asset.assetCode || `HEA-IR-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    d.energyAssets.push(n); 
+    writeDB(d); 
+    return n; 
+  },
   updateAsset: (id: string, updates: any) => { const d = readDB(); if(!d.energyAssets) d.energyAssets = []; const idx = d.energyAssets.findIndex((a: any) => a.id === id); if(idx > -1) { d.energyAssets[idx] = { ...d.energyAssets[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.energyAssets[idx]; } return null; },
   getAssetComponents: (assetId: string) => readDB().assetComponents?.filter((c: any) => c.assetId === assetId) || [],
   createAssetComponent: (comp: any) => { const d = readDB(); if(!d.assetComponents) d.assetComponents = []; const n = { ...comp, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.assetComponents.push(n); writeDB(d); return n; },
   updateAssetComponent: (id: string, updates: any) => { const d = readDB(); if(!d.assetComponents) d.assetComponents = []; const idx = d.assetComponents.findIndex((c: any) => c.id === id); if(idx > -1) { d.assetComponents[idx] = { ...d.assetComponents[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.assetComponents[idx]; } return null; },
   getEquipmentWarranties: (assetId: string) => readDB().equipmentWarranties?.filter((w: any) => w.assetId === assetId) || [],
+  getEquipmentWarrantiesByProjectId: (projectId: string) => readDB().equipmentWarranties?.filter((w: any) => w.projectId === projectId) || [],
   createEquipmentWarranty: (warranty: any) => { const d = readDB(); if(!d.equipmentWarranties) d.equipmentWarranties = []; const n = { ...warranty, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.equipmentWarranties.push(n); writeDB(d); return n; },
   updateEquipmentWarranty: (id: string, updates: any) => { const d = readDB(); if(!d.equipmentWarranties) d.equipmentWarranties = []; const idx = d.equipmentWarranties.findIndex((w: any) => w.id === id); if(idx > -1) { d.equipmentWarranties[idx] = { ...d.equipmentWarranties[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.equipmentWarranties[idx]; } return null; },
   getCommissioningRecords: (projectId: string) => readDB().commissioningRecords?.filter((r: any) => r.projectId === projectId) || [],
+  getCommissioningRecordById: (id: string) => readDB().commissioningRecords?.find((r: any) => r.id === id),
   createCommissioningRecord: (record: any) => { const d = readDB(); if(!d.commissioningRecords) d.commissioningRecords = []; const n = { ...record, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.commissioningRecords.push(n); writeDB(d); return n; },
   updateCommissioningRecord: (id: string, updates: any) => { const d = readDB(); if(!d.commissioningRecords) d.commissioningRecords = []; const idx = d.commissioningRecords.findIndex((r: any) => r.id === id); if(idx > -1) { d.commissioningRecords[idx] = { ...d.commissioningRecords[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.commissioningRecords[idx]; } return null; },
   getCommissioningTests: (recordId: string) => readDB().commissioningTests?.filter((t: any) => t.commissioningRecordId === recordId) || [],
+  getCommissioningTestById: (id: string) => readDB().commissioningTests?.find((t: any) => t.id === id),
   createCommissioningTest: (test: any) => { const d = readDB(); if(!d.commissioningTests) d.commissioningTests = []; const n = { ...test, id: require('uuid').v4() }; d.commissioningTests.push(n); writeDB(d); return n; },
   updateCommissioningTest: (id: string, updates: any) => { const d = readDB(); if(!d.commissioningTests) d.commissioningTests = []; const idx = d.commissioningTests.findIndex((t: any) => t.id === id); if(idx > -1) { d.commissioningTests[idx] = { ...d.commissioningTests[idx], ...updates }; writeDB(d); return d.commissioningTests[idx]; } return null; },
   getProjectHandover: (projectId: string) => readDB().projectHandovers?.find((h: any) => h.projectId === projectId),
+  getProjectHandoverById: (id: string) => readDB().projectHandovers?.find((h: any) => h.id === id),
   createProjectHandover: (handover: any) => { const d = readDB(); if(!d.projectHandovers) d.projectHandovers = []; const n = { ...handover, id: require('uuid').v4() }; d.projectHandovers.push(n); writeDB(d); return n; },
   updateProjectHandover: (id: string, updates: any) => { const d = readDB(); if(!d.projectHandovers) d.projectHandovers = []; const idx = d.projectHandovers.findIndex((h: any) => h.id === id); if(idx > -1) { d.projectHandovers[idx] = { ...d.projectHandovers[idx], ...updates }; writeDB(d); return d.projectHandovers[idx]; } return null; },
+  getPunchListItems: (projectId: string) => readDB().punchListItems?.filter((p: any) => p.projectId === projectId) || [],
+  getPunchListItemById: (id: string) => readDB().punchListItems?.find((p: any) => p.id === id),
+  createPunchListItem: (item: any) => { 
+    const d = readDB(); 
+    if(!d.punchListItems) d.punchListItems = []; 
+    const codeNum = String(d.punchListItems.length + 1).padStart(4, '0');
+    const n = { ...item, id: require('uuid').v4(), itemNumber: item.itemNumber || `PL-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    d.punchListItems.push(n); 
+    writeDB(d); 
+    return n; 
+  },
+  updatePunchListItem: (id: string, updates: any) => { const d = readDB(); if(!d.punchListItems) d.punchListItems = []; const idx = d.punchListItems.findIndex((p: any) => p.id === id); if(idx > -1) { d.punchListItems[idx] = { ...d.punchListItems[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.punchListItems[idx]; } return null; },
+  deletePunchListItem: (id: string) => { const d = readDB(); if(!d.punchListItems) return; d.punchListItems = d.punchListItems.filter((p: any) => p.id !== id); writeDB(d); },
   getAssetPassportSnapshots: (assetId: string) => readDB().assetPassportSnapshots?.filter((s: any) => s.assetId === assetId) || [],
   createAssetPassportSnapshot: (snapshot: any) => { const d = readDB(); if(!d.assetPassportSnapshots) d.assetPassportSnapshots = []; const n = { ...snapshot, id: require('uuid').v4(), generatedAt: new Date().toISOString() }; d.assetPassportSnapshots.push(n); writeDB(d); return n; },
+  getAssetPerformanceBaselines: (assetId: string) => readDB().assetPerformanceBaselines?.filter((b: any) => b.assetId === assetId) || [],
+  createAssetPerformanceBaseline: (baseline: any) => { const d = readDB(); if(!d.assetPerformanceBaselines) d.assetPerformanceBaselines = []; const n = { ...baseline, id: require('uuid').v4(), calculatedAt: new Date().toISOString() }; d.assetPerformanceBaselines.push(n); writeDB(d); return n; },
+  getFinalProjectCostSummaries: (projectId: string) => readDB().finalProjectCostSummaries?.filter((c: any) => c.projectId === projectId) || [],
+  createFinalProjectCostSummary: (summary: any) => { const d = readDB(); if(!d.finalProjectCostSummaries) d.finalProjectCostSummaries = []; const n = { ...summary, id: require('uuid').v4(), calculatedAt: new Date().toISOString() }; d.finalProjectCostSummaries.push(n); writeDB(d); return n; },
   // --- Phase 8 Financing Marketplace & Workflow Methods ---
   getFinancialPartnerProfiles: () => readDB().financialPartnerProfiles || [],
   getFinancialPartnerProfileById: (id: string) => readDB().financialPartnerProfiles?.find((p: any) => p.id === id),

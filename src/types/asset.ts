@@ -183,3 +183,46 @@ export interface FinalProjectCostSummary {
   otherApprovedCosts: number;
   calculatedAt: string;
 }
+
+export type PunchListSeverity = 'CRITICAL' | 'MAJOR' | 'MINOR';
+export type PunchListStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'WAIVED';
+
+export interface PunchListItem {
+  id: string;
+  projectId: string;
+  commissioningRecordId?: string;
+  itemNumber: string;
+  title: string;
+  description: string;
+  severity: PunchListSeverity;
+  status: PunchListStatus;
+  assignedTo?: string;
+  resolvedAt?: string;
+  resolvedByUserId?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommissioningGatingCheck {
+  canApprove: boolean;
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  pendingTests: number;
+  criticalPunchListCount: number;
+  blockingReasons: string[];
+}
+
+export interface HandoverReadinessCheck {
+  canApprove: boolean;
+  commissioningApproved: boolean;
+  documentsComplete: boolean;
+  trainingComplete: boolean;
+  sparePartsDelivered: boolean;
+  warrantyDelivered: boolean;
+  manualsDelivered: boolean;
+  unresolvedCriticalPunchList: number;
+  blockingReasons: string[];
+}
+
