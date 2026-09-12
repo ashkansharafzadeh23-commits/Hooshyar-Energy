@@ -98,6 +98,8 @@ export const projectReadinessService = {
       id: '', // Will be generated on save
       projectId: project?.id || '',
       score: Math.round(totalScore),
+      overallScore: Math.round(totalScore),
+      breakdown: { land, technical, grid, permit, financial, epc, documents },
       scoreBreakdown: { land, technical, grid, permit, financial, epc, documents },
       level,
       missingItems,

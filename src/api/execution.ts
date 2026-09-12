@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from '../db/index.js';
-import { ProjectContract, ProjectMilestone, ChangeRequest, ProjectBaseline, ContractParty } from '../types/execution.js';
+import { ProjectContract, ProjectMilestone, ChangeRequest, ProjectBaseline, ContractParty, ContractRevision } from '../types/execution.js';
 import { rfqRepository } from '../repositories/rfqRepository.js';
 import { projectRepository } from '../repositories/projectRepository.js';
 
@@ -17,47 +17,17 @@ router.get('/:projectId/contracts', (req, res) => {
 router.post('/:projectId/contracts', (req, res) => {
   const { projectId } = req.params;
   const contractData = req.body;
+  const allContracts = db.getEnergyProjects().flatMap((p: any) => db.getProjectContracts(p.id)) || [];
+  const seqNumber = allContracts.length + 1;
+  const contractCode = contractData.contractCode || `CNT-HSE-${seqNumber.toString().padStart(6, '0')}`;
+
   const newContract = db.createContract({
     ...contractData,
+    contractCode,
     projectId,
     status: contractData.status || 'DRAFT',
+    currentRevisionNumber: 1
   });
-  
-  // Create an initial set of milestones if it's an EPC contract
-  if (newContract.contractType === 'EPC') {
-    const templates = [
-      { title: 'طراحی پایه و تفصیلی (Engineering)', category: 'ENGINEERING', sequence: 1, weightPercent: 10, durationDays: 20 },
-      { title: 'تأمین تجهیزات اصلی و لجستیک (Procurement)', category: 'PROCUREMENT', sequence: 2, weightPercent: 40, durationDays: 45 },
-      { title: 'عملیات ساختمانی و فونداسیون (Civil Works)', category: 'CIVIL_WORKS', sequence: 3, weightPercent: 15, durationDays: 30 },
-      { title: 'نصب سازه، پنل‌ها و اینورترها (Installation)', category: 'INSTALLATION', sequence: 4, weightPercent: 20, durationDays: 30 },
-      { title: 'تست، راه‌اندازی و اتصال به شبکه (Commissioning)', category: 'COMMISSIONING', sequence: 5, weightPercent: 15, durationDays: 15 }
-    ];
-
-    const startDate = new Date();
-    let cumulativeDays = 0;
-
-    templates.forEach(t => {
-      const plannedStart = new Date(startDate.getTime() + cumulativeDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      cumulativeDays += t.durationDays;
-      const plannedEnd = new Date(startDate.getTime() + cumulativeDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-      db.createMilestone({
-        projectId,
-        contractId: newContract.id,
-        milestoneCode: `MS-${Math.floor(Math.random()*1000)}`,
-        title: t.title,
-        category: t.category,
-        sequence: t.sequence,
-        weightPercent: t.weightPercent,
-        completionPercent: 0,
-        status: 'NOT_STARTED',
-        plannedStartDate: plannedStart,
-        plannedEndDate: plannedEnd,
-        requiresApproval: true,
-        evidenceRequired: true
-      });
-    });
-  }
   
   res.status(201).json(newContract);
 });
@@ -78,8 +48,32 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
   const startDate = new Date();
   const completionDate = new Date(startDate.getTime() + plannedWeeks * 7 * 24 * 60 * 60 * 1000);
 
+  // Derive stable business contract code: CNT-HSE-000001
+  const allContracts = db.getEnergyProjects().flatMap((p: any) => db.getProjectContracts(p.id)) || [];
+  const seqNumber = allContracts.length + 1;
+  const contractCode = `CNT-HSE-${seqNumber.toString().padStart(6, '0')}`;
+
+  // Check which terms actually exist in the EPC bid
+  const hasBidAdvance = typeof bid.commercialTerms?.advancePaymentPercent === 'number';
+  const hasBidRetention = typeof bid.commercialTerms?.retentionPercent === 'number';
+  const hasBidWarranty = typeof bid.commercialTerms?.warrantyPeriodMonths === 'number';
+  const hasBidLD = typeof bid.commercialTerms?.liquidatedDamagesPerDayPercent === 'number';
+  const hasBidPaymentTerms = Boolean(bid.commercialTerms?.paymentTermsSummary || bid.commercialTerms?.paymentTerms);
+
+  // If not all terms are explicit in bid, mark as template terms requiring confirmation
+  const isTemplateTerms = !(hasBidAdvance && hasBidRetention && hasBidWarranty && hasBidPaymentTerms);
+
+  const advancePaymentPercent = hasBidAdvance ? bid.commercialTerms.advancePaymentPercent : undefined;
+  const retentionPercent = hasBidRetention ? bid.commercialTerms.retentionPercent : undefined;
+  const warrantyPeriodMonths = hasBidWarranty ? bid.commercialTerms.warrantyPeriodMonths : undefined;
+  const liquidatedDamagesPerDayPercent = hasBidLD ? bid.commercialTerms.liquidatedDamagesPerDayPercent : undefined;
+  const maxLiquidatedDamagesPercent = typeof bid.commercialTerms?.maxLiquidatedDamagesPercent === 'number' ? bid.commercialTerms.maxLiquidatedDamagesPercent : undefined;
+
+  const paymentTermsSummary = hasBidPaymentTerms 
+    ? (bid.commercialTerms.paymentTermsSummary || bid.commercialTerms.paymentTerms)
+    : 'الگوی پیشنهادی شرایط پرداخت: پیش‌پرداخت (نیازمند تایید)، پیشرفت کار و تحویل تجهیزات، اتصال به شبکه و حسن انجام کار (در انتظار تایید کارفرما).';
+
   // 1. Create the contract
-  const contractCode = `CNT-EPC-${bid.bidCode || Math.floor(Math.random() * 10000)}`;
   const newContract = db.createContract({
     projectId,
     contractCode,
@@ -88,16 +82,20 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
     status: 'DRAFT',
     currency: bid.currency || 'IRR',
     contractValue: bid.totalPrice,
+    revisedContractValue: bid.totalPrice,
+    currentRevisionNumber: 1,
     scopeSummary: `احداث، مهندسی، تأمین تجهیزات استاندارد (پنل و اینورتر مطابق پیشنهاد ${bid.bidCode})، نصب، کابل‌کشی، حفاظت، اتصال به شبکه و راه‌اندازی تجاری نیروگاه خورشیدی.`,
-    paymentTermsSummary: `پیش‌پرداخت: ۲۰٪ | ورود تجهیزات به کارگاه: ۴۰٪ | اتمام نصب مکانیکی: ۲۰٪ | برق‌داری و اتصال به شبکه: ۱۵٪ | سپرده حسن انجام کار: ۵٪`,
-    retentionPercent: 5,
-    advancePaymentPercent: 20,
-    liquidatedDamagesPerDayPercent: 0.1,
-    maxLiquidatedDamagesPercent: 10,
-    warrantyPeriodMonths: bid.commercialTerms?.warrantyPeriodMonths || 24,
+    paymentTermsSummary,
+    retentionPercent,
+    advancePaymentPercent,
+    liquidatedDamagesPerDayPercent,
+    maxLiquidatedDamagesPercent,
+    warrantyPeriodMonths,
     contractorPartyId: bid.epcOrganizationId,
     plannedStartDate: startDate.toISOString().split('T')[0],
     plannedCompletionDate: completionDate.toISOString().split('T')[0],
+    isTemplateTerms,
+    termsConfirmedByUser: !isTemplateTerms,
     createdByUserId: req.body.userId || project.ownerId
   });
 
@@ -120,7 +118,7 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
     signStatus: 'PENDING'
   });
 
-  // 3. Create Structured Execution Milestones based on Bid Timeline
+  // 3. Create Milestone Structure (Marked clearly as SUGGESTED_TEMPLATE)
   const durationTotalDays = plannedWeeks * 7;
   const milestonesTemplate = [
     { title: 'مهندسی، طراحی تفصیلی و نقشه‌های اجرایی', category: 'ENGINEERING', sequence: 1, weightPercent: 10, durationFactor: 0.15 },
@@ -150,33 +148,49 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
       plannedStartDate: pStart,
       plannedEndDate: pEnd,
       requiresApproval: true,
-      evidenceRequired: true
+      evidenceRequired: true,
+      isTemplate: true,
+      templateNotice: 'SUGGESTED_TEMPLATE — ساختار پیشنهادی زمان‌بندی (نیازمند تایید طرفین)'
     });
   });
 
-  // 4. Create Initial Project Baseline
+  // 4. Create Initial Project Baseline in DRAFT status (NOT automatically approved!)
   db.createProjectBaseline({
     projectId,
     contractId: newContract.id,
-    baselineCode: `BL-01-INITIAL`,
-    name: 'خط مبنای اولیه قرارداد EPC (Baseline V1)',
+    baselineCode: `BL-HSE-${seqNumber.toString().padStart(4, '0')}`,
+    name: 'خط مبنای اولیه زمان‌بندی و هزینه قرارداد EPC (Baseline V1 - پیش‌نویس)',
+    status: 'DRAFT',
     contractValue: bid.totalPrice,
     currency: bid.currency || 'IRR',
     plannedStartDate: startDate.toISOString().split('T')[0],
     plannedCompletionDate: completionDate.toISOString().split('T')[0],
-    approvedByUserId: req.body.userId || project.ownerId,
-    approvedAt: new Date().toISOString()
+    approvedByUserId: undefined,
+    approvedAt: undefined
   });
 
   res.status(201).json({
     contract: newContract,
-    message: 'پیش‌نویس قرارداد EPC با موفقیت از پیشنهاد برنده ایجاد و خط مبنا و مایلستون‌های اجرایی مقداردهی شدند.'
+    message: 'پیش‌نویس قرارداد EPC با موفقیت از پیشنهاد برنده ایجاد شد. شرایط نیازمند تایید و خط مبنا در وضعیت پیش‌نویس قرار دارد.'
   });
 });
 
 router.patch('/:projectId/contracts/:contractId', (req, res) => {
   const { contractId } = req.params;
   const updated = db.updateContract(contractId, req.body);
+  if (!updated) return res.status(404).json({ error: 'قرارداد یافت نشد' });
+  res.json(updated);
+});
+
+// Confirm Contract Terms (Transition from template to agreed terms)
+router.post('/:projectId/contracts/:contractId/confirm-terms', (req, res) => {
+  const { contractId } = req.params;
+  const updated = db.updateContract(contractId, {
+    ...req.body,
+    isTemplateTerms: false,
+    termsConfirmedByUser: true,
+    status: req.body.status || 'UNDER_REVIEW'
+  });
   if (!updated) return res.status(404).json({ error: 'قرارداد یافت نشد' });
   res.json(updated);
 });
@@ -197,6 +211,49 @@ router.post('/:projectId/contracts/:contractId/parties', (req, res) => {
   res.status(201).json(party);
 });
 
+// Party Sign Contract Endpoint
+router.post('/:projectId/contracts/:contractId/parties/:partyId/sign', (req, res) => {
+  const { contractId, partyId } = req.params;
+  const parties = db.getContractParties(contractId);
+  const party = parties.find((p: any) => p.id === partyId);
+  if (!party) return res.status(404).json({ error: 'طرف قرارداد یافت نشد' });
+
+  party.signStatus = 'SIGNED';
+  party.signedAt = new Date().toISOString();
+
+  const data = (db as any).readDB();
+  const pIndex = data.contractParties.findIndex((p: any) => p.id === partyId);
+  if (pIndex !== -1) {
+    data.contractParties[pIndex] = party;
+    (db as any).writeDB(data);
+  }
+
+  // Check if all parties have signed
+  const allParties = db.getContractParties(contractId);
+  const allSigned = allParties.length > 0 && allParties.every((p: any) => p.signStatus === 'SIGNED');
+
+  if (allSigned) {
+    db.updateContract(contractId, {
+      status: 'ACTIVE',
+      signedAt: new Date().toISOString(),
+      effectiveDate: new Date().toISOString().split('T')[0]
+    });
+  } else {
+    db.updateContract(contractId, {
+      status: 'PENDING_SIGNATURE'
+    });
+  }
+
+  res.json({ party, contractStatus: allSigned ? 'ACTIVE' : 'PENDING_SIGNATURE' });
+});
+
+// --- Contract Revisions ---
+router.get('/:projectId/contracts/:contractId/revisions', (req, res) => {
+  const { contractId } = req.params;
+  const revisions = db.getContractRevisions(contractId);
+  res.json(revisions);
+});
+
 // --- Change Requests (دستور تغییر کار / کلیم) ---
 router.get('/:projectId/change-requests', (req, res) => {
   const { projectId } = req.params;
@@ -215,17 +272,58 @@ router.post('/:projectId/change-requests', (req, res) => {
 });
 
 router.patch('/:projectId/change-requests/:crId', (req, res) => {
-  const { crId } = req.params;
+  const { crId, projectId } = req.params;
   const updated = db.updateChangeRequest(crId, req.body);
   if (!updated) return res.status(404).json({ error: 'دستور تغییر کار یافت نشد' });
 
-  // If approved, update contract value and schedule if specified
+  // If approved: create ContractRevision (Do NOT silently mutate original contractValue)
   if (updated.status === 'APPROVED' && updated.contractId) {
-    const contract = db.getProjectContracts(updated.projectId).find(c => c.id === updated.contractId);
-    if (contract && updated.costImpactAmount) {
-      db.updateContract(contract.id, {
-        contractValue: (contract.contractValue || 0) + updated.costImpactAmount
+    const contract = db.getContractById(updated.contractId);
+    if (contract) {
+      const nextRevNum = (contract.currentRevisionNumber || 1) + 1;
+      const currentVal = contract.revisedContractValue !== undefined ? contract.revisedContractValue : contract.contractValue;
+      const impact = updated.costImpactAmount || updated.costImpact || 0;
+      const newVal = currentVal + impact;
+
+      const rev = db.createContractRevision({
+        contractId: contract.id,
+        projectId,
+        revisionNumber: nextRevNum,
+        changeRequestId: updated.id,
+        reason: updated.reasonCategory || updated.title,
+        changesSummary: updated.description || `تایید دستور تغییر کار ${updated.crCode || updated.title}`,
+        contractValueBefore: currentVal,
+        contractValueAfter: newVal,
+        scheduleImpactDays: updated.scheduleImpactDays || 0,
+        approvedByUserId: updated.approvedByUserId || 'supervisor',
+        approvedAt: updated.approvedAt || new Date().toISOString()
       });
+
+      // Update revised value on contract record without mutating original contractValue
+      db.updateContract(contract.id, {
+        revisedContractValue: newVal,
+        currentRevisionNumber: nextRevNum
+      });
+
+      db.updateChangeRequest(updated.id, { revisionId: rev.id });
+
+      // If active baseline exists, supersede it and create updated approved baseline
+      const activeBaseline = db.getProjectBaseline(projectId);
+      if (activeBaseline && activeBaseline.status === 'APPROVED') {
+        db.updateProjectBaseline(activeBaseline.id, { status: 'SUPERSEDED', supersededAt: new Date().toISOString() });
+        db.createProjectBaseline({
+          projectId,
+          contractId: contract.id,
+          baselineCode: `BL-REV-0${nextRevNum}`,
+          name: `خط مبنای بازنگری شده (پیرو دستور تغییر ${updated.crCode || ''})`,
+          status: 'APPROVED',
+          contractValue: newVal,
+          currency: contract.currency || 'IRR',
+          plannedCompletionDate: activeBaseline.plannedCompletionDate,
+          approvedByUserId: updated.approvedByUserId || 'supervisor',
+          approvedAt: new Date().toISOString()
+        });
+      }
     }
   }
 
@@ -239,13 +337,43 @@ router.get('/:projectId/baseline', (req, res) => {
   res.json(baseline);
 });
 
+router.get('/:projectId/baselines', (req, res) => {
+  const { projectId } = req.params;
+  const baselines = db.getProjectBaselines(projectId);
+  res.json(baselines);
+});
+
 router.post('/:projectId/baseline', (req, res) => {
   const { projectId } = req.params;
   const baseline = db.createProjectBaseline({
     ...req.body,
-    projectId
+    projectId,
+    status: req.body.status || 'DRAFT'
   });
   res.status(201).json(baseline);
+});
+
+// Approve Baseline Endpoint
+router.post('/:projectId/baseline/:baselineId/approve', (req, res) => {
+  const { baselineId, projectId } = req.params;
+  const userId = req.body.userId || 'supervisor';
+
+  // Mark any previously approved baseline as SUPERSEDED
+  const allBaselines = db.getProjectBaselines(projectId);
+  allBaselines.forEach((b: any) => {
+    if (b.id !== baselineId && b.status === 'APPROVED') {
+      db.updateProjectBaseline(b.id, { status: 'SUPERSEDED', supersededAt: new Date().toISOString() });
+    }
+  });
+
+  const updated = db.updateProjectBaseline(baselineId, {
+    status: 'APPROVED',
+    approvedByUserId: userId,
+    approvedAt: new Date().toISOString()
+  });
+
+  if (!updated) return res.status(404).json({ error: 'خط مبنا یافت نشد' });
+  res.json(updated);
 });
 
 // --- Milestones ---

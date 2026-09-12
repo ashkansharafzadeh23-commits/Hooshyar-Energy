@@ -103,7 +103,7 @@ export interface ProjectFinancialModel {
   baseCurrency: 'IRR';
   displayCurrencyUnit: 'RIAL' | 'TOMAN';
   
-  assumptionSetId: string;
+  assumptionSetId?: string;
   sourceType: SourceType;
   selectedBidId?: string;
   engineeringDesignId?: string;

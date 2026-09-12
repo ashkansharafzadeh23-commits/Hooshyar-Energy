@@ -166,5 +166,2545 @@
         "DEC": 2.4504
       }
     }
+  ],
+  "energyProjects": [
+    {
+      "title": "نیروگاه خورشیدی تست یکپارچه ۱۰۰ کیلوواتی اصفهان",
+      "projectType": "SOLAR",
+      "status": "FEASIBILITY",
+      "ownerId": "test-user-1",
+      "targetCapacityKw": 100,
+      "estimatedBudgetIRR": 25000000000,
+      "location": {
+        "country": "Iran",
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "site": {
+        "type": "ROOFTOP_COMMERCIAL",
+        "areaM2": 1200
+      },
+      "energyRequirement": {
+        "gridConnected": true,
+        "gridStable": true
+      },
+      "id": "1c895ced-6838-4453-897b-1f9ceefe48de",
+      "createdAt": "2026-09-12T15:44:12.096Z",
+      "updatedAt": "2026-09-12T15:44:12.096Z"
+    },
+    {
+      "title": "نیروگاه خورشیدی تست یکپارچه ۱۰۰ کیلوواتی اصفهان",
+      "projectType": "SOLAR",
+      "status": "FEASIBILITY",
+      "ownerId": "test-user-1",
+      "targetCapacityKw": 100,
+      "estimatedBudgetIRR": 25000000000,
+      "location": {
+        "country": "Iran",
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "site": {
+        "type": "ROOFTOP_COMMERCIAL",
+        "areaM2": 1200
+      },
+      "energyRequirement": {
+        "gridConnected": true,
+        "gridStable": true
+      },
+      "id": "68425e5b-6a64-4282-8469-5f7830bddf3f",
+      "createdAt": "2026-09-12T15:44:42.730Z",
+      "updatedAt": "2026-09-12T15:44:42.730Z"
+    },
+    {
+      "title": "نیروگاه خورشیدی تست یکپارچه ۱۰۰ کیلوواتی اصفهان",
+      "projectType": "SOLAR",
+      "status": "FEASIBILITY",
+      "ownerId": "test-user-1",
+      "targetCapacityKw": 100,
+      "estimatedBudgetIRR": 25000000000,
+      "location": {
+        "country": "Iran",
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "site": {
+        "type": "ROOFTOP_COMMERCIAL",
+        "areaM2": 1200
+      },
+      "energyRequirement": {
+        "gridConnected": true,
+        "gridStable": true
+      },
+      "id": "f162ab3b-cad0-4ffd-8a09-deecdee71f0e",
+      "createdAt": "2026-09-12T15:45:08.223Z",
+      "updatedAt": "2026-09-12T15:45:08.223Z"
+    },
+    {
+      "title": "نیروگاه خورشیدی تست یکپارچه ۱۰۰ کیلوواتی اصفهان",
+      "projectType": "SOLAR",
+      "status": "FEASIBILITY",
+      "ownerId": "test-user-1",
+      "targetCapacityKw": 100,
+      "estimatedBudgetIRR": 25000000000,
+      "location": {
+        "country": "Iran",
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "site": {
+        "type": "ROOFTOP_COMMERCIAL",
+        "areaM2": 1200
+      },
+      "energyRequirement": {
+        "gridConnected": true,
+        "gridStable": true
+      },
+      "id": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "createdAt": "2026-09-12T15:45:26.526Z",
+      "updatedAt": "2026-09-12T15:45:26.526Z"
+    },
+    {
+      "title": "نیروگاه خورشیدی تست یکپارچه ۱۰۰ کیلوواتی اصفهان",
+      "projectType": "SOLAR",
+      "status": "FEASIBILITY",
+      "ownerId": "test-user-1",
+      "targetCapacityKw": 100,
+      "estimatedBudgetIRR": 25000000000,
+      "location": {
+        "country": "Iran",
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "site": {
+        "type": "ROOFTOP_COMMERCIAL",
+        "areaM2": 1200
+      },
+      "energyRequirement": {
+        "gridConnected": true,
+        "gridStable": true
+      },
+      "id": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "createdAt": "2026-09-12T15:45:54.770Z",
+      "updatedAt": "2026-09-12T15:45:54.770Z"
+    },
+    {
+      "projectCode": "PRJ-TEST-001",
+      "title": "نیروگاه خورشیدی تست یکپارچه ۱۰۰ کیلوواتی اصفهان",
+      "projectType": "SOLAR",
+      "status": "FEASIBILITY",
+      "ownerId": "test-user-1",
+      "targetCapacityKw": 100,
+      "estimatedBudgetIRR": 25000000000,
+      "location": {
+        "country": "Iran",
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "site": {
+        "type": "ROOFTOP_COMMERCIAL",
+        "areaM2": 1200
+      },
+      "energyRequirement": {
+        "gridConnected": true,
+        "gridStable": true
+      },
+      "id": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "createdAt": "2026-09-12T15:47:07.415Z",
+      "updatedAt": "2026-09-12T15:47:07.415Z"
+    }
+  ],
+  "financialModels": [
+    {
+      "projectId": "1c895ced-6838-4453-897b-1f9ceefe48de",
+      "modelCode": "MOD-HSE-TEST01",
+      "status": "DRAFT",
+      "baseCurrency": "IRR",
+      "displayCurrencyUnit": "TOMAN",
+      "sourceType": "ENGINEERING_ESTIMATE",
+      "version": 1,
+      "createdByUserId": "test-user-1",
+      "capex": {
+        "engineering": {
+          "amount": 250000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "solarPanels": {
+          "amount": 1200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverters": {
+          "amount": 450000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "battery": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "generator": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "mountingStructure": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "electricalEquipment": {
+          "amount": 150000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cables": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "protection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "transportation": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "installation": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "commissioning": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "gridConnection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "permits": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "civilWorks": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "tax": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "contingency": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "opex": {
+        "annualMaintenance": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "annualInsurance": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "annualMonitoring": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "annualLandLease": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "annualSecurity": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "annualAdministration": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "annualOther": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "replacements": [],
+      "energyEconomics": {
+        "annualGenerationYear1Kwh": 165000,
+        "annualSelfConsumptionRatioPercent": 0,
+        "customerRetailTariff": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "feedInTariff": {
+          "amount": 3200,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "greenMarketTariff": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "id": "da94ecbb-21c4-4bb5-b449-f36385a866e0",
+      "createdAt": "2026-09-12T15:44:12.097Z",
+      "updatedAt": "2026-09-12T15:44:12.097Z"
+    },
+    {
+      "projectId": "68425e5b-6a64-4282-8469-5f7830bddf3f",
+      "modelCode": "MOD-HSE-TEST01",
+      "status": "DRAFT",
+      "baseCurrency": "IRR",
+      "displayCurrencyUnit": "TOMAN",
+      "assumptionSetId": "6566d1ed-51bf-4847-aa3a-9dec98bd5862",
+      "sourceType": "ENGINEERING_ESTIMATE",
+      "version": 1,
+      "createdByUserId": "test-user-1",
+      "capex": {
+        "engineering": {
+          "amount": 250000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "solarPanels": {
+          "amount": 1200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverters": {
+          "amount": 450000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "battery": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "generator": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "mountingStructure": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "electricalEquipment": {
+          "amount": 150000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cables": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "protection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "transportation": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "installation": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "commissioning": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "gridConnection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "permits": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "civilWorks": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "tax": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "contingency": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "opex": {
+        "maintenance": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cleaning": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "insurance": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "landLease": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "staff": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "security": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "batteryReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverterReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "administration": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "replacements": [],
+      "energyEconomics": {
+        "installedCapacityKw": 100,
+        "annualGenerationKwh": 165000,
+        "selfConsumptionRatio": 0,
+        "exportRatio": 100,
+        "customerTariff": {
+          "id": "t-ret",
+          "name": "تعرفه مشترکین",
+          "type": "CUSTOMER_RETAIL_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 4000,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:44:42.731Z",
+          "annualEscalationPercent": 20,
+          "source": "توانیر"
+        },
+        "exportTariff": {
+          "id": "t-satba",
+          "name": "نرخ خرید تضمینی ساتبا",
+          "type": "FEED_IN_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 3200,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:44:42.731Z",
+          "annualEscalationPercent": 0,
+          "source": "ساتبا"
+        }
+      },
+      "id": "3d64885d-e7c3-4d2c-8104-0d2bfc0c7d23",
+      "createdAt": "2026-09-12T15:44:42.732Z",
+      "updatedAt": "2026-09-12T15:44:42.732Z"
+    },
+    {
+      "projectId": "f162ab3b-cad0-4ffd-8a09-deecdee71f0e",
+      "modelCode": "MOD-HSE-TEST01",
+      "status": "DRAFT",
+      "baseCurrency": "IRR",
+      "displayCurrencyUnit": "TOMAN",
+      "assumptionSetId": "f18e35f7-e241-40cc-846a-a31d0aba1e03",
+      "sourceType": "ENGINEERING_ESTIMATE",
+      "version": 1,
+      "createdByUserId": "test-user-1",
+      "capex": {
+        "engineering": {
+          "amount": 250000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "solarPanels": {
+          "amount": 1200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverters": {
+          "amount": 450000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "battery": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "generator": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "mountingStructure": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "electricalEquipment": {
+          "amount": 150000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cables": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "protection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "transportation": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "installation": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "commissioning": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "gridConnection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "permits": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "civilWorks": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "tax": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "contingency": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "opex": {
+        "maintenance": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cleaning": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "insurance": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "landLease": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "staff": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "security": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "batteryReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverterReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "administration": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "replacements": [],
+      "energyEconomics": {
+        "installedCapacityKw": 100,
+        "annualGenerationKwh": 165000,
+        "selfConsumptionRatio": 0,
+        "exportRatio": 100,
+        "customerTariff": {
+          "id": "t-ret",
+          "name": "تعرفه مشترکین",
+          "type": "CUSTOMER_RETAIL_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 4000,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:45:08.225Z",
+          "annualEscalationPercent": 20,
+          "source": "توانیر"
+        },
+        "exportTariff": {
+          "id": "t-satba",
+          "name": "نرخ خرید تضمینی ساتبا",
+          "type": "FEED_IN_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 3200,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:45:08.225Z",
+          "annualEscalationPercent": 0,
+          "source": "ساتبا"
+        }
+      },
+      "id": "07678c97-9f45-4617-9d13-0439f59dc333",
+      "createdAt": "2026-09-12T15:45:08.225Z",
+      "updatedAt": "2026-09-12T15:45:08.225Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "modelCode": "MOD-HSE-TEST01",
+      "status": "DRAFT",
+      "baseCurrency": "IRR",
+      "displayCurrencyUnit": "TOMAN",
+      "assumptionSetId": "b5232f11-1a8a-4fb8-b19d-da93cb125eec",
+      "sourceType": "ENGINEERING_ESTIMATE",
+      "version": 1,
+      "createdByUserId": "test-user-1",
+      "capex": {
+        "engineering": {
+          "amount": 250000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "solarPanels": {
+          "amount": 1200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverters": {
+          "amount": 450000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "battery": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "generator": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "mountingStructure": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "electricalEquipment": {
+          "amount": 150000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cables": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "protection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "transportation": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "installation": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "commissioning": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "gridConnection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "permits": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "civilWorks": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "tax": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "contingency": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "opex": {
+        "maintenance": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cleaning": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "insurance": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "landLease": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "staff": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "security": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "batteryReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverterReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "administration": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "replacements": [],
+      "energyEconomics": {
+        "installedCapacityKw": 100,
+        "annualGenerationKwh": 165000,
+        "selfConsumptionRatio": 0,
+        "exportRatio": 100,
+        "customerTariff": {
+          "id": "t-ret",
+          "name": "تعرفه مشترکین",
+          "type": "CUSTOMER_RETAIL_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 4000,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:45:26.529Z",
+          "annualEscalationPercent": 20,
+          "source": "توانیر"
+        },
+        "exportTariff": {
+          "id": "t-satba",
+          "name": "نرخ خرید تضمینی ساتبا",
+          "type": "FEED_IN_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 3200,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:45:26.529Z",
+          "annualEscalationPercent": 0,
+          "source": "ساتبا"
+        }
+      },
+      "id": "538fc830-0807-464f-a409-50148464452d",
+      "createdAt": "2026-09-12T15:45:26.530Z",
+      "updatedAt": "2026-09-12T15:45:26.530Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "modelCode": "MOD-HSE-TEST01",
+      "status": "DRAFT",
+      "baseCurrency": "IRR",
+      "displayCurrencyUnit": "TOMAN",
+      "assumptionSetId": "e3663e37-ab05-4cdf-a07a-3badd038b28c",
+      "sourceType": "ENGINEERING_ESTIMATE",
+      "version": 1,
+      "createdByUserId": "test-user-1",
+      "capex": {
+        "engineering": {
+          "amount": 250000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "solarPanels": {
+          "amount": 1200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverters": {
+          "amount": 450000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "battery": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "generator": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "mountingStructure": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "electricalEquipment": {
+          "amount": 150000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cables": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "protection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "transportation": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "installation": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "commissioning": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "gridConnection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "permits": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "civilWorks": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "tax": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "contingency": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "opex": {
+        "maintenance": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cleaning": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "insurance": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "landLease": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "staff": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "security": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "batteryReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverterReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "administration": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "replacements": [],
+      "energyEconomics": {
+        "installedCapacityKw": 100,
+        "annualGenerationKwh": 165000,
+        "selfConsumptionRatio": 0,
+        "exportRatio": 100,
+        "customerTariff": {
+          "id": "t-ret",
+          "name": "تعرفه مشترکین",
+          "type": "CUSTOMER_RETAIL_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 4000,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:45:54.774Z",
+          "annualEscalationPercent": 20,
+          "source": "توانیر"
+        },
+        "exportTariff": {
+          "id": "t-satba",
+          "name": "نرخ خرید تضمینی ساتبا",
+          "type": "FEED_IN_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 3200,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:45:54.774Z",
+          "annualEscalationPercent": 0,
+          "source": "ساتبا"
+        }
+      },
+      "id": "d9f2650d-6aa8-43e2-bd86-32242a0189d2",
+      "createdAt": "2026-09-12T15:45:54.774Z",
+      "updatedAt": "2026-09-12T15:45:54.774Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "modelCode": "MOD-HSE-TEST01",
+      "status": "DRAFT",
+      "baseCurrency": "IRR",
+      "displayCurrencyUnit": "TOMAN",
+      "assumptionSetId": "a53e84a5-5451-40fe-98c8-a8708ff059b1",
+      "sourceType": "ENGINEERING_ESTIMATE",
+      "version": 1,
+      "createdByUserId": "test-user-1",
+      "capex": {
+        "engineering": {
+          "amount": 250000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "solarPanels": {
+          "amount": 1200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverters": {
+          "amount": 450000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "battery": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "generator": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "mountingStructure": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "electricalEquipment": {
+          "amount": 150000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cables": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "protection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "transportation": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "installation": {
+          "amount": 200000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "commissioning": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "gridConnection": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "permits": {
+          "amount": 20000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "civilWorks": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "tax": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "contingency": {
+          "amount": 50000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "opex": {
+        "maintenance": {
+          "amount": 30000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "cleaning": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "insurance": {
+          "amount": 10000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "monitoring": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "landLease": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "staff": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "security": {
+          "amount": 5000000,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "batteryReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "inverterReplacementReserve": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "administration": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        },
+        "other": {
+          "amount": 0,
+          "currency": "IRR",
+          "unit": "TOMAN"
+        }
+      },
+      "replacements": [],
+      "energyEconomics": {
+        "installedCapacityKw": 100,
+        "annualGenerationKwh": 165000,
+        "selfConsumptionRatio": 0,
+        "exportRatio": 100,
+        "customerTariff": {
+          "id": "t-ret",
+          "name": "تعرفه مشترکین",
+          "type": "CUSTOMER_RETAIL_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 4000,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:47:07.417Z",
+          "annualEscalationPercent": 20,
+          "source": "توانیر"
+        },
+        "exportTariff": {
+          "id": "t-satba",
+          "name": "نرخ خرید تضمینی ساتبا",
+          "type": "FEED_IN_TARIFF",
+          "unitPricePerKwh": {
+            "amount": 3200,
+            "currency": "IRR",
+            "unit": "TOMAN"
+          },
+          "effectiveDate": "2026-09-12T15:47:07.417Z",
+          "annualEscalationPercent": 0,
+          "source": "ساتبا"
+        }
+      },
+      "id": "cadb844d-392d-452d-b005-f472227f9a00",
+      "createdAt": "2026-09-12T15:47:07.417Z",
+      "updatedAt": "2026-09-12T15:47:07.417Z"
+    }
+  ],
+  "financialAssumptionSets": [
+    {
+      "projectId": "68425e5b-6a64-4282-8469-5f7830bddf3f",
+      "name": "مفروضات اقتصادی پایه",
+      "version": 1,
+      "projectLifetimeYears": 20,
+      "discountRatePercent": 30,
+      "annualInflationPercent": 35,
+      "electricityTariffEscalationPercent": 20,
+      "equipmentPriceEscalationPercent": 25,
+      "panelAnnualDegradationPercent": 0.5,
+      "systemAvailabilityPercent": 99,
+      "performanceRatioPercent": 80,
+      "annualOpexEscalationPercent": 30,
+      "taxRatePercent": 0,
+      "insurancePercent": 0.5,
+      "maintenancePercent": 1,
+      "residualValuePercent": 5,
+      "id": "6566d1ed-51bf-4847-aa3a-9dec98bd5862",
+      "createdAt": "2026-09-12T15:44:42.731Z",
+      "updatedAt": "2026-09-12T15:44:42.731Z"
+    },
+    {
+      "projectId": "f162ab3b-cad0-4ffd-8a09-deecdee71f0e",
+      "name": "مفروضات اقتصادی پایه",
+      "version": 1,
+      "projectLifetimeYears": 20,
+      "discountRatePercent": 30,
+      "annualInflationPercent": 35,
+      "electricityTariffEscalationPercent": 20,
+      "equipmentPriceEscalationPercent": 25,
+      "panelAnnualDegradationPercent": 0.5,
+      "systemAvailabilityPercent": 99,
+      "performanceRatioPercent": 80,
+      "annualOpexEscalationPercent": 30,
+      "taxRatePercent": 0,
+      "insurancePercent": 0.5,
+      "maintenancePercent": 1,
+      "residualValuePercent": 5,
+      "id": "f18e35f7-e241-40cc-846a-a31d0aba1e03",
+      "createdAt": "2026-09-12T15:45:08.224Z",
+      "updatedAt": "2026-09-12T15:45:08.224Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "name": "مفروضات اقتصادی پایه",
+      "version": 1,
+      "projectLifetimeYears": 20,
+      "discountRatePercent": 30,
+      "annualInflationPercent": 35,
+      "electricityTariffEscalationPercent": 20,
+      "equipmentPriceEscalationPercent": 25,
+      "panelAnnualDegradationPercent": 0.5,
+      "systemAvailabilityPercent": 99,
+      "performanceRatioPercent": 80,
+      "annualOpexEscalationPercent": 30,
+      "taxRatePercent": 0,
+      "insurancePercent": 0.5,
+      "maintenancePercent": 1,
+      "residualValuePercent": 5,
+      "id": "b5232f11-1a8a-4fb8-b19d-da93cb125eec",
+      "createdAt": "2026-09-12T15:45:26.528Z",
+      "updatedAt": "2026-09-12T15:45:26.529Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "name": "مفروضات اقتصادی پایه",
+      "version": 1,
+      "projectLifetimeYears": 20,
+      "discountRatePercent": 30,
+      "annualInflationPercent": 35,
+      "electricityTariffEscalationPercent": 20,
+      "equipmentPriceEscalationPercent": 25,
+      "panelAnnualDegradationPercent": 0.5,
+      "systemAvailabilityPercent": 99,
+      "performanceRatioPercent": 80,
+      "annualOpexEscalationPercent": 30,
+      "taxRatePercent": 0,
+      "insurancePercent": 0.5,
+      "maintenancePercent": 1,
+      "residualValuePercent": 5,
+      "id": "e3663e37-ab05-4cdf-a07a-3badd038b28c",
+      "createdAt": "2026-09-12T15:45:54.773Z",
+      "updatedAt": "2026-09-12T15:45:54.773Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "name": "مفروضات اقتصادی پایه",
+      "version": 1,
+      "projectLifetimeYears": 20,
+      "discountRatePercent": 30,
+      "annualInflationPercent": 35,
+      "electricityTariffEscalationPercent": 20,
+      "equipmentPriceEscalationPercent": 25,
+      "panelAnnualDegradationPercent": 0.5,
+      "systemAvailabilityPercent": 99,
+      "performanceRatioPercent": 80,
+      "annualOpexEscalationPercent": 30,
+      "taxRatePercent": 0,
+      "insurancePercent": 0.5,
+      "maintenancePercent": 1,
+      "residualValuePercent": 5,
+      "id": "a53e84a5-5451-40fe-98c8-a8708ff059b1",
+      "createdAt": "2026-09-12T15:47:07.416Z",
+      "updatedAt": "2026-09-12T15:47:07.416Z"
+    }
+  ],
+  "investmentOpportunities": [
+    {
+      "projectId": "68425e5b-6a64-4282-8469-5f7830bddf3f",
+      "createdByUserId": "test-user-1",
+      "opportunityCode": "OPP-PRJ-00001",
+      "type": "PROJECT_SEEKING_CAPITAL",
+      "status": "PUBLISHED",
+      "title": "فرصت سرمایه‌گذاری نیروگاه ۱۰۰ کیلوواتی نجف‌آباد",
+      "summary": "پروژه نیروگاه خورشیدی بر بام تجاری آماده احداث",
+      "location": {
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "projectStage": "FEASIBILITY",
+      "targetCapacityKw": 100,
+      "landStatus": "OWNED",
+      "permitStatus": "IN_PROGRESS",
+      "gridConnectionStatus": "APPROVED",
+      "engineeringStatus": "IN_PROGRESS",
+      "financialModelStatus": "COMPLETE",
+      "epcStatus": "SELECTED",
+      "capitalRequirement": {
+        "totalProjectCapex": 2500000000,
+        "ownerEquity": 1250000000,
+        "capitalRequired": 1250000000
+      },
+      "minimumPartnerCapital": 200000000,
+      "preferredPartnerType": "EQUITY_PARTNER",
+      "visibility": "PUBLIC_SUMMARY",
+      "riskDisclosure": [
+        "سودآوری منوط به تداوم تابش نرمال و عدم قطعی مکرر شبکه برق است.",
+        "تعدیل نرخ خرید تضمینی تابع مقررات وزارت نیرو و سازمان ساتبا می‌باشد."
+      ],
+      "id": "abf61d37-43cc-47d1-ac88-26181288d777",
+      "createdAt": "2026-09-12T15:44:42.737Z",
+      "updatedAt": "2026-09-12T15:44:42.737Z"
+    },
+    {
+      "projectId": "f162ab3b-cad0-4ffd-8a09-deecdee71f0e",
+      "createdByUserId": "test-user-1",
+      "opportunityCode": "OPP-PRJ-00001",
+      "type": "PROJECT_SEEKING_CAPITAL",
+      "status": "PUBLISHED",
+      "title": "فرصت سرمایه‌گذاری نیروگاه ۱۰۰ کیلوواتی نجف‌آباد",
+      "summary": "پروژه نیروگاه خورشیدی بر بام تجاری آماده احداث",
+      "location": {
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "projectStage": "FEASIBILITY",
+      "targetCapacityKw": 100,
+      "landStatus": "OWNED",
+      "permitStatus": "IN_PROGRESS",
+      "gridConnectionStatus": "APPROVED",
+      "engineeringStatus": "IN_PROGRESS",
+      "financialModelStatus": "COMPLETE",
+      "epcStatus": "SELECTED",
+      "capitalRequirement": {
+        "totalProjectCapex": 2500000000,
+        "ownerEquity": 1250000000,
+        "capitalRequired": 1250000000
+      },
+      "minimumPartnerCapital": 200000000,
+      "preferredPartnerType": "EQUITY_PARTNER",
+      "visibility": "PUBLIC_SUMMARY",
+      "riskDisclosure": [
+        "سودآوری منوط به تداوم تابش نرمال و عدم قطعی مکرر شبکه برق است.",
+        "تعدیل نرخ خرید تضمینی تابع مقررات وزارت نیرو و سازمان ساتبا می‌باشد."
+      ],
+      "id": "a93cb3e8-ca30-4b4e-bddd-2733690a94cd",
+      "createdAt": "2026-09-12T15:45:08.231Z",
+      "updatedAt": "2026-09-12T15:45:08.231Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "createdByUserId": "test-user-1",
+      "opportunityCode": "OPP-PRJ-00001",
+      "type": "PROJECT_SEEKING_CAPITAL",
+      "status": "PUBLISHED",
+      "title": "فرصت سرمایه‌گذاری نیروگاه ۱۰۰ کیلوواتی نجف‌آباد",
+      "summary": "پروژه نیروگاه خورشیدی بر بام تجاری آماده احداث",
+      "location": {
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "projectStage": "FEASIBILITY",
+      "targetCapacityKw": 100,
+      "landStatus": "OWNED",
+      "permitStatus": "IN_PROGRESS",
+      "gridConnectionStatus": "APPROVED",
+      "engineeringStatus": "IN_PROGRESS",
+      "financialModelStatus": "COMPLETE",
+      "epcStatus": "SELECTED",
+      "capitalRequirement": {
+        "totalProjectCapex": 2500000000,
+        "ownerEquity": 1250000000,
+        "capitalRequired": 1250000000
+      },
+      "minimumPartnerCapital": 200000000,
+      "preferredPartnerType": "EQUITY_PARTNER",
+      "visibility": "PUBLIC_SUMMARY",
+      "riskDisclosure": [
+        "سودآوری منوط به تداوم تابش نرمال و عدم قطعی مکرر شبکه برق است.",
+        "تعدیل نرخ خرید تضمینی تابع مقررات وزارت نیرو و سازمان ساتبا می‌باشد."
+      ],
+      "id": "260410fa-bbb0-432c-a9eb-0aff3f72ff3b",
+      "createdAt": "2026-09-12T15:45:26.536Z",
+      "updatedAt": "2026-09-12T15:45:26.536Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "createdByUserId": "test-user-1",
+      "opportunityCode": "OPP-PRJ-00001",
+      "type": "PROJECT_SEEKING_CAPITAL",
+      "status": "PUBLISHED",
+      "title": "فرصت سرمایه‌گذاری نیروگاه ۱۰۰ کیلوواتی نجف‌آباد",
+      "summary": "پروژه نیروگاه خورشیدی بر بام تجاری آماده احداث",
+      "location": {
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "projectStage": "FEASIBILITY",
+      "targetCapacityKw": 100,
+      "landStatus": "OWNED",
+      "permitStatus": "IN_PROGRESS",
+      "gridConnectionStatus": "APPROVED",
+      "engineeringStatus": "IN_PROGRESS",
+      "financialModelStatus": "COMPLETE",
+      "epcStatus": "SELECTED",
+      "capitalRequirement": {
+        "totalProjectCapex": 2500000000,
+        "ownerEquity": 1250000000,
+        "capitalRequired": 1250000000
+      },
+      "minimumPartnerCapital": 200000000,
+      "preferredPartnerType": "EQUITY_PARTNER",
+      "visibility": "PUBLIC_SUMMARY",
+      "riskDisclosure": [
+        "سودآوری منوط به تداوم تابش نرمال و عدم قطعی مکرر شبکه برق است.",
+        "تعدیل نرخ خرید تضمینی تابع مقررات وزارت نیرو و سازمان ساتبا می‌باشد."
+      ],
+      "id": "77e39d4f-03ba-4d37-896f-0e9bbb07b65f",
+      "createdAt": "2026-09-12T15:45:54.778Z",
+      "updatedAt": "2026-09-12T15:45:54.778Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "createdByUserId": "test-user-1",
+      "opportunityCode": "OPP-PRJ-00001",
+      "type": "PROJECT_SEEKING_CAPITAL",
+      "status": "PUBLISHED",
+      "title": "فرصت سرمایه‌گذاری نیروگاه ۱۰۰ کیلوواتی نجف‌آباد",
+      "summary": "پروژه نیروگاه خورشیدی بر بام تجاری آماده احداث",
+      "location": {
+        "province": "اصفهان",
+        "city": "نجف‌آباد"
+      },
+      "projectStage": "FEASIBILITY",
+      "targetCapacityKw": 100,
+      "landStatus": "OWNED",
+      "permitStatus": "IN_PROGRESS",
+      "gridConnectionStatus": "APPROVED",
+      "engineeringStatus": "IN_PROGRESS",
+      "financialModelStatus": "COMPLETE",
+      "epcStatus": "SELECTED",
+      "capitalRequirement": {
+        "totalProjectCapex": 2500000000,
+        "ownerEquity": 1250000000,
+        "capitalRequired": 1250000000
+      },
+      "minimumPartnerCapital": 200000000,
+      "preferredPartnerType": "EQUITY_PARTNER",
+      "visibility": "PUBLIC_SUMMARY",
+      "riskDisclosure": [
+        "سودآوری منوط به تداوم تابش نرمال و عدم قطعی مکرر شبکه برق است.",
+        "تعدیل نرخ خرید تضمینی تابع مقررات وزارت نیرو و سازمان ساتبا می‌باشد."
+      ],
+      "id": "ef2bcf69-db90-4030-9850-9a4a5bb32731",
+      "createdAt": "2026-09-12T15:47:07.422Z",
+      "updatedAt": "2026-09-12T15:47:07.422Z"
+    }
+  ],
+  "investorProfiles": [
+    {
+      "userId": "investor-user-1",
+      "investorType": "COMPANY",
+      "capitalMin": 500000000,
+      "capitalMax": 5000000000,
+      "currency": "TOMAN",
+      "preferredProvinces": [
+        "اصفهان",
+        "تهران",
+        "یزد"
+      ],
+      "preferredProjectSizeMinKw": 50,
+      "preferredProjectSizeMaxKw": 500,
+      "preferredProjectStages": [
+        "FEASIBILITY",
+        "EPC_SELECTED"
+      ],
+      "riskPreference": "BALANCED",
+      "preferredTechnologies": [
+        "SOLAR"
+      ],
+      "requiresLandVerified": true,
+      "requiresFinancialModel": true,
+      "requiresEpcSelected": false,
+      "status": "ACTIVE",
+      "id": "9ab508fc-c9e4-47a8-9a73-ffd470b5cc34",
+      "createdAt": "2026-09-12T15:44:42.738Z",
+      "updatedAt": "2026-09-12T15:44:42.738Z"
+    },
+    {
+      "userId": "investor-user-1",
+      "investorType": "COMPANY",
+      "capitalMin": 500000000,
+      "capitalMax": 5000000000,
+      "currency": "TOMAN",
+      "preferredProvinces": [
+        "اصفهان",
+        "تهران",
+        "یزد"
+      ],
+      "preferredProjectSizeMinKw": 50,
+      "preferredProjectSizeMaxKw": 500,
+      "preferredProjectStages": [
+        "FEASIBILITY",
+        "EPC_SELECTED"
+      ],
+      "riskPreference": "BALANCED",
+      "preferredTechnologies": [
+        "SOLAR"
+      ],
+      "requiresLandVerified": true,
+      "requiresFinancialModel": true,
+      "requiresEpcSelected": false,
+      "status": "ACTIVE",
+      "id": "99a7ee3a-8d34-47d6-8953-7ddc0305ca88",
+      "createdAt": "2026-09-12T15:45:08.233Z",
+      "updatedAt": "2026-09-12T15:45:08.233Z"
+    },
+    {
+      "userId": "investor-user-1",
+      "investorType": "COMPANY",
+      "capitalMin": 500000000,
+      "capitalMax": 5000000000,
+      "currency": "TOMAN",
+      "preferredProvinces": [
+        "اصفهان",
+        "تهران",
+        "یزد"
+      ],
+      "preferredProjectSizeMinKw": 50,
+      "preferredProjectSizeMaxKw": 500,
+      "preferredProjectStages": [
+        "FEASIBILITY",
+        "EPC_SELECTED"
+      ],
+      "riskPreference": "BALANCED",
+      "preferredTechnologies": [
+        "SOLAR"
+      ],
+      "requiresLandVerified": true,
+      "requiresFinancialModel": true,
+      "requiresEpcSelected": false,
+      "status": "ACTIVE",
+      "id": "667a628d-ce38-4ebe-b519-f8efca0ce4c3",
+      "createdAt": "2026-09-12T15:45:26.538Z",
+      "updatedAt": "2026-09-12T15:45:26.538Z"
+    },
+    {
+      "userId": "investor-user-1",
+      "investorType": "COMPANY",
+      "capitalMin": 500000000,
+      "capitalMax": 5000000000,
+      "currency": "TOMAN",
+      "preferredProvinces": [
+        "اصفهان",
+        "تهران",
+        "یزد"
+      ],
+      "preferredProjectSizeMinKw": 50,
+      "preferredProjectSizeMaxKw": 500,
+      "preferredProjectStages": [
+        "FEASIBILITY",
+        "EPC_SELECTED"
+      ],
+      "riskPreference": "BALANCED",
+      "preferredTechnologies": [
+        "SOLAR"
+      ],
+      "requiresLandVerified": true,
+      "requiresFinancialModel": true,
+      "requiresEpcSelected": false,
+      "status": "ACTIVE",
+      "id": "0825e7a5-85d9-4b42-b56a-78f26d252c50",
+      "createdAt": "2026-09-12T15:45:54.789Z",
+      "updatedAt": "2026-09-12T15:45:54.789Z"
+    },
+    {
+      "userId": "investor-user-1",
+      "investorType": "COMPANY",
+      "capitalMin": 500000000,
+      "capitalMax": 5000000000,
+      "currency": "TOMAN",
+      "preferredProvinces": [
+        "اصفهان",
+        "تهران",
+        "یزد"
+      ],
+      "preferredProjectSizeMinKw": 50,
+      "preferredProjectSizeMaxKw": 500,
+      "preferredProjectStages": [
+        "FEASIBILITY",
+        "EPC_SELECTED"
+      ],
+      "riskPreference": "BALANCED",
+      "preferredTechnologies": [
+        "SOLAR"
+      ],
+      "requiresLandVerified": true,
+      "requiresFinancialModel": true,
+      "requiresEpcSelected": false,
+      "status": "ACTIVE",
+      "id": "7d962830-e05d-4c42-baf9-22c1e6341d4f",
+      "createdAt": "2026-09-12T15:47:07.425Z",
+      "updatedAt": "2026-09-12T15:47:07.425Z"
+    }
+  ],
+  "projectRfqs": [
+    {
+      "projectId": "68425e5b-6a64-4282-8469-5f7830bddf3f",
+      "title": "مناقصه احداث نیروگاه خورشیدی ۱۰۰ کیلووات",
+      "scope": "EPC کامل",
+      "submissionDeadline": "2026-09-26T15:44:42.739Z",
+      "currency": "IRR",
+      "visibility": "VERIFIED_EPCS",
+      "technicalRequirements": [
+        "پنل‌های مونوکریستالین Tier-1",
+        "اینورتر استرینگ متصل به شبکه"
+      ],
+      "commercialRequirements": [
+        "حداقل ۲۴ ماه گارانتی",
+        "ارائه ضمانتنامه حسن اجرای تعهدات"
+      ],
+      "requiredDocuments": [
+        "نقشه‌های تک‌خطی",
+        "مجوز پیمانکاری"
+      ],
+      "createdByUserId": "test-user-1",
+      "id": "069e0a70-763d-442a-a462-5fbbff9816b9",
+      "createdAt": "2026-09-12T15:44:42.739Z"
+    },
+    {
+      "projectId": "f162ab3b-cad0-4ffd-8a09-deecdee71f0e",
+      "title": "مناقصه احداث نیروگاه خورشیدی ۱۰۰ کیلووات",
+      "scope": "EPC کامل",
+      "submissionDeadline": "2026-09-26T15:45:08.233Z",
+      "currency": "IRR",
+      "visibility": "VERIFIED_EPCS",
+      "technicalRequirements": [
+        "پنل‌های مونوکریستالین Tier-1",
+        "اینورتر استرینگ متصل به شبکه"
+      ],
+      "commercialRequirements": [
+        "حداقل ۲۴ ماه گارانتی",
+        "ارائه ضمانتنامه حسن اجرای تعهدات"
+      ],
+      "requiredDocuments": [
+        "نقشه‌های تک‌خطی",
+        "مجوز پیمانکاری"
+      ],
+      "createdByUserId": "test-user-1",
+      "id": "b5407216-c569-48ef-81ed-eee33b72dc08",
+      "createdAt": "2026-09-12T15:45:08.234Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "title": "مناقصه احداث نیروگاه خورشیدی ۱۰۰ کیلووات",
+      "scope": "EPC کامل",
+      "submissionDeadline": "2026-09-26T15:45:26.539Z",
+      "currency": "IRR",
+      "visibility": "VERIFIED_EPCS",
+      "technicalRequirements": [
+        "پنل‌های مونوکریستالین Tier-1",
+        "اینورتر استرینگ متصل به شبکه"
+      ],
+      "commercialRequirements": [
+        "حداقل ۲۴ ماه گارانتی",
+        "ارائه ضمانتنامه حسن اجرای تعهدات"
+      ],
+      "requiredDocuments": [
+        "نقشه‌های تک‌خطی",
+        "مجوز پیمانکاری"
+      ],
+      "createdByUserId": "test-user-1",
+      "id": "7139c5c3-e515-421f-8f8e-076078e31d1c",
+      "createdAt": "2026-09-12T15:45:26.539Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "title": "مناقصه احداث نیروگاه خورشیدی ۱۰۰ کیلووات",
+      "scope": "EPC کامل",
+      "submissionDeadline": "2026-09-26T15:45:54.790Z",
+      "currency": "IRR",
+      "visibility": "VERIFIED_EPCS",
+      "technicalRequirements": [
+        "پنل‌های مونوکریستالین Tier-1",
+        "اینورتر استرینگ متصل به شبکه"
+      ],
+      "commercialRequirements": [
+        "حداقل ۲۴ ماه گارانتی",
+        "ارائه ضمانتنامه حسن اجرای تعهدات"
+      ],
+      "requiredDocuments": [
+        "نقشه‌های تک‌خطی",
+        "مجوز پیمانکاری"
+      ],
+      "createdByUserId": "test-user-1",
+      "id": "2d6f6431-0590-47c5-ac7e-b40ba254c3c9",
+      "createdAt": "2026-09-12T15:45:54.792Z"
+    },
+    {
+      "rfqCode": "RFQ-HSE-000001",
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "title": "مناقصه احداث نیروگاه خورشیدی ۱۰۰ کیلووات",
+      "description": "استعلام قیمت و انتخاب پیمانکار EPC نیروگاه خورشیدی نجف‌آباد",
+      "scope": "EPC کامل",
+      "status": "PUBLISHED",
+      "submissionDeadline": "2026-09-26T15:47:07.426Z",
+      "currency": "IRR",
+      "visibility": "VERIFIED_EPCS",
+      "technicalRequirements": [
+        "پنل‌های مونوکریستالین Tier-1",
+        "اینورتر استرینگ متصل به شبکه"
+      ],
+      "commercialRequirements": [
+        "حداقل ۲۴ ماه گارانتی",
+        "ارائه ضمانتنامه حسن اجرای تعهدات"
+      ],
+      "requiredDocuments": [
+        "نقشه‌های تک‌خطی",
+        "مجوز پیمانکاری"
+      ],
+      "createdByUserId": "test-user-1",
+      "id": "38ef3aa7-b866-485f-b27f-3f75376c3627",
+      "createdAt": "2026-09-12T15:47:07.427Z"
+    }
+  ],
+  "epcBids": [
+    {
+      "bidCode": "BID-HSE-000001",
+      "projectId": "f162ab3b-cad0-4ffd-8a09-deecdee71f0e",
+      "rfqId": "b5407216-c569-48ef-81ed-eee33b72dc08",
+      "epcOrganizationId": "org-epc-01",
+      "status": "SELECTED",
+      "currency": "IRR",
+      "totalPrice": 24000000000,
+      "engineeringPrice": 2000000000,
+      "equipmentPrice": 16000000000,
+      "installationPrice": 5000000000,
+      "otherPrice": 1000000000,
+      "executionDays": 90,
+      "warrantyYears": 2,
+      "equipmentSummary": {
+        "panels": "550W Tier-1",
+        "inverters": "100kW String"
+      },
+      "paymentTerms": "پیش‌پرداخت ۲۰٪، تحویل تجهیزات ۶۰٪، تحویل موقت ۲۰٪",
+      "technicalDocuments": [
+        "doc1.pdf"
+      ],
+      "commercialDocuments": [
+        "com1.pdf"
+      ],
+      "technicalCompliance": "COMPLIANT",
+      "riskFlags": [],
+      "id": "d0a4035a-c834-4e95-ab90-609c7532c5e6",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-12T15:45:08.235Z"
+    },
+    {
+      "bidCode": "BID-HSE-000001",
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "rfqId": "7139c5c3-e515-421f-8f8e-076078e31d1c",
+      "epcOrganizationId": "org-epc-01",
+      "status": "SELECTED",
+      "currency": "IRR",
+      "totalPrice": 24000000000,
+      "engineeringPrice": 2000000000,
+      "equipmentPrice": 16000000000,
+      "installationPrice": 5000000000,
+      "otherPrice": 1000000000,
+      "executionDays": 90,
+      "warrantyYears": 2,
+      "equipmentSummary": {
+        "panels": "550W Tier-1",
+        "inverters": "100kW String"
+      },
+      "paymentTerms": "پیش‌پرداخت ۲۰٪، تحویل تجهیزات ۶۰٪، تحویل موقت ۲۰٪",
+      "technicalDocuments": [
+        "doc1.pdf"
+      ],
+      "commercialDocuments": [
+        "com1.pdf"
+      ],
+      "technicalCompliance": "COMPLIANT",
+      "riskFlags": [],
+      "id": "3f441b70-c548-4edf-b7f9-67a9c179435a",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-12T15:45:26.541Z"
+    },
+    {
+      "bidCode": "BID-HSE-000001",
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "rfqId": "2d6f6431-0590-47c5-ac7e-b40ba254c3c9",
+      "epcOrganizationId": "org-epc-01",
+      "status": "SELECTED",
+      "currency": "IRR",
+      "totalPrice": 24000000000,
+      "engineeringPrice": 2000000000,
+      "equipmentPrice": 16000000000,
+      "installationPrice": 5000000000,
+      "otherPrice": 1000000000,
+      "executionDays": 90,
+      "warrantyYears": 2,
+      "equipmentSummary": {
+        "panels": "550W Tier-1",
+        "inverters": "100kW String"
+      },
+      "paymentTerms": "پیش‌پرداخت ۲۰٪، تحویل تجهیزات ۶۰٪، تحویل موقت ۲۰٪",
+      "technicalDocuments": [
+        "doc1.pdf"
+      ],
+      "commercialDocuments": [
+        "com1.pdf"
+      ],
+      "technicalCompliance": "COMPLIANT",
+      "riskFlags": [],
+      "id": "6de04ec8-9ef5-49e6-9690-2eb2aa4f83df",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-12T15:45:54.793Z"
+    },
+    {
+      "bidCode": "BID-HSE-000001",
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "rfqId": "38ef3aa7-b866-485f-b27f-3f75376c3627",
+      "epcOrganizationId": "org-epc-01",
+      "status": "SELECTED",
+      "currency": "IRR",
+      "totalPrice": 24000000000,
+      "engineeringPrice": 2000000000,
+      "equipmentPrice": 16000000000,
+      "installationPrice": 5000000000,
+      "otherPrice": 1000000000,
+      "executionDays": 90,
+      "warrantyYears": 2,
+      "equipmentSummary": {
+        "panels": "550W Tier-1",
+        "inverters": "100kW String"
+      },
+      "paymentTerms": "پیش‌پرداخت ۲۰٪، تحویل تجهیزات ۶۰٪، تحویل موقت ۲۰٪",
+      "technicalDocuments": [
+        "doc1.pdf"
+      ],
+      "commercialDocuments": [
+        "com1.pdf"
+      ],
+      "technicalCompliance": "COMPLIANT",
+      "riskFlags": [],
+      "id": "9b23ec8f-cf9f-4c80-bac4-592c471366db",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-12T15:47:07.429Z"
+    }
+  ],
+  "projectContracts": [
+    {
+      "projectId": "f162ab3b-cad0-4ffd-8a09-deecdee71f0e",
+      "contractCode": "CNT-HSE-000001",
+      "title": "قرارداد EPC نیروگاه ۱۰۰ کیلووات با پیمانکار منتخب",
+      "contractType": "EPC_LUMPSUM",
+      "status": "UNDER_REVIEW",
+      "contractValue": 24000000000,
+      "revisedContractValue": 24000000000,
+      "currency": "IRR",
+      "plannedStartDate": "2026-09-12",
+      "plannedCompletionDate": "2026-12-12",
+      "advancePaymentPercent": 20,
+      "retentionPercent": 5,
+      "warrantyPeriodMonths": 24,
+      "liquidatedDamagesPerDayPercent": 0.1,
+      "paymentTermsSummary": "پیش‌پرداخت ۲۰٪، تحویل تجهیزات ۶۰٪، تحویل موقت ۲۰٪",
+      "scopeSummary": "احداث کامل نیروگاه خورشیدی ۱۰۰ کیلوواتی",
+      "sourceBidId": "d0a4035a-c834-4e95-ab90-609c7532c5e6",
+      "isTemplateTerms": false,
+      "termsConfirmedByUser": true,
+      "currentRevisionNumber": 1,
+      "id": "de450d92-68e2-42a2-a8da-72faee3fc3ca",
+      "createdAt": "2026-09-12T15:45:08.236Z",
+      "updatedAt": "2026-09-12T15:45:08.239Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "contractCode": "CNT-HSE-000001",
+      "title": "قرارداد EPC نیروگاه ۱۰۰ کیلووات با پیمانکار منتخب",
+      "contractType": "EPC_LUMPSUM",
+      "status": "UNDER_REVIEW",
+      "contractValue": 24000000000,
+      "revisedContractValue": 24000000000,
+      "currency": "IRR",
+      "plannedStartDate": "2026-09-12",
+      "plannedCompletionDate": "2026-12-12",
+      "advancePaymentPercent": 20,
+      "retentionPercent": 5,
+      "warrantyPeriodMonths": 24,
+      "liquidatedDamagesPerDayPercent": 0.1,
+      "paymentTermsSummary": "پیش‌پرداخت ۲۰٪، تحویل تجهیزات ۶۰٪، تحویل موقت ۲۰٪",
+      "scopeSummary": "احداث کامل نیروگاه خورشیدی ۱۰۰ کیلوواتی",
+      "sourceBidId": "3f441b70-c548-4edf-b7f9-67a9c179435a",
+      "isTemplateTerms": false,
+      "termsConfirmedByUser": true,
+      "currentRevisionNumber": 1,
+      "id": "3179bc9f-f5d9-43e4-8517-35d7baaa8bc2",
+      "createdAt": "2026-09-12T15:45:26.542Z",
+      "updatedAt": "2026-09-12T15:45:26.547Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "contractCode": "CNT-HSE-000001",
+      "title": "قرارداد EPC نیروگاه ۱۰۰ کیلووات با پیمانکار منتخب",
+      "contractType": "EPC_LUMPSUM",
+      "status": "ACTIVE",
+      "contractValue": 24000000000,
+      "revisedContractValue": 24400000000,
+      "currency": "IRR",
+      "plannedStartDate": "2026-09-12",
+      "plannedCompletionDate": "2026-12-12",
+      "advancePaymentPercent": 20,
+      "retentionPercent": 5,
+      "warrantyPeriodMonths": 24,
+      "liquidatedDamagesPerDayPercent": 0.1,
+      "paymentTermsSummary": "پیش‌پرداخت ۲۰٪، تحویل تجهیزات ۶۰٪، تحویل موقت ۲۰٪",
+      "scopeSummary": "احداث کامل نیروگاه خورشیدی ۱۰۰ کیلوواتی",
+      "sourceBidId": "6de04ec8-9ef5-49e6-9690-2eb2aa4f83df",
+      "isTemplateTerms": false,
+      "termsConfirmedByUser": true,
+      "currentRevisionNumber": 2,
+      "id": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "createdAt": "2026-09-12T15:45:54.795Z",
+      "updatedAt": "2026-09-12T15:45:54.824Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "contractCode": "CNT-HSE-000001",
+      "title": "قرارداد EPC نیروگاه ۱۰۰ کیلووات با پیمانکار منتخب",
+      "contractType": "EPC_LUMPSUM",
+      "status": "ACTIVE",
+      "contractValue": 24000000000,
+      "revisedContractValue": 24400000000,
+      "currency": "IRR",
+      "plannedStartDate": "2026-09-12",
+      "plannedCompletionDate": "2026-12-12",
+      "advancePaymentPercent": 20,
+      "retentionPercent": 5,
+      "warrantyPeriodMonths": 24,
+      "liquidatedDamagesPerDayPercent": 0.1,
+      "paymentTermsSummary": "پیش‌پرداخت ۲۰٪، تحویل تجهیزات ۶۰٪، تحویل موقت ۲۰٪",
+      "scopeSummary": "احداث کامل نیروگاه خورشیدی ۱۰۰ کیلوواتی",
+      "sourceBidId": "9b23ec8f-cf9f-4c80-bac4-592c471366db",
+      "isTemplateTerms": false,
+      "termsConfirmedByUser": true,
+      "currentRevisionNumber": 2,
+      "id": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "createdAt": "2026-09-12T15:47:07.431Z",
+      "updatedAt": "2026-09-12T15:47:07.479Z"
+    }
+  ],
+  "contractParties": [
+    {
+      "contractId": "de450d92-68e2-42a2-a8da-72faee3fc3ca",
+      "partyType": "CLIENT",
+      "legalName": "شرکت توسعه انرژی هوشیار (کارفرما)",
+      "representativeName": "مدیرعامل",
+      "signStatus": "PENDING",
+      "id": "e1e74381-c4b6-45bf-859e-5b5874b5e8dc"
+    },
+    {
+      "contractId": "de450d92-68e2-42a2-a8da-72faee3fc3ca",
+      "partyType": "EPC_CONTRACTOR",
+      "legalName": "شرکت مهندسی و پیمانکاری توان‌ساز (مجری EPC)",
+      "representativeName": "مدیر پروژه",
+      "signStatus": "PENDING",
+      "id": "74151153-a6c6-49ea-9474-3378555b2cad"
+    },
+    {
+      "contractId": "3179bc9f-f5d9-43e4-8517-35d7baaa8bc2",
+      "partyType": "CLIENT",
+      "legalName": "شرکت توسعه انرژی هوشیار (کارفرما)",
+      "representativeName": "مدیرعامل",
+      "signStatus": "PENDING",
+      "id": "11605cad-ef27-4b4c-861d-e2f5ce80c7e7"
+    },
+    {
+      "contractId": "3179bc9f-f5d9-43e4-8517-35d7baaa8bc2",
+      "partyType": "EPC_CONTRACTOR",
+      "legalName": "شرکت مهندسی و پیمانکاری توان‌ساز (مجری EPC)",
+      "representativeName": "مدیر پروژه",
+      "signStatus": "PENDING",
+      "id": "4bfc23f0-c79a-4f13-97de-873b3d612920"
+    },
+    {
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "partyType": "CLIENT",
+      "legalName": "شرکت توسعه انرژی هوشیار (کارفرما)",
+      "representativeName": "مدیرعامل",
+      "signStatus": "SIGNED",
+      "id": "3a31a3ec-94a7-45d6-9292-263ad5be41eb",
+      "signedAt": "2026-09-12T15:45:54.815Z"
+    },
+    {
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "partyType": "EPC_CONTRACTOR",
+      "legalName": "شرکت مهندسی و پیمانکاری توان‌ساز (مجری EPC)",
+      "representativeName": "مدیر پروژه",
+      "signStatus": "SIGNED",
+      "id": "a3a4c48d-6d8e-4cc6-bec1-3948cd14646f",
+      "signedAt": "2026-09-12T15:45:54.816Z"
+    },
+    {
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "partyType": "CLIENT",
+      "legalName": "شرکت توسعه انرژی هوشیار (کارفرما)",
+      "representativeName": "مدیرعامل",
+      "signStatus": "SIGNED",
+      "id": "e1875133-b20f-4ace-9bbe-37cf556bae27",
+      "signedAt": "2026-09-12T15:47:07.462Z"
+    },
+    {
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "partyType": "EPC_CONTRACTOR",
+      "legalName": "شرکت مهندسی و پیمانکاری توان‌ساز (مجری EPC)",
+      "representativeName": "مدیر پروژه",
+      "signStatus": "SIGNED",
+      "id": "e06165a4-9295-4791-a4aa-1eb4c342e927",
+      "signedAt": "2026-09-12T15:47:07.464Z"
+    }
+  ],
+  "projectBaselines": [
+    {
+      "projectId": "f162ab3b-cad0-4ffd-8a09-deecdee71f0e",
+      "contractId": "de450d92-68e2-42a2-a8da-72faee3fc3ca",
+      "baselineCode": "BL-01",
+      "version": 1,
+      "status": "APPROVED",
+      "plannedStartDate": "2026-09-12",
+      "plannedCompletionDate": "2026-12-12",
+      "plannedMilestonesCount": 6,
+      "contractValue": 24000000000,
+      "currency": "IRR",
+      "createdByUserId": "test-user-1",
+      "id": "bd5b3735-dc32-4eb6-a323-fac47da35038",
+      "createdAt": "2026-09-12T15:45:08.240Z",
+      "approvedByUserId": "supervisor-1",
+      "approvedAt": "2026-09-12T15:45:08.240Z",
+      "updatedAt": "2026-09-12T15:45:08.241Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "contractId": "3179bc9f-f5d9-43e4-8517-35d7baaa8bc2",
+      "baselineCode": "BL-01",
+      "version": 1,
+      "status": "APPROVED",
+      "plannedStartDate": "2026-09-12",
+      "plannedCompletionDate": "2026-12-12",
+      "plannedMilestonesCount": 6,
+      "contractValue": 24000000000,
+      "currency": "IRR",
+      "createdByUserId": "test-user-1",
+      "id": "7e665f95-c1ef-404a-b5b2-9db7c5894695",
+      "createdAt": "2026-09-12T15:45:26.549Z",
+      "approvedByUserId": "supervisor-1",
+      "approvedAt": "2026-09-12T15:45:26.550Z",
+      "updatedAt": "2026-09-12T15:45:26.551Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "baselineCode": "BL-01",
+      "version": 1,
+      "status": "APPROVED",
+      "plannedStartDate": "2026-09-12",
+      "plannedCompletionDate": "2026-12-12",
+      "plannedMilestonesCount": 6,
+      "contractValue": 24000000000,
+      "currency": "IRR",
+      "createdByUserId": "test-user-1",
+      "id": "d735ad09-2e90-4528-894f-f85a8553dc5a",
+      "createdAt": "2026-09-12T15:45:54.803Z",
+      "approvedByUserId": "supervisor-1",
+      "approvedAt": "2026-09-12T15:45:54.804Z",
+      "updatedAt": "2026-09-12T15:45:54.804Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "baselineCode": "BL-01",
+      "version": 1,
+      "status": "APPROVED",
+      "plannedStartDate": "2026-09-12",
+      "plannedCompletionDate": "2026-12-12",
+      "plannedMilestonesCount": 6,
+      "contractValue": 24000000000,
+      "currency": "IRR",
+      "createdByUserId": "test-user-1",
+      "id": "05e2223c-c21f-42a4-9a00-14eaf9b41d55",
+      "createdAt": "2026-09-12T15:47:07.442Z",
+      "approvedByUserId": "supervisor-1",
+      "approvedAt": "2026-09-12T15:47:07.443Z",
+      "updatedAt": "2026-09-12T15:47:07.444Z"
+    }
+  ],
+  "projectMilestones": [
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "contractId": "3179bc9f-f5d9-43e4-8517-35d7baaa8bc2",
+      "milestoneCode": "MS-01",
+      "title": "تایید مهندسی تفصیلی و نقشه‌ها",
+      "category": "ENGINEERING",
+      "weightPercent": 15,
+      "sequence": 1,
+      "status": "COMPLETED",
+      "completionPercent": 100,
+      "isTemplate": true,
+      "id": "bb28e3b6-c1f0-423e-9803-344e1e3858b8",
+      "createdAt": "2026-09-12T15:45:26.552Z",
+      "updatedAt": "2026-09-12T15:45:26.560Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "contractId": "3179bc9f-f5d9-43e4-8517-35d7baaa8bc2",
+      "milestoneCode": "MS-02",
+      "title": "ورود تجهیزات اصلی به کارگاه",
+      "category": "PROCUREMENT",
+      "weightPercent": 35,
+      "sequence": 2,
+      "status": "IN_PROGRESS",
+      "completionPercent": 50,
+      "isTemplate": true,
+      "id": "042ab9f3-e3b1-435e-9fe9-89d10c40ee58",
+      "createdAt": "2026-09-12T15:45:26.555Z",
+      "updatedAt": "2026-09-12T15:45:26.561Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "contractId": "3179bc9f-f5d9-43e4-8517-35d7baaa8bc2",
+      "milestoneCode": "MS-03",
+      "title": "اتمام سازه مکانیکی و نصب پنل‌ها",
+      "category": "CIVIL",
+      "weightPercent": 25,
+      "sequence": 3,
+      "status": "NOT_STARTED",
+      "completionPercent": 0,
+      "isTemplate": true,
+      "id": "b4854c03-0a68-44ae-9cd3-bae00c36ec43",
+      "createdAt": "2026-09-12T15:45:26.556Z",
+      "updatedAt": "2026-09-12T15:45:26.556Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "contractId": "3179bc9f-f5d9-43e4-8517-35d7baaa8bc2",
+      "milestoneCode": "MS-04",
+      "title": "سیم‌کشی الکتریکی و اینورترها",
+      "category": "ELECTRICAL",
+      "weightPercent": 15,
+      "sequence": 4,
+      "status": "NOT_STARTED",
+      "completionPercent": 0,
+      "isTemplate": true,
+      "id": "907ef6ac-0e53-4ded-ad2c-6f657d950aca",
+      "createdAt": "2026-09-12T15:45:26.557Z",
+      "updatedAt": "2026-09-12T15:45:26.557Z"
+    },
+    {
+      "projectId": "08b3620c-ce8d-48d9-b401-5bdcae8b9691",
+      "contractId": "3179bc9f-f5d9-43e4-8517-35d7baaa8bc2",
+      "milestoneCode": "MS-05",
+      "title": "تست، راه‌اندازی و تزریق به شبکه",
+      "category": "COMMISSIONING",
+      "weightPercent": 10,
+      "sequence": 5,
+      "status": "NOT_STARTED",
+      "completionPercent": 0,
+      "isTemplate": true,
+      "id": "6901e57e-befb-4b4e-875f-031baa963827",
+      "createdAt": "2026-09-12T15:45:26.558Z",
+      "updatedAt": "2026-09-12T15:45:26.558Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "milestoneCode": "MS-01",
+      "title": "تایید مهندسی تفصیلی و نقشه‌ها",
+      "category": "ENGINEERING",
+      "weightPercent": 15,
+      "sequence": 1,
+      "status": "COMPLETED",
+      "completionPercent": 100,
+      "isTemplate": true,
+      "id": "113800d3-6714-4928-8141-32ff4e344d1b",
+      "createdAt": "2026-09-12T15:45:54.806Z",
+      "updatedAt": "2026-09-12T15:45:54.812Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "milestoneCode": "MS-02",
+      "title": "ورود تجهیزات اصلی به کارگاه",
+      "category": "PROCUREMENT",
+      "weightPercent": 35,
+      "sequence": 2,
+      "status": "IN_PROGRESS",
+      "completionPercent": 50,
+      "isTemplate": true,
+      "id": "028b4112-ca7a-4c0f-9faa-ee3f02b5e4b0",
+      "createdAt": "2026-09-12T15:45:54.807Z",
+      "updatedAt": "2026-09-12T15:45:54.814Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "milestoneCode": "MS-03",
+      "title": "اتمام سازه مکانیکی و نصب پنل‌ها",
+      "category": "CIVIL",
+      "weightPercent": 25,
+      "sequence": 3,
+      "status": "NOT_STARTED",
+      "completionPercent": 0,
+      "isTemplate": true,
+      "id": "3253c11d-714e-4969-8d73-1eea42628cf7",
+      "createdAt": "2026-09-12T15:45:54.808Z",
+      "updatedAt": "2026-09-12T15:45:54.808Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "milestoneCode": "MS-04",
+      "title": "سیم‌کشی الکتریکی و اینورترها",
+      "category": "ELECTRICAL",
+      "weightPercent": 15,
+      "sequence": 4,
+      "status": "NOT_STARTED",
+      "completionPercent": 0,
+      "isTemplate": true,
+      "id": "eeab2b76-2741-4453-b96a-e7088348a00d",
+      "createdAt": "2026-09-12T15:45:54.809Z",
+      "updatedAt": "2026-09-12T15:45:54.809Z"
+    },
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "milestoneCode": "MS-05",
+      "title": "تست، راه‌اندازی و تزریق به شبکه",
+      "category": "COMMISSIONING",
+      "weightPercent": 10,
+      "sequence": 5,
+      "status": "NOT_STARTED",
+      "completionPercent": 0,
+      "isTemplate": true,
+      "id": "fb9d145f-4054-4ea5-b4b0-9ec760ec0775",
+      "createdAt": "2026-09-12T15:45:54.810Z",
+      "updatedAt": "2026-09-12T15:45:54.810Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "milestoneCode": "MS-01",
+      "title": "تایید مهندسی تفصیلی و نقشه‌ها",
+      "category": "ENGINEERING",
+      "weightPercent": 15,
+      "sequence": 1,
+      "status": "COMPLETED",
+      "completionPercent": 100,
+      "isTemplate": true,
+      "id": "40aa80db-65dd-46c3-84c5-f77bcec87db2",
+      "createdAt": "2026-09-12T15:47:07.446Z",
+      "updatedAt": "2026-09-12T15:47:07.458Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "milestoneCode": "MS-02",
+      "title": "ورود تجهیزات اصلی به کارگاه",
+      "category": "PROCUREMENT",
+      "weightPercent": 35,
+      "sequence": 2,
+      "status": "IN_PROGRESS",
+      "completionPercent": 50,
+      "isTemplate": true,
+      "id": "5e65191d-20b4-4146-aeeb-7b2a489955bd",
+      "createdAt": "2026-09-12T15:47:07.448Z",
+      "updatedAt": "2026-09-12T15:47:07.460Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "milestoneCode": "MS-03",
+      "title": "اتمام سازه مکانیکی و نصب پنل‌ها",
+      "category": "CIVIL",
+      "weightPercent": 25,
+      "sequence": 3,
+      "status": "NOT_STARTED",
+      "completionPercent": 0,
+      "isTemplate": true,
+      "id": "ff7c8092-7f31-4e7c-843a-733946028424",
+      "createdAt": "2026-09-12T15:47:07.450Z",
+      "updatedAt": "2026-09-12T15:47:07.450Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "milestoneCode": "MS-04",
+      "title": "سیم‌کشی الکتریکی و اینورترها",
+      "category": "ELECTRICAL",
+      "weightPercent": 15,
+      "sequence": 4,
+      "status": "NOT_STARTED",
+      "completionPercent": 0,
+      "isTemplate": true,
+      "id": "5be0df79-124f-4c31-854b-b0fc61da930e",
+      "createdAt": "2026-09-12T15:47:07.452Z",
+      "updatedAt": "2026-09-12T15:47:07.453Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "milestoneCode": "MS-05",
+      "title": "تست، راه‌اندازی و تزریق به شبکه",
+      "category": "COMMISSIONING",
+      "weightPercent": 10,
+      "sequence": 5,
+      "status": "NOT_STARTED",
+      "completionPercent": 0,
+      "isTemplate": true,
+      "id": "e5a1e984-2c64-49ba-b4b4-32d49ea51d1d",
+      "createdAt": "2026-09-12T15:47:07.455Z",
+      "updatedAt": "2026-09-12T15:47:07.455Z"
+    }
+  ],
+  "changeRequests": [
+    {
+      "projectId": "e205284b-eb52-4a80-800a-c3ebaa0b0e06",
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "crCode": "CR-001",
+      "title": "افزایش کابل‌کشی به دلیل جابجایی ترانس کارگاهی",
+      "description": "نیاز به ۶۰ متر کابل فشار ضعیف مسی اضافی طبق درخواست ناظر",
+      "reasonCategory": "DESIGN_CHANGE",
+      "costImpactAmount": 400000000,
+      "scheduleImpactDays": 5,
+      "status": "APPROVED",
+      "requestedByUserId": "epc-pm",
+      "id": "c2282a7e-2127-4814-9752-64c3951aee48",
+      "createdAt": "2026-09-12T15:45:54.820Z",
+      "approvedByUserId": "supervisor-1",
+      "approvedAt": "2026-09-12T15:45:54.821Z"
+    },
+    {
+      "projectId": "59d3b213-6f8d-447e-a9e8-dcebc7148cc4",
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "crCode": "CR-001",
+      "title": "افزایش کابل‌کشی به دلیل جابجایی ترانس کارگاهی",
+      "description": "نیاز به ۶۰ متر کابل فشار ضعیف مسی اضافی طبق درخواست ناظر",
+      "reasonCategory": "DESIGN_CHANGE",
+      "costImpactAmount": 400000000,
+      "scheduleImpactDays": 5,
+      "status": "APPROVED",
+      "requestedByUserId": "epc-pm",
+      "id": "5634f84d-73ef-4706-b3d6-0ff7fcd294f5",
+      "createdAt": "2026-09-12T15:47:07.473Z",
+      "approvedByUserId": "supervisor-1",
+      "approvedAt": "2026-09-12T15:47:07.474Z"
+    }
+  ],
+  "contractRevisions": [
+    {
+      "contractId": "cc526dbe-a3b0-4d2b-b574-be0813b30081",
+      "revisionNumber": 2,
+      "reason": "دستور تغییر کار مصوب: افزایش کابل‌کشی به دلیل جابجایی ترانس کارگاهی",
+      "changesSummary": "افزایش مبلغ پیمان به میزان 400000000 ریال و تمدید مجاز 5 روز",
+      "contractValueBefore": 24000000000,
+      "contractValueAfter": 24400000000,
+      "scheduleImpactDays": 5,
+      "approvedByUserId": "supervisor-1",
+      "approvedAt": "2026-09-12T15:45:54.822Z",
+      "changeRequestId": "c2282a7e-2127-4814-9752-64c3951aee48",
+      "id": "789c2f45-2cdc-4034-90ec-dbd012430fb2",
+      "createdAt": "2026-09-12T15:45:54.823Z"
+    },
+    {
+      "contractId": "66db47e8-cdfd-4650-aafb-d52fd43cf0dd",
+      "revisionNumber": 2,
+      "reason": "دستور تغییر کار مصوب: افزایش کابل‌کشی به دلیل جابجایی ترانس کارگاهی",
+      "changesSummary": "افزایش مبلغ پیمان به میزان 400000000 ریال و تمدید مجاز 5 روز",
+      "contractValueBefore": 24000000000,
+      "contractValueAfter": 24400000000,
+      "scheduleImpactDays": 5,
+      "approvedByUserId": "supervisor-1",
+      "approvedAt": "2026-09-12T15:47:07.476Z",
+      "changeRequestId": "5634f84d-73ef-4706-b3d6-0ff7fcd294f5",
+      "id": "e4e452e3-36c1-4132-ac81-0c339ce71ec6",
+      "createdAt": "2026-09-12T15:47:07.477Z"
+    }
   ]
 }

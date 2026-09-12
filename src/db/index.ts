@@ -215,6 +215,10 @@ interface DB {
   deliveryItems?: DeliveryItem[];
   equipmentWarranties?: EquipmentWarranty[];
   projectContracts?: ProjectContract[];
+  contractParties?: ContractParty[];
+  contractRevisions?: ContractRevision[];
+  projectBaselines?: ProjectBaseline[];
+  changeRequests?: ChangeRequest[];
   projectMilestones?: ProjectMilestone[];
   approvalRequests?: ApprovalRequest[];
   projectRfqs?: ProjectRFQ[];
@@ -496,6 +500,17 @@ export const db: any = {
     writeDB(data);
     return newParty;
   },
+  updateContractParty: (id: string, updates: Partial<ContractParty>) => {
+    const data = readDB();
+    if (!data.contractParties) data.contractParties = [];
+    const index = data.contractParties.findIndex((p: any) => p.id === id);
+    if (index !== -1) {
+      data.contractParties[index] = { ...data.contractParties[index], ...updates };
+      writeDB(data);
+      return data.contractParties[index];
+    }
+    return null;
+  },
   getChangeRequests: (contractId: string) => readDB().changeRequests?.filter((c: any) => c.contractId === contractId) || [],
   getChangeRequestsByProjectId: (projectId: string) => readDB().changeRequests?.filter((c: any) => c.projectId === projectId) || [],
   createChangeRequest: (cr: Omit<ChangeRequest, "id" | "createdAt">) => {
@@ -517,7 +532,8 @@ export const db: any = {
     }
     return null;
   },
-  getProjectBaseline: (projectId: string) => readDB().projectBaselines?.find((b: any) => b.projectId === projectId) || null,
+  getProjectBaseline: (projectId: string) => readDB().projectBaselines?.find((b: any) => b.projectId === projectId && b.status !== 'SUPERSEDED') || readDB().projectBaselines?.find((b: any) => b.projectId === projectId) || null,
+  getProjectBaselines: (projectId: string) => readDB().projectBaselines?.filter((b: any) => b.projectId === projectId) || [],
   createProjectBaseline: (bl: Omit<ProjectBaseline, "id" | "createdAt">) => {
     const data = readDB();
     if (!data.projectBaselines) data.projectBaselines = [];
@@ -525,6 +541,26 @@ export const db: any = {
     data.projectBaselines.push(newBaseline as ProjectBaseline);
     writeDB(data);
     return newBaseline;
+  },
+  updateProjectBaseline: (id: string, updates: Partial<ProjectBaseline>) => {
+    const data = readDB();
+    if (!data.projectBaselines) data.projectBaselines = [];
+    const index = data.projectBaselines.findIndex((b: any) => b.id === id);
+    if (index !== -1) {
+      data.projectBaselines[index] = { ...data.projectBaselines[index], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(data);
+      return data.projectBaselines[index];
+    }
+    return null;
+  },
+  getContractRevisions: (contractId: string) => readDB().contractRevisions?.filter((r: any) => r.contractId === contractId) || [],
+  createContractRevision: (rev: Omit<ContractRevision, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.contractRevisions) data.contractRevisions = [];
+    const newRev = { ...rev, id: uuidv4(), createdAt: new Date().toISOString() };
+    data.contractRevisions.push(newRev as ContractRevision);
+    writeDB(data);
+    return newRev;
   },
   getApprovalRequests: (projectId: string) => readDB().approvalRequests?.filter(a => a.projectId === projectId) || [],
   createApprovalRequest: (req: Omit<ApprovalRequest, "id" | "requestedAt">) => {

@@ -2,24 +2,33 @@ export interface ProjectContract {
   id: string;
   contractCode: string;
   projectId: string;
-  contractType: string; 
-  status: string; 
+  contractType: 'EPC' | 'O_AND_M' | 'CONSULTING' | 'SUPPLY' | string;
+  status: 'DRAFT' | 'UNDER_REVIEW' | 'PENDING_SIGNATURE' | 'ACTIVE' | 'SUSPENDED' | 'TERMINATED' | 'COMPLETED' | string;
   title: string;
-  clientPartyId?: string; 
+  clientPartyId?: string;
   contractorPartyId?: string;
   selectedBidId?: string;
   currency: string;
-  contractValue: number;
+  contractValue: number; // original baseline contract value
+  revisedContractValue?: number; // active revised value after approved change requests / revisions
+  currentRevisionNumber?: number;
   startDate?: string;
+  plannedStartDate?: string;
   plannedCompletionDate?: string;
   effectiveDate?: string;
+  signedAt?: string;
   warrantyPeriodMonths?: number;
   scopeSummary?: string;
   paymentTermsSummary?: string;
+  advancePaymentPercent?: number;
   retentionPercent?: number;
+  liquidatedDamagesPerDayPercent?: number;
+  maxLiquidatedDamagesPercent?: number;
   liquidatedDamagesSummary?: string;
   terminationSummary?: string;
-  documentId?: string; 
+  isTemplateTerms?: boolean; // true when terms are suggested defaults rather than agreed
+  termsConfirmedByUser?: boolean; // true once explicit user confirmation is given
+  documentId?: string;
   createdByUserId: string;
   createdAt: string;
   updatedAt: string;
@@ -28,22 +37,35 @@ export interface ProjectContract {
 export interface ContractParty {
   id: string;
   contractId: string;
-  partyType: 'INDIVIDUAL' | 'ORGANIZATION';
+  partyType?: 'CLIENT' | 'CONTRACTOR' | 'ENGINEER' | 'SUBCONTRACTOR' | 'OTHER' | 'INDIVIDUAL' | 'ORGANIZATION';
   userId?: string;
   organizationId?: string;
-  role: 'CLIENT' | 'EPC' | 'SUPPLIER' | 'INVESTOR' | 'CONSULTANT' | 'OTHER';
-  displayName: string;
-  verificationStatus: string;
+  legalName?: string;
+  representativeName?: string;
+  role?: 'CLIENT' | 'EPC' | 'SUPPLIER' | 'INVESTOR' | 'CONSULTANT' | 'OTHER';
+  displayName?: string;
+  signStatus?: 'PENDING' | 'SIGNED' | 'REJECTED';
+  signedAt?: string;
+  verificationStatus?: string;
 }
 
 export interface ContractRevision {
   id: string;
   contractId: string;
+  projectId?: string;
   revisionNumber: number;
-  snapshot: any; 
+  changeRequestId?: string;
+  reason?: string;
+  changeSummary?: string;
+  changesSummary?: string;
+  contractValueBefore?: number;
+  contractValueAfter?: number;
+  scheduleImpactDays?: number;
+  approvedByUserId?: string;
+  approvedAt?: string;
+  snapshot?: any;
   documentId?: string;
-  changeSummary: string;
-  createdByUserId: string;
+  createdByUserId?: string;
   createdAt: string;
 }
 
@@ -54,8 +76,8 @@ export interface ProjectMilestone {
   milestoneCode: string;
   title: string;
   description?: string;
-  category: string; 
-  status: string; 
+  category: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED_FOR_REVIEW' | 'COMPLETED' | 'REJECTED' | 'BLOCKED' | string;
   sequence: number;
   responsibleUserId?: string;
   responsibleOrganizationId?: string;
@@ -63,10 +85,12 @@ export interface ProjectMilestone {
   plannedEndDate?: string;
   actualStartDate?: string;
   actualEndDate?: string;
-  weightPercent: number; 
-  completionPercent: number; 
+  weightPercent: number;
+  completionPercent: number;
   requiresApproval: boolean;
   evidenceRequired: boolean;
+  isTemplate?: boolean;
+  templateNotice?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -82,7 +106,7 @@ export interface MilestoneDependency {
 export interface ApprovalRequest {
   id: string;
   projectId: string;
-  entityType: string; 
+  entityType: string;
   entityId: string;
   requestedByUserId: string;
   approverUserId?: string;
@@ -97,23 +121,41 @@ export interface ChangeRequest {
   id: string;
   projectId: string;
   contractId: string;
+  crCode?: string;
   title: string;
   description: string;
-  requestedBy: string;
-  costImpact: number;
+  reasonCategory?: 'CLIENT_REQUEST' | 'SITE_CONDITIONS' | 'REGULATORY' | 'DESIGN_CHANGE' | 'FORCE_MAJEURE' | 'OTHER';
+  requestedBy?: string;
+  requestedByUserId?: string;
+  costImpact?: number;
+  costImpactAmount?: number;
   scheduleImpactDays: number;
-  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  status: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
+  approvedByUserId?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+  revisionId?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ProjectBaseline {
   id: string;
   projectId: string;
   contractId: string;
+  baselineCode?: string;
+  name?: string;
+  status?: 'DRAFT' | 'UNDER_REVIEW' | 'APPROVED' | 'SUPERSEDED';
   contractValue: number;
+  currency?: string;
+  plannedStartDate?: string;
   plannedCompletionDate?: string;
-  milestonePlan: any;
+  milestonePlan?: any;
+  approvedByUserId?: string;
+  approvedAt?: string;
+  supersededAt?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type ProjectHealthStatus = 'ON_TRACK' | 'AT_RISK' | 'DELAYED' | 'BLOCKED' | 'COMPLETED';

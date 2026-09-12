@@ -33,7 +33,7 @@ export function FinancialTab({ project }: { project: EnergyProject }) {
   const [customCapexMillionToman, setCustomCapexMillionToman] = useState<number>(
     project.estimatedBudget?.amount 
       ? (project.estimatedBudget.currency === 'IRR' ? Math.round(project.estimatedBudget.amount / 10000000) : Math.round(project.estimatedBudget.amount / 1000000))
-      : (project.targetCapacityKw ? project.targetCapacityKw * 25 : 2500)
+      : (project.estimatedBudgetIRR ? Math.round(project.estimatedBudgetIRR / 10000000) : (project.targetCapacityKw ? project.targetCapacityKw * 25 : 2500))
   );
   const [customDiscountRate, setCustomDiscountRate] = useState<number>(30);
   const [customSatbaTariff, setCustomSatbaTariff] = useState<number>(3200); // Toman/kWh

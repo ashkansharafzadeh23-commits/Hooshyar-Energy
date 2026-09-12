@@ -120,6 +120,16 @@ export interface ProjectReadinessScore {
   id: string;
   projectId: string;
   score: number;
+  overallScore?: number;
+  breakdown?: {
+    land: number;
+    technical: number;
+    grid: number;
+    permit: number;
+    financial: number;
+    epc: number;
+    documents: number;
+  };
   scoreBreakdown: {
     land: number;
     technical: number;

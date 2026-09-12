@@ -75,7 +75,7 @@ export const InvestmentTab: React.FC<InvestmentTabProps> = ({ project }) => {
     setSaving(true);
     try {
       const totalCapexToman = financialModel?.results?.totalCapex?.amount 
-        || (project.estimatedBudget?.amount ? project.estimatedBudget.amount / 10 : 2500000000);
+        || (project.estimatedBudget?.amount ? project.estimatedBudget.amount / 10 : (project.estimatedBudgetIRR ? project.estimatedBudgetIRR / 10 : 2500000000));
       
       const capitalRequired = Math.round(totalCapexToman * (partnerEquityGapPercent / 100));
       const ownerEquity = totalCapexToman - capitalRequired;

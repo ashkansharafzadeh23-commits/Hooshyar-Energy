@@ -59,6 +59,10 @@ export interface EnergyProject {
 
   targetCapacityKw?: number;
   estimatedBudgetIRR?: number;
+  estimatedBudget?: {
+    amount: number;
+    currency: string;
+  };
   sourceAnalysisId?: string;
   createdAt: string;
   updatedAt: string;

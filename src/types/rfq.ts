@@ -116,6 +116,16 @@ export interface EPCBid {
   paymentTerms: string;
   assumptions?: string;
   exclusions?: string;
+  commercialTerms?: {
+    advancePaymentPercent?: number;
+    retentionPercent?: number;
+    warrantyPeriodMonths?: number;
+    executionDurationWeeks?: number;
+    liquidatedDamagesPerDayPercent?: number;
+    maxLiquidatedDamagesPercent?: number;
+    paymentTermsSummary?: string;
+    paymentTerms?: string;
+  };
   technicalDocuments: string[];
   commercialDocuments: string[];
   technicalCompliance: TechnicalComplianceStatus;

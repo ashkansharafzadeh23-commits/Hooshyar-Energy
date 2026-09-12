@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ProjectMilestone } from '../../../types/execution';
-import { Loader2, Calendar, CheckCircle2, Clock, PlayCircle } from 'lucide-react';
+import { Loader2, Calendar, CheckCircle2, Clock, PlayCircle, AlertCircle } from 'lucide-react';
 
 interface MilestonesTabProps {
   projectId: string;
@@ -33,6 +33,8 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
     ? milestones.reduce((sum, m) => sum + (m.weightPercent * (m.completionPercent / 100)), 0)
     : 0;
 
+  const hasTemplateMilestones = milestones.some(m => m.isTemplate);
+
   const handleUpdateStatus = async (id: string, status: string, completionPercent: number) => {
     try {
       await fetch(`/api/execution/${projectId}/milestones/${id}`, {
@@ -46,16 +48,25 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
     }
   };
 
-  if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-fuchsia-500" /></div>;
+  if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-Vazirmatn">
+      {hasTemplateMilestones && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900">
+          <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+          <div>
+            <div className="font-bold text-sm mb-0.5">الگوی پیشنهادی ساختار شکست کار (WBS Template)</div>
+            <p>مایلستون‌ها و اوزان فیزیکی زیر بر مبنای قرارداد استاندارد بارگذاری شده‌اند و نیازمند تطبیق و نظارت مستمر کارگاهی می‌باشند.</p>
+          </div>
+        </div>
+      )}
       
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">پیشرفت فیزیکی پروژه</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-6">پیشرفت فیزیکی و مایل‌استون‌های اجرایی پروژه</h2>
         
         <div className="mb-2 flex justify-between items-center text-sm">
-          <span className="font-bold text-gray-700">پیشرفت کل (موزون):</span>
+          <span className="font-bold text-gray-700">پیشرفت کل (موزون بر مبنای اوزان مصوب):</span>
           <span className="font-black text-blue-600 text-lg">{overallProgress.toFixed(1)}%</span>
         </div>
         <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
@@ -92,21 +103,37 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
               <div className="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">{milestone.title}</h3>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <span className="bg-gray-100 px-2 py-1 rounded">{milestone.milestoneCode}</span>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-900 mb-1">{milestone.title}</h3>
+                      {milestone.isTemplate && (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">
+                          الگوی پیشنهادی
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                      <span className="bg-gray-100 px-2 py-1 rounded font-mono">{milestone.milestoneCode}</span>
                       <span>دسته: {milestone.category}</span>
                       <span className="font-bold text-gray-700">وزن فیزیکی: {milestone.weightPercent}%</span>
+                      {milestone.plannedStartDate && milestone.plannedEndDate && (
+                        <span className="text-gray-400">
+                          بازه زمانی: {milestone.plannedStartDate} الی {milestone.plannedEndDate}
+                        </span>
+                      )}
                     </div>
                   </div>
                   
-                  <div className="mt-3 md:mt-0">
+                  <div className="mt-3 md:mt-0 flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-600 ml-1">پیشرفت: {milestone.completionPercent}%</span>
                     <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
                       milestone.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                       milestone.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                      milestone.status === 'SUBMITTED_FOR_REVIEW' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                       'bg-gray-50 text-gray-600 border-gray-200'
                     }`}>
-                      وضعیت: {milestone.status}
+                      {milestone.status === 'COMPLETED' ? 'تکمیل شده' :
+                       milestone.status === 'IN_PROGRESS' ? 'در حال انجام' :
+                       milestone.status === 'SUBMITTED_FOR_REVIEW' ? 'ارائه شده جهت بررسی نظارت' : 'شروع نشده'}
                     </span>
                   </div>
                 </div>
@@ -125,7 +152,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                       onClick={() => handleUpdateStatus(milestone.id, 'SUBMITTED_FOR_REVIEW', 95)}
                       className="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-1 transition-colors"
                     >
-                      <CheckCircle2 size={16}/> ثبت تحویل موقت (نیاز به تایید)
+                      <CheckCircle2 size={16}/> ثبت تحویل موقت (نیاز به تایید نظارت)
                     </button>
                   )}
                   {milestone.status === 'SUBMITTED_FOR_REVIEW' && (
@@ -133,7 +160,7 @@ export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
                       onClick={() => handleUpdateStatus(milestone.id, 'COMPLETED', 100)}
                       className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-1 transition-colors"
                     >
-                      <CheckCircle2 size={16}/> تایید کارفرما (اتمام)
+                      <CheckCircle2 size={16}/> تایید کارفرما و نظارت (اتمام ۱۰۰٪)
                     </button>
                   )}
                   <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg transition-colors">
