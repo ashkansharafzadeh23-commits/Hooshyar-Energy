@@ -3,7 +3,7 @@ export interface ProjectContract {
   contractCode: string;
   projectId: string;
   contractType: 'EPC' | 'O_AND_M' | 'CONSULTING' | 'SUPPLY' | string;
-  status: 'DRAFT' | 'UNDER_REVIEW' | 'PENDING_SIGNATURE' | 'ACTIVE' | 'SUSPENDED' | 'TERMINATED' | 'COMPLETED' | string;
+  status: 'DRAFT' | 'UNDER_REVIEW' | 'READY_TO_SIGN' | 'SIGNED' | 'ACTIVE' | 'SUSPENDED' | 'TERMINATED' | 'COMPLETED' | string;
   title: string;
   clientPartyId?: string;
   contractorPartyId?: string;
@@ -17,6 +17,11 @@ export interface ProjectContract {
   plannedCompletionDate?: string;
   effectiveDate?: string;
   signedAt?: string;
+  signedDocumentId?: string;
+  signedDocumentUploadedAt?: string;
+  signedConfirmedByUserId?: string;
+  signedConfirmedAt?: string;
+  scheduleStatus?: 'CONFIRMED' | 'INSUFFICIENT_DATA' | 'SUGGESTED_TEMPLATE';
   warrantyPeriodMonths?: number;
   scopeSummary?: string;
   paymentTermsSummary?: string;

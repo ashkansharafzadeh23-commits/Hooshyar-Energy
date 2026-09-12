@@ -3,18 +3,101 @@ import { db } from '../db/index.js';
 import { ProjectContract, ProjectMilestone, ChangeRequest, ProjectBaseline, ContractParty, ContractRevision } from '../types/execution.js';
 import { rfqRepository } from '../repositories/rfqRepository.js';
 import { projectRepository } from '../repositories/projectRepository.js';
+import { verifyAuthToken } from './auth.js';
+import { checkProjectAccess } from './projects.js';
+import { ProjectMemberRole } from '../types/project.js';
 
 const router = express.Router({ mergeParams: true });
 
-// --- Contracts ---
-router.get('/:projectId/contracts', (req, res) => {
+// Enforce authentication on all execution routes
+router.use(verifyAuthToken);
+
+// Project authorization middleware
+function requireProjectAccess(allowedMemberRoles?: ProjectMemberRole[], requireOwnerOrAdmin: boolean = false) {
+  return (req: any, res: any, next: any) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'احراز هویت انجام نشده است (Unauthorized)' });
+    }
+
+    const { projectId } = req.params;
+    if (!projectId) {
+      return res.status(400).json({ error: 'شناسه پروژه الزامی است' });
+    }
+
+    const access = checkProjectAccess(projectId, user.id, user.role, allowedMemberRoles);
+    if (!access.allowed) {
+      return res.status(access.status || 403).json({ error: access.error });
+    }
+
+    if (requireOwnerOrAdmin && !access.isOwner && user.role !== 'admin') {
+      return res.status(403).json({ error: 'تنها مالک پروژه یا مدیر سامانه مجاز به انجام این عملیات است' });
+    }
+
+    req.project = access.project;
+    req.projectAccess = access;
+    next();
+  };
+}
+
+// IDOR prevention helper for Contract
+function getAuthorizedContract(projectId: string, contractId: string) {
+  const contract = db.getContractById(contractId);
+  if (!contract || contract.projectId !== projectId) {
+    return null;
+  }
+  return contract;
+}
+
+// IDOR prevention helper for Milestone
+function getAuthorizedMilestone(projectId: string, milestoneId: string) {
+  const milestone = db.getMilestoneById(milestoneId);
+  if (!milestone || milestone.projectId !== projectId) {
+    return null;
+  }
+  return milestone;
+}
+
+// IDOR prevention helper for Baseline
+function getAuthorizedBaseline(projectId: string, baselineId: string) {
+  const baseline = db.getProjectBaselineById(baselineId);
+  if (!baseline || baseline.projectId !== projectId) {
+    return null;
+  }
+  return baseline;
+}
+
+// IDOR prevention helper for Change Request
+function getAuthorizedChangeRequest(projectId: string, crId: string) {
+  const cr = db.getChangeRequestById(crId);
+  if (!cr || cr.projectId !== projectId) {
+    return null;
+  }
+  return cr;
+}
+
+// IDOR prevention helper for Approval Request
+function getAuthorizedApprovalRequest(projectId: string, approvalId: string) {
+  const approval = db.getApprovalRequestById(approvalId);
+  if (!approval || approval.projectId !== projectId) {
+    return null;
+  }
+  return approval;
+}
+
+// ==========================================
+// CONTRACTS
+// ==========================================
+
+// GET /api/execution/:projectId/contracts
+router.get('/:projectId/contracts', requireProjectAccess(), (req, res) => {
   const { projectId } = req.params;
   const contracts = db.getProjectContracts(projectId);
   res.json(contracts);
 });
 
-// Create contract manually
-router.post('/:projectId/contracts', (req, res) => {
+// POST /api/execution/:projectId/contracts (manual creation - Owner/Admin only)
+router.post('/:projectId/contracts', requireProjectAccess(undefined, true), (req: any, res) => {
   const { projectId } = req.params;
   const contractData = req.body;
   const allContracts = db.getEnergyProjects().flatMap((p: any) => db.getProjectContracts(p.id)) || [];
@@ -26,27 +109,40 @@ router.post('/:projectId/contracts', (req, res) => {
     contractCode,
     projectId,
     status: contractData.status || 'DRAFT',
-    currentRevisionNumber: 1
+    currentRevisionNumber: 1,
+    createdByUserId: req.user?.id || req.body.createdByUserId
   });
   
   res.status(201).json(newContract);
 });
 
-// Create contract directly from an awarded/selected EPC Bid
-router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
+// POST /api/execution/:projectId/contracts/from-bid/:bidId (Owner/Admin only)
+router.post('/:projectId/contracts/from-bid/:bidId', requireProjectAccess(undefined, true), (req: any, res) => {
   const { projectId, bidId } = req.params;
-  const project = projectRepository.findById(projectId);
-  if (!project) return res.status(404).json({ error: 'پروژه یافت نشد' });
+  const project = req.project;
 
   const bid = rfqRepository.getBidById(bidId);
   if (!bid) return res.status(404).json({ error: 'پیشنهاد EPC یافت نشد' });
 
+  // Cross-project IDOR check: bid must belong to this project
+  if (bid.projectId && bid.projectId !== projectId) {
+    return res.status(403).json({ error: 'پیشنهاد مورد نظر متعلق به این پروژه نیست' });
+  }
+
   const org = db.getOrganizationById?.(bid.epcOrganizationId);
   const contractorName = org?.tradeName || org?.legalName || 'پیمانکار منتخب EPC';
 
-  const plannedWeeks = bid.commercialTerms?.executionDurationWeeks || 16;
-  const startDate = new Date();
-  const completionDate = new Date(startDate.getTime() + plannedWeeks * 7 * 24 * 60 * 60 * 1000);
+  // Strict Duration Rule: Never invent 16-week fallback
+  const rawWeeks = bid.commercialTerms?.executionDurationWeeks;
+  const hasValidDuration = typeof rawWeeks === 'number' && Number.isFinite(rawWeeks) && rawWeeks > 0;
+
+  const plannedWeeks = hasValidDuration ? rawWeeks : undefined;
+  const startDate = hasValidDuration ? new Date() : undefined;
+  const completionDate = hasValidDuration && startDate ? new Date(startDate.getTime() + (plannedWeeks as number) * 7 * 24 * 60 * 60 * 1000) : undefined;
+
+  const plannedStartDate = startDate ? startDate.toISOString().split('T')[0] : undefined;
+  const plannedCompletionDate = completionDate ? completionDate.toISOString().split('T')[0] : undefined;
+  const scheduleStatus = hasValidDuration ? 'CONFIRMED' : 'INSUFFICIENT_DATA';
 
   // Derive stable business contract code: CNT-HSE-000001
   const allContracts = db.getEnergyProjects().flatMap((p: any) => db.getProjectContracts(p.id)) || [];
@@ -61,7 +157,7 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
   const hasBidPaymentTerms = Boolean(bid.commercialTerms?.paymentTermsSummary || bid.commercialTerms?.paymentTerms);
 
   // If not all terms are explicit in bid, mark as template terms requiring confirmation
-  const isTemplateTerms = !(hasBidAdvance && hasBidRetention && hasBidWarranty && hasBidPaymentTerms);
+  const isTemplateTerms = !(hasBidAdvance && hasBidRetention && hasBidWarranty && hasBidPaymentTerms && hasValidDuration);
 
   const advancePaymentPercent = hasBidAdvance ? bid.commercialTerms.advancePaymentPercent : undefined;
   const retentionPercent = hasBidRetention ? bid.commercialTerms.retentionPercent : undefined;
@@ -92,11 +188,12 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
     maxLiquidatedDamagesPercent,
     warrantyPeriodMonths,
     contractorPartyId: bid.epcOrganizationId,
-    plannedStartDate: startDate.toISOString().split('T')[0],
-    plannedCompletionDate: completionDate.toISOString().split('T')[0],
+    plannedStartDate,
+    plannedCompletionDate,
+    scheduleStatus,
     isTemplateTerms,
     termsConfirmedByUser: !isTemplateTerms,
-    createdByUserId: req.body.userId || project.ownerId
+    createdByUserId: req.user?.id || project.ownerId
   });
 
   // 2. Create Contract Parties (Client & EPC Contractor)
@@ -119,7 +216,6 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
   });
 
   // 3. Create Milestone Structure (Marked clearly as SUGGESTED_TEMPLATE)
-  const durationTotalDays = plannedWeeks * 7;
   const milestonesTemplate = [
     { title: 'مهندسی، طراحی تفصیلی و نقشه‌های اجرایی', category: 'ENGINEERING', sequence: 1, weightPercent: 10, durationFactor: 0.15 },
     { title: 'تأمین، ترخیص و حمل پنل‌ها و اینورترها به کارگاه', category: 'PROCUREMENT', sequence: 2, weightPercent: 45, durationFactor: 0.40 },
@@ -130,10 +226,16 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
 
   let cumulativeOffsetDays = 0;
   milestonesTemplate.forEach((t) => {
-    const stageDurationDays = Math.max(7, Math.round(durationTotalDays * t.durationFactor));
-    const pStart = new Date(startDate.getTime() + cumulativeOffsetDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    cumulativeOffsetDays += stageDurationDays;
-    const pEnd = new Date(startDate.getTime() + cumulativeOffsetDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    let pStart: string | undefined = undefined;
+    let pEnd: string | undefined = undefined;
+
+    if (hasValidDuration && startDate && plannedWeeks) {
+      const durationTotalDays = (plannedWeeks as number) * 7;
+      const stageDurationDays = Math.max(7, Math.round(durationTotalDays * t.durationFactor));
+      pStart = new Date(startDate.getTime() + cumulativeOffsetDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      cumulativeOffsetDays += stageDurationDays;
+      pEnd = new Date(startDate.getTime() + cumulativeOffsetDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    }
 
     db.createMilestone({
       projectId,
@@ -150,7 +252,9 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
       requiresApproval: true,
       evidenceRequired: true,
       isTemplate: true,
-      templateNotice: 'SUGGESTED_TEMPLATE — ساختار پیشنهادی زمان‌بندی (نیازمند تایید طرفین)'
+      templateNotice: hasValidDuration
+        ? 'SUGGESTED_TEMPLATE — ساختار پیشنهادی زمان‌بندی و اوزان (نیازمند تایید صریح طرفین قبل از تصویب خط مبنا)'
+        : 'SUGGESTED_TEMPLATE — ساختار پیشنهادی فاقد تاریخ به دلیل عدم درج مدت اجرا در پیشنهاد EPC (نیازمند تعیین و تایید صریح)'
     });
   });
 
@@ -163,47 +267,204 @@ router.post('/:projectId/contracts/from-bid/:bidId', (req, res) => {
     status: 'DRAFT',
     contractValue: bid.totalPrice,
     currency: bid.currency || 'IRR',
-    plannedStartDate: startDate.toISOString().split('T')[0],
-    plannedCompletionDate: completionDate.toISOString().split('T')[0],
+    plannedStartDate,
+    plannedCompletionDate,
     approvedByUserId: undefined,
     approvedAt: undefined
   });
 
   res.status(201).json({
     contract: newContract,
-    message: 'پیش‌نویس قرارداد EPC با موفقیت از پیشنهاد برنده ایجاد شد. شرایط نیازمند تایید و خط مبنا در وضعیت پیش‌نویس قرار دارد.'
+    message: hasValidDuration
+      ? 'پیش‌نویس قرارداد EPC با موفقیت از پیشنهاد برنده ایجاد شد. شرایط نیازمند تایید و خط مبنا در وضعیت پیش‌نویس قرار دارد.'
+      : 'پیش‌نویس قرارداد EPC ایجاد شد. مدت زمان اجرا در پیشنهاد مشخص نشده است و باید به طور صریح توسط طرفین تعیین گردد.'
   });
 });
 
-router.patch('/:projectId/contracts/:contractId', (req, res) => {
-  const { contractId } = req.params;
+// PATCH /api/execution/:projectId/contracts/:contractId
+router.patch('/:projectId/contracts/:contractId', requireProjectAccess(['OWNER', 'EPC'], false), (req, res) => {
+  const { contractId, projectId } = req.params;
+  const contract = getAuthorizedContract(projectId, contractId);
+  if (!contract) return res.status(404).json({ error: 'قرارداد متعلق به این پروژه یافت نشد' });
+
   const updated = db.updateContract(contractId, req.body);
-  if (!updated) return res.status(404).json({ error: 'قرارداد یافت نشد' });
   res.json(updated);
 });
 
-// Confirm Contract Terms (Transition from template to agreed terms)
-router.post('/:projectId/contracts/:contractId/confirm-terms', (req, res) => {
-  const { contractId } = req.params;
+// POST /api/execution/:projectId/contracts/:contractId/confirm-terms
+router.post('/:projectId/contracts/:contractId/confirm-terms', requireProjectAccess(['OWNER', 'EPC'], false), (req, res) => {
+  const { contractId, projectId } = req.params;
+  const contract = getAuthorizedContract(projectId, contractId);
+  if (!contract) return res.status(404).json({ error: 'قرارداد متعلق به این پروژه یافت نشد' });
+
   const updated = db.updateContract(contractId, {
     ...req.body,
     isTemplateTerms: false,
     termsConfirmedByUser: true,
     status: req.body.status || 'UNDER_REVIEW'
   });
-  if (!updated) return res.status(404).json({ error: 'قرارداد یافت نشد' });
   res.json(updated);
 });
 
+// ==========================================
+// EXTERNAL CONTRACT SIGNING WORKFLOW
+// (Hooshyar Energy is NOT an electronic signature provider)
+// Workflow: DRAFT -> UNDER_REVIEW -> READY_TO_SIGN -> External Signing -> Upload -> Confirmation -> ACTIVE
+// ==========================================
+
+// Mark Contract Ready to Sign (Owner / Admin only)
+router.post('/:projectId/contracts/:contractId/ready-to-sign', requireProjectAccess(undefined, true), (req: any, res) => {
+  const { contractId, projectId } = req.params;
+  const contract = getAuthorizedContract(projectId, contractId);
+  if (!contract) return res.status(404).json({ error: 'قرارداد متعلق به این پروژه یافت نشد' });
+
+  const updated = db.updateContract(contractId, {
+    status: 'READY_TO_SIGN'
+  });
+
+  projectRepository.addActivity({
+    projectId,
+    actorUserId: req.user.id,
+    eventType: 'CONTRACT_MARKED_READY_TO_SIGN',
+    entityType: 'CONTRACT',
+    entityId: contractId,
+    metadata: { contractCode: contract.contractCode }
+  });
+
+  res.json({
+    contract: updated,
+    message: 'وضعیت قرارداد به «آماده امضای خارج سامانه» تغییر یافت. طرفین می‌توانند نسخه چاپی را با مهر و امضای رسمی حقوقی مبادله و امضا نمایند.'
+  });
+});
+
+// Register uploaded externally signed document (Owner, Admin, or EPC)
+router.post('/:projectId/contracts/:contractId/upload-signed-document', requireProjectAccess(['OWNER', 'EPC'], false), (req: any, res) => {
+  const { contractId, projectId } = req.params;
+  const contract = getAuthorizedContract(projectId, contractId);
+  if (!contract) return res.status(404).json({ error: 'قرارداد متعلق به این پروژه یافت نشد' });
+
+  const { documentId, fileUrl } = req.body;
+  let finalDocId = documentId;
+
+  // If a fileUrl was supplied without existing documentId, register a ProjectDocument
+  if (!finalDocId && fileUrl) {
+    const doc = projectRepository.addDocument({
+      projectId,
+      uploadedByUserId: req.user.id,
+      type: 'CONTRACT',
+      fileUrl,
+      version: 1,
+      verificationStatus: 'PENDING'
+    });
+    finalDocId = doc.id;
+  }
+
+  if (!finalDocId) {
+    return res.status(400).json({ error: 'شناسه یا آدرس فایل نسخه امضا شده فیزیکی/خارجی الزامی است' });
+  }
+
+  const updated = db.updateContract(contractId, {
+    signedDocumentId: finalDocId,
+    signedDocumentUploadedAt: new Date().toISOString()
+  });
+
+  projectRepository.addActivity({
+    projectId,
+    actorUserId: req.user.id,
+    eventType: 'SIGNED_CONTRACT_DOCUMENT_UPLOADED',
+    entityType: 'CONTRACT',
+    entityId: contractId,
+    metadata: { signedDocumentId: finalDocId }
+  });
+
+  res.json({
+    contract: updated,
+    message: 'نسخه امضا شده فیزیکی با موفقیت بارگذاری شد و در انتظار تایید نهایی کارفرما/مدیر است.'
+  });
+});
+
+// Authorized user confirms signed external document -> activates contract (Owner / Admin only)
+router.post('/:projectId/contracts/:contractId/confirm-signed-document', requireProjectAccess(undefined, true), (req: any, res) => {
+  const { contractId, projectId } = req.params;
+  const contract = getAuthorizedContract(projectId, contractId);
+  if (!contract) return res.status(404).json({ error: 'قرارداد متعلق به این پروژه یافت نشد' });
+
+  const documentId = req.body.documentId || contract.signedDocumentId;
+  if (!documentId) {
+    return res.status(400).json({ error: 'ابتدا باید سند نسخه امضا شده فیزیکی بارگذاری شود' });
+  }
+
+  const now = new Date().toISOString();
+  const effectiveDate = req.body.effectiveDate || now.split('T')[0];
+
+  // Update Contract
+  const updatedContract = db.updateContract(contractId, {
+    status: 'ACTIVE',
+    signedDocumentId: documentId,
+    signedConfirmedByUserId: req.user.id,
+    signedConfirmedAt: now,
+    signedAt: now,
+    effectiveDate
+  });
+
+  // Mark all parties as confirmed/signed based on verified external document
+  const parties = db.getContractParties(contractId);
+  parties.forEach((p: any) => {
+    db.updateContractParty(p.id, {
+      signStatus: 'SIGNED',
+      signedAt: now,
+      verificationStatus: 'EXTERNALLY_VERIFIED'
+    });
+  });
+
+  // Verify associated document if present
+  const docs = projectRepository.getDocuments(projectId);
+  const doc = docs.find(d => d.id === documentId);
+  if (doc) {
+    (doc as any).verificationStatus = 'VERIFIED';
+  }
+
+  projectRepository.addActivity({
+    projectId,
+    actorUserId: req.user.id,
+    eventType: 'CONTRACT_ACTIVATED_EXTERNAL_SIGNATURE_CONFIRMED',
+    entityType: 'CONTRACT',
+    entityId: contractId,
+    metadata: {
+      contractCode: contract.contractCode,
+      confirmedByUserId: req.user.id,
+      documentId
+    }
+  });
+
+  res.json({
+    contract: updatedContract,
+    message: 'صحت امضا و مهر نسخه فیزیکی تایید شد و قرارداد با موفقیت فعال گردید (بدون ادعای گواهی الکترونیک دیجیتال درون‌سامانه‌ای).'
+  });
+});
+
+// Refactored legacy party sign endpoint: Disallow internal automated "e-signature"
+router.post('/:projectId/contracts/:contractId/parties/:partyId/sign', (req, res) => {
+  res.status(400).json({
+    error: 'امضای مستقیم درون‌سامانه‌ای غیرفعال است. سامانه هوشیار انرژی ارائه‌دهنده امضای الکترونیک دیجیتال حقوقی نیست. قراردادها باید خارج از سامانه به صورت رسمی امضا و مبادله شوند و نسخه اسکن‌شده بارگذاری و توسط کارفرما تایید گردد.'
+  });
+});
+
 // Contract Parties
-router.get('/:projectId/contracts/:contractId/parties', (req, res) => {
-  const { contractId } = req.params;
+router.get('/:projectId/contracts/:contractId/parties', requireProjectAccess(), (req, res) => {
+  const { contractId, projectId } = req.params;
+  const contract = getAuthorizedContract(projectId, contractId);
+  if (!contract) return res.status(404).json({ error: 'قرارداد متعلق به این پروژه یافت نشد' });
+
   const parties = db.getContractParties(contractId);
   res.json(parties);
 });
 
-router.post('/:projectId/contracts/:contractId/parties', (req, res) => {
-  const { contractId } = req.params;
+router.post('/:projectId/contracts/:contractId/parties', requireProjectAccess(undefined, true), (req, res) => {
+  const { contractId, projectId } = req.params;
+  const contract = getAuthorizedContract(projectId, contractId);
+  if (!contract) return res.status(404).json({ error: 'قرارداد متعلق به این پروژه یافت نشد' });
+
   const party = db.createContractParty({
     ...req.body,
     contractId
@@ -211,75 +472,66 @@ router.post('/:projectId/contracts/:contractId/parties', (req, res) => {
   res.status(201).json(party);
 });
 
-// Party Sign Contract Endpoint
-router.post('/:projectId/contracts/:contractId/parties/:partyId/sign', (req, res) => {
-  const { contractId, partyId } = req.params;
-  const parties = db.getContractParties(contractId);
-  const party = parties.find((p: any) => p.id === partyId);
-  if (!party) return res.status(404).json({ error: 'طرف قرارداد یافت نشد' });
+// Contract Revisions (Read-only for clients)
+router.get('/:projectId/contracts/:contractId/revisions', requireProjectAccess(), (req, res) => {
+  const { contractId, projectId } = req.params;
+  const contract = getAuthorizedContract(projectId, contractId);
+  if (!contract) return res.status(404).json({ error: 'قرارداد متعلق به این پروژه یافت نشد' });
 
-  party.signStatus = 'SIGNED';
-  party.signedAt = new Date().toISOString();
-
-  const data = (db as any).readDB();
-  const pIndex = data.contractParties.findIndex((p: any) => p.id === partyId);
-  if (pIndex !== -1) {
-    data.contractParties[pIndex] = party;
-    (db as any).writeDB(data);
-  }
-
-  // Check if all parties have signed
-  const allParties = db.getContractParties(contractId);
-  const allSigned = allParties.length > 0 && allParties.every((p: any) => p.signStatus === 'SIGNED');
-
-  if (allSigned) {
-    db.updateContract(contractId, {
-      status: 'ACTIVE',
-      signedAt: new Date().toISOString(),
-      effectiveDate: new Date().toISOString().split('T')[0]
-    });
-  } else {
-    db.updateContract(contractId, {
-      status: 'PENDING_SIGNATURE'
-    });
-  }
-
-  res.json({ party, contractStatus: allSigned ? 'ACTIVE' : 'PENDING_SIGNATURE' });
-});
-
-// --- Contract Revisions ---
-router.get('/:projectId/contracts/:contractId/revisions', (req, res) => {
-  const { contractId } = req.params;
   const revisions = db.getContractRevisions(contractId);
   res.json(revisions);
 });
 
-// --- Change Requests (دستور تغییر کار / کلیم) ---
-router.get('/:projectId/change-requests', (req, res) => {
+// ==========================================
+// CHANGE REQUESTS (دستور تغییر کار / کلیم)
+// ==========================================
+
+router.get('/:projectId/change-requests', requireProjectAccess(), (req, res) => {
   const { projectId } = req.params;
   const list = db.getChangeRequestsByProjectId(projectId);
   res.json(list);
 });
 
-router.post('/:projectId/change-requests', (req, res) => {
+router.post('/:projectId/change-requests', requireProjectAccess(['OWNER', 'EPC', 'CONSULTANT'], false), (req: any, res) => {
   const { projectId } = req.params;
+  const { contractId } = req.body;
+
+  if (contractId) {
+    const contract = getAuthorizedContract(projectId, contractId);
+    if (!contract) return res.status(404).json({ error: 'قرارداد ارجاع‌شده متعلق به این پروژه نیست' });
+  }
+
   const cr = db.createChangeRequest({
     ...req.body,
     projectId,
+    requestedByUserId: req.user?.id || req.body.requestedByUserId,
     status: 'SUBMITTED'
   });
   res.status(201).json(cr);
 });
 
-router.patch('/:projectId/change-requests/:crId', (req, res) => {
+router.patch('/:projectId/change-requests/:crId', requireProjectAccess(['OWNER', 'EPC', 'CONSULTANT'], false), (req: any, res) => {
   const { crId, projectId } = req.params;
+  const existingCR = getAuthorizedChangeRequest(projectId, crId);
+  if (!existingCR) return res.status(404).json({ error: 'دستور تغییر کار متعلق به این پروژه یافت نشد' });
+
+  // Only Owner, Admin, or CONSULTANT can approve change requests
+  if (req.body.status === 'APPROVED') {
+    const access = req.projectAccess;
+    const isOwnerOrAdmin = access?.isOwner || req.user?.role === 'admin';
+    const isConsultant = access?.member?.role === 'CONSULTANT';
+    if (!isOwnerOrAdmin && !isConsultant) {
+      return res.status(403).json({ error: 'تنها کارفرما، مدیر یا مشاور ناظر مجاز به تایید دستور تغییر کار هستند' });
+    }
+  }
+
   const updated = db.updateChangeRequest(crId, req.body);
   if (!updated) return res.status(404).json({ error: 'دستور تغییر کار یافت نشد' });
 
-  // If approved: create ContractRevision (Do NOT silently mutate original contractValue)
+  // Immutability Rule: If approved, create ContractRevision. Original contractValue is NEVER overwritten!
   if (updated.status === 'APPROVED' && updated.contractId) {
     const contract = db.getContractById(updated.contractId);
-    if (contract) {
+    if (contract && contract.projectId === projectId) {
       const nextRevNum = (contract.currentRevisionNumber || 1) + 1;
       const currentVal = contract.revisedContractValue !== undefined ? contract.revisedContractValue : contract.contractValue;
       const impact = updated.costImpactAmount || updated.costImpact || 0;
@@ -295,11 +547,11 @@ router.patch('/:projectId/change-requests/:crId', (req, res) => {
         contractValueBefore: currentVal,
         contractValueAfter: newVal,
         scheduleImpactDays: updated.scheduleImpactDays || 0,
-        approvedByUserId: updated.approvedByUserId || 'supervisor',
+        approvedByUserId: updated.approvedByUserId || req.user?.id || 'supervisor',
         approvedAt: updated.approvedAt || new Date().toISOString()
       });
 
-      // Update revised value on contract record without mutating original contractValue
+      // Update revised value on contract record without mutating original baseline contractValue
       db.updateContract(contract.id, {
         revisedContractValue: newVal,
         currentRevisionNumber: nextRevNum
@@ -307,7 +559,7 @@ router.patch('/:projectId/change-requests/:crId', (req, res) => {
 
       db.updateChangeRequest(updated.id, { revisionId: rev.id });
 
-      // If active baseline exists, supersede it and create updated approved baseline
+      // Baseline Revision: If active baseline exists, supersede it and create updated approved baseline revision
       const activeBaseline = db.getProjectBaseline(projectId);
       if (activeBaseline && activeBaseline.status === 'APPROVED') {
         db.updateProjectBaseline(activeBaseline.id, { status: 'SUPERSEDED', supersededAt: new Date().toISOString() });
@@ -320,7 +572,7 @@ router.patch('/:projectId/change-requests/:crId', (req, res) => {
           contractValue: newVal,
           currency: contract.currency || 'IRR',
           plannedCompletionDate: activeBaseline.plannedCompletionDate,
-          approvedByUserId: updated.approvedByUserId || 'supervisor',
+          approvedByUserId: updated.approvedByUserId || req.user?.id || 'supervisor',
           approvedAt: new Date().toISOString()
         });
       }
@@ -330,21 +582,31 @@ router.patch('/:projectId/change-requests/:crId', (req, res) => {
   res.json(updated);
 });
 
-// --- Project Baseline ---
-router.get('/:projectId/baseline', (req, res) => {
+// ==========================================
+// PROJECT BASELINES
+// ==========================================
+
+router.get('/:projectId/baseline', requireProjectAccess(), (req, res) => {
   const { projectId } = req.params;
   const baseline = db.getProjectBaseline(projectId);
   res.json(baseline);
 });
 
-router.get('/:projectId/baselines', (req, res) => {
+router.get('/:projectId/baselines', requireProjectAccess(), (req, res) => {
   const { projectId } = req.params;
   const baselines = db.getProjectBaselines(projectId);
   res.json(baselines);
 });
 
-router.post('/:projectId/baseline', (req, res) => {
+router.post('/:projectId/baseline', requireProjectAccess(['OWNER', 'EPC', 'CONSULTANT'], false), (req, res) => {
   const { projectId } = req.params;
+  const { contractId } = req.body;
+
+  if (contractId) {
+    const contract = getAuthorizedContract(projectId, contractId);
+    if (!contract) return res.status(404).json({ error: 'قرارداد ارجاع‌شده متعلق به این پروژه نیست' });
+  }
+
   const baseline = db.createProjectBaseline({
     ...req.body,
     projectId,
@@ -353,10 +615,13 @@ router.post('/:projectId/baseline', (req, res) => {
   res.status(201).json(baseline);
 });
 
-// Approve Baseline Endpoint
-router.post('/:projectId/baseline/:baselineId/approve', (req, res) => {
+// Approve Baseline: Owner, Admin, or CONSULTANT only
+router.post('/:projectId/baseline/:baselineId/approve', requireProjectAccess(['OWNER', 'CONSULTANT'], false), (req: any, res) => {
   const { baselineId, projectId } = req.params;
-  const userId = req.body.userId || 'supervisor';
+  const baseline = getAuthorizedBaseline(projectId, baselineId);
+  if (!baseline) return res.status(404).json({ error: 'خط مبنای متعلق به این پروژه یافت نشد' });
+
+  const userId = req.user?.id || 'supervisor';
 
   // Mark any previously approved baseline as SUPERSEDED
   const allBaselines = db.getProjectBaselines(projectId);
@@ -372,19 +637,28 @@ router.post('/:projectId/baseline/:baselineId/approve', (req, res) => {
     approvedAt: new Date().toISOString()
   });
 
-  if (!updated) return res.status(404).json({ error: 'خط مبنا یافت نشد' });
   res.json(updated);
 });
 
-// --- Milestones ---
-router.get('/:projectId/milestones', (req, res) => {
+// ==========================================
+// MILESTONES
+// ==========================================
+
+router.get('/:projectId/milestones', requireProjectAccess(), (req, res) => {
   const { projectId } = req.params;
   const milestones = db.getProjectMilestones(projectId);
   res.json(milestones);
 });
 
-router.post('/:projectId/milestones', (req, res) => {
+router.post('/:projectId/milestones', requireProjectAccess(['OWNER', 'EPC', 'CONSULTANT'], false), (req, res) => {
   const { projectId } = req.params;
+  const { contractId } = req.body;
+
+  if (contractId) {
+    const contract = getAuthorizedContract(projectId, contractId);
+    if (!contract) return res.status(404).json({ error: 'قرارداد ارجاع‌شده متعلق به این پروژه نیست' });
+  }
+
   const milestone = db.createMilestone({
     ...req.body,
     projectId,
@@ -394,48 +668,77 @@ router.post('/:projectId/milestones', (req, res) => {
   res.status(201).json(milestone);
 });
 
-router.patch('/:projectId/milestones/:milestoneId', (req, res) => {
-  const { milestoneId } = req.params;
+router.patch('/:projectId/milestones/:milestoneId', requireProjectAccess(['OWNER', 'EPC', 'CONSULTANT'], false), (req, res) => {
+  const { milestoneId, projectId } = req.params;
+  const milestone = getAuthorizedMilestone(projectId, milestoneId);
+  if (!milestone) return res.status(404).json({ error: 'مایلستون متعلق به این پروژه یافت نشد' });
+
   const updated = db.updateMilestone(milestoneId, req.body);
-  if (!updated) return res.status(404).json({ error: 'مایلستون یافت نشد' });
   res.json(updated);
 });
 
-router.delete('/:projectId/milestones/:milestoneId', (req, res) => {
-  const { milestoneId } = req.params;
-  const success = db.deleteMilestone(milestoneId);
-  if (!success) return res.status(404).json({ error: 'مایلستون یافت نشد' });
+router.delete('/:projectId/milestones/:milestoneId', requireProjectAccess(undefined, true), (req, res) => {
+  const { milestoneId, projectId } = req.params;
+  const milestone = getAuthorizedMilestone(projectId, milestoneId);
+  if (!milestone) return res.status(404).json({ error: 'مایلستون متعلق به این پروژه یافت نشد' });
+
+  db.deleteMilestone(milestoneId);
   res.json({ success: true, message: 'مایلستون با موفقیت حذف شد' });
 });
 
-// --- Approvals ---
-router.get('/:projectId/approvals', (req, res) => {
+// ==========================================
+// APPROVALS
+// ==========================================
+
+router.get('/:projectId/approvals', requireProjectAccess(), (req, res) => {
   const { projectId } = req.params;
   const approvals = db.getApprovalRequests(projectId);
   res.json(approvals);
 });
 
-router.post('/:projectId/approvals', (req, res) => {
+router.post('/:projectId/approvals', requireProjectAccess(['OWNER', 'EPC', 'CONSULTANT'], false), (req: any, res) => {
   const { projectId } = req.params;
   const reqData = req.body;
   const newApproval = db.createApprovalRequest({
     ...reqData,
     projectId,
+    requestedByUserId: req.user?.id || reqData.requestedByUserId,
     status: 'PENDING'
   });
   res.status(201).json(newApproval);
 });
 
-router.patch('/:projectId/approvals/:approvalId', (req, res) => {
-  const { approvalId } = req.params;
-  const updated = db.updateApprovalRequest(approvalId, req.body);
+router.patch('/:projectId/approvals/:approvalId', requireProjectAccess(['OWNER', 'CONSULTANT'], false), (req: any, res) => {
+  const { approvalId, projectId } = req.params;
+  const approval = getAuthorizedApprovalRequest(projectId, approvalId);
+  if (!approval) return res.status(404).json({ error: 'درخواست تایید متعلق به این پروژه یافت نشد' });
+
+  // Only Owner, Admin, or CONSULTANT can approve/reject
+  const access = req.projectAccess;
+  const isOwnerOrAdmin = access?.isOwner || req.user?.role === 'admin';
+  const isConsultant = access?.member?.role === 'CONSULTANT';
+  if (!isOwnerOrAdmin && !isConsultant) {
+    return res.status(403).json({ error: 'تنها کارفرما، مدیر سامانه یا مشاور ناظر مجاز به ثبت پاسخ تایید هستند' });
+  }
+
+  const updated = db.updateApprovalRequest(approvalId, {
+    ...req.body,
+    approverUserId: req.user?.id || req.body.approverUserId,
+    respondedAt: new Date().toISOString()
+  });
   if (!updated) return res.status(404).json({ error: 'درخواست تایید یافت نشد' });
   
   // If it's a milestone approval and approved, update the milestone
   if (updated.status === 'APPROVED' && updated.entityType === 'MILESTONE') {
-    db.updateMilestone(updated.entityId, { status: 'COMPLETED', completionPercent: 100 });
+    const ms = getAuthorizedMilestone(projectId, updated.entityId);
+    if (ms) {
+      db.updateMilestone(updated.entityId, { status: 'COMPLETED', completionPercent: 100 });
+    }
   } else if (updated.status === 'REJECTED' && updated.entityType === 'MILESTONE') {
-    db.updateMilestone(updated.entityId, { status: 'NOT_STARTED' });
+    const ms = getAuthorizedMilestone(projectId, updated.entityId);
+    if (ms) {
+      db.updateMilestone(updated.entityId, { status: 'NOT_STARTED' });
+    }
   }
 
   res.json(updated);

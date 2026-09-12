@@ -12,7 +12,12 @@ import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { ProjectContract, ContractParty, ContractRevision, ProjectMilestone, MilestoneDependency, ApprovalRequest, ChangeRequest, ProjectBaseline } from '../types/execution.js';
 
-const DB_PATH = path.join(process.cwd(), "db.json");
+let currentDbPath = process.env.TEST_DB_PATH || path.join(process.cwd(), "db.json");
+
+export const getDBPath = () => currentDbPath;
+export const setDBPath = (newPath: string) => {
+  currentDbPath = newPath;
+};
 
 interface Vendor {
   id: string;
@@ -384,11 +389,11 @@ const defaultDB: DB = {
   ],
 };
 function readDB(): DB {
-  if (!fs.existsSync(DB_PATH)) {
+  if (!fs.existsSync(currentDbPath)) {
     writeDB(defaultDB);
     return defaultDB;
   }
-  const data = fs.readFileSync(DB_PATH, "utf-8");
+  const data = fs.readFileSync(currentDbPath, "utf-8");
   try {
     return JSON.parse(data) as DB;
   } catch {
@@ -397,7 +402,7 @@ function readDB(): DB {
 }
 
 function writeDB(data: DB) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+  fs.writeFileSync(currentDbPath, JSON.stringify(data, null, 2));
 }
 
 const defaultEPCs: Organization[] = [
@@ -461,6 +466,7 @@ export const db: any = {
     return null;
   },
   getProjectMilestones: (projectId: string) => readDB().projectMilestones?.filter(m => m.projectId === projectId) || [],
+  getMilestoneById: (id: string) => readDB().projectMilestones?.find((m: any) => m.id === id),
   createMilestone: (milestone: Omit<ProjectMilestone, "id" | "createdAt" | "updatedAt">) => {
     const data = readDB();
     if (!data.projectMilestones) data.projectMilestones = [];
@@ -513,6 +519,7 @@ export const db: any = {
   },
   getChangeRequests: (contractId: string) => readDB().changeRequests?.filter((c: any) => c.contractId === contractId) || [],
   getChangeRequestsByProjectId: (projectId: string) => readDB().changeRequests?.filter((c: any) => c.projectId === projectId) || [],
+  getChangeRequestById: (id: string) => readDB().changeRequests?.find((c: any) => c.id === id),
   createChangeRequest: (cr: Omit<ChangeRequest, "id" | "createdAt">) => {
     const data = readDB();
     if (!data.changeRequests) data.changeRequests = [];
@@ -534,6 +541,7 @@ export const db: any = {
   },
   getProjectBaseline: (projectId: string) => readDB().projectBaselines?.find((b: any) => b.projectId === projectId && b.status !== 'SUPERSEDED') || readDB().projectBaselines?.find((b: any) => b.projectId === projectId) || null,
   getProjectBaselines: (projectId: string) => readDB().projectBaselines?.filter((b: any) => b.projectId === projectId) || [],
+  getProjectBaselineById: (id: string) => readDB().projectBaselines?.find((b: any) => b.id === id),
   createProjectBaseline: (bl: Omit<ProjectBaseline, "id" | "createdAt">) => {
     const data = readDB();
     if (!data.projectBaselines) data.projectBaselines = [];
@@ -563,6 +571,7 @@ export const db: any = {
     return newRev;
   },
   getApprovalRequests: (projectId: string) => readDB().approvalRequests?.filter(a => a.projectId === projectId) || [],
+  getApprovalRequestById: (id: string) => readDB().approvalRequests?.find(a => a.id === id),
   createApprovalRequest: (req: Omit<ApprovalRequest, "id" | "requestedAt">) => {
     const data = readDB();
     if (!data.approvalRequests) data.approvalRequests = [];
@@ -1309,6 +1318,9 @@ export const db: any = {
     d.financeReviewNotes.push(n);
     writeDB(d);
     return n;
-  }
-
+  },
+  setDBPath: (newPath: string) => {
+    currentDbPath = newPath;
+  },
+  getDBPath: () => currentDbPath
 };

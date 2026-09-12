@@ -2,30 +2,67 @@ import { Router } from 'express';
 import { db } from '../db/index.js';
 import { financeService } from '../services/financeService.js';
 import { ProjectFinancialModel, FinancialAssumptionSet, FinancialScenario } from '../types/finance.js';
+import { verifyAuthToken } from './auth.js';
+import { checkProjectAccess } from './projects.js';
+import { ProjectMemberRole } from '../types/project.js';
 
 const router = Router();
 
+// Enforce authentication on financial model routes
+router.use(verifyAuthToken);
+
+// Helper for project authorization in finance routes
+function requireFinanceAccess(allowedMemberRoles?: ProjectMemberRole[], requireOwnerOrAdmin: boolean = false) {
+  return (req: any, res: any, next: any) => {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'احراز هویت انجام نشده است (Unauthorized)' });
+    }
+
+    const { projectId } = req.params;
+    if (!projectId) {
+      return res.status(400).json({ error: 'شناسه پروژه الزامی است' });
+    }
+
+    const access = checkProjectAccess(projectId, user.id, user.role, allowedMemberRoles);
+    if (!access.allowed) {
+      return res.status(access.status || 403).json({ error: access.error });
+    }
+
+    if (requireOwnerOrAdmin && !access.isOwner && user.role !== 'admin') {
+      return res.status(403).json({ error: 'تنها مالک پروژه یا مدیر سامانه مجاز به انجام این عملیات است' });
+    }
+
+    req.project = access.project;
+    req.projectAccess = access;
+    next();
+  };
+}
+
 // Get financial models by project ID
-router.get('/projects/:projectId/financial-models', (req, res) => {
+router.get('/projects/:projectId/financial-models', requireFinanceAccess(), (req, res) => {
   const models = db.getFinancialModelsByProjectId(req.params.projectId);
   res.json(models);
 });
 
 // Get financial model by ID with assumptions
-router.get('/projects/:projectId/financial-models/:modelId', (req, res) => {
-  const model = db.getFinancialModelById(req.params.modelId);
-  if (!model) return res.status(404).json({ error: 'مدل مالی یافت نشد' });
+router.get('/projects/:projectId/financial-models/:modelId', requireFinanceAccess(), (req, res) => {
+  const { projectId, modelId } = req.params;
+  const model = db.getFinancialModelById(modelId);
+  if (!model || model.projectId !== projectId) {
+    return res.status(404).json({ error: 'مدل مالی متعلق به این پروژه یافت نشد' });
+  }
+
   const assumptions = db.getFinancialAssumptionSetById(model.assumptionSetId);
   res.json({ model, assumptions });
 });
 
 // Create financial model from selected EPC bid
-router.post('/projects/:projectId/financial-models/from-bid', (req, res) => {
+router.post('/projects/:projectId/financial-models/from-bid', requireFinanceAccess(['OWNER', 'EPC', 'CONSULTANT', 'INVESTOR'], false), (req: any, res) => {
   const { projectId } = req.params;
   const { bidId } = req.body;
   
-  const project = db.getEnergyProjectById?.(projectId);
-  if (!project) return res.status(404).json({ error: 'پروژه یافت نشد' });
+  const project = req.project;
 
   // Look for bid either by bidId or find selected bid for project's RFQ
   const rfqs = db.getRFQsByProjectId ? db.getRFQsByProjectId(projectId) : [];
@@ -39,6 +76,11 @@ router.post('/projects/:projectId/financial-models/from-bid', (req, res) => {
 
   if (!bid) {
     return res.status(400).json({ error: 'پیشنهاد EPC معتبری برای استخراج داده‌های مالی یافت نشد' });
+  }
+
+  // Cross-project IDOR check: bid must belong to this project
+  if (bid.projectId && bid.projectId !== projectId) {
+    return res.status(403).json({ error: 'پیشنهاد مورد نظر متعلق به این پروژه نیست' });
   }
 
   const capacityKw = bid.technicalProposal?.systemCapacityKw || project.targetCapacityKw || 100;
@@ -60,7 +102,7 @@ router.post('/projects/:projectId/financial-models/from-bid', (req, res) => {
     sourceType: 'SELECTED_EPC_BID',
     selectedBidId: bid.id,
     version: 1,
-    createdByUserId: req.body.userId || 'system',
+    createdByUserId: req.user?.id || req.body.userId || 'system',
     capex: {
       engineering: { amount: Math.round(bidTotalPrice * engineeringRatio), currency: 'IRR', unit },
       solarPanels: { amount: Math.round(bidTotalPrice * equipmentRatio * 0.65), currency: 'IRR', unit },
@@ -166,7 +208,7 @@ router.post('/projects/:projectId/financial-models/from-bid', (req, res) => {
 });
 
 // Create financial model (custom inputs)
-router.post('/projects/:projectId/financial-models', (req, res) => {
+router.post('/projects/:projectId/financial-models', requireFinanceAccess(['OWNER', 'EPC', 'CONSULTANT'], false), (req: any, res) => {
   const { model, assumptions } = req.body;
   if (!model) return res.status(400).json({ error: 'داده‌های مدل مالی ارسال نشده است' });
   
@@ -176,6 +218,7 @@ router.post('/projects/:projectId/financial-models', (req, res) => {
   });
   model.assumptionSetId = newAssumptions.id;
   model.projectId = req.params.projectId;
+  model.createdByUserId = req.user?.id || model.createdByUserId;
   
   const newModel = db.createFinancialModel(model);
   
@@ -194,9 +237,12 @@ router.post('/projects/:projectId/financial-models', (req, res) => {
 });
 
 // Calculate financial model
-router.post('/projects/:projectId/financial-models/:modelId/calculate', (req, res) => {
-  const model = db.getFinancialModelById(req.params.modelId);
-  if (!model) return res.status(404).json({ error: 'مدل مالی یافت نشد' });
+router.post('/projects/:projectId/financial-models/:modelId/calculate', requireFinanceAccess(), (req, res) => {
+  const { projectId, modelId } = req.params;
+  const model = db.getFinancialModelById(modelId);
+  if (!model || model.projectId !== projectId) {
+    return res.status(404).json({ error: 'مدل مالی متعلق به این پروژه یافت نشد' });
+  }
   
   const assumptions = db.getFinancialAssumptionSetById(model.assumptionSetId);
   if (!assumptions) return res.status(404).json({ error: 'مفروضات مالی مدل یافت نشد' });
@@ -212,16 +258,19 @@ router.post('/projects/:projectId/financial-models/:modelId/calculate', (req, re
 });
 
 // Create scenario
-router.post('/projects/:projectId/financial-models/:modelId/scenarios', (req, res) => {
-  const model = db.getFinancialModelById(req.params.modelId);
-  if (!model) return res.status(404).json({ error: 'مدل مالی یافت نشد' });
+router.post('/projects/:projectId/financial-models/:modelId/scenarios', requireFinanceAccess(['OWNER', 'EPC', 'CONSULTANT', 'INVESTOR'], false), (req, res) => {
+  const { projectId, modelId } = req.params;
+  const model = db.getFinancialModelById(modelId);
+  if (!model || model.projectId !== projectId) {
+    return res.status(404).json({ error: 'مدل مالی متعلق به این پروژه یافت نشد' });
+  }
   
   const assumptions = db.getFinancialAssumptionSetById(model.assumptionSetId);
   if (!assumptions) return res.status(404).json({ error: 'مفروضات مالی مدل یافت نشد' });
   
   const scenarioData = req.body;
-  scenarioData.projectId = req.params.projectId;
-  scenarioData.financialModelId = req.params.modelId;
+  scenarioData.projectId = projectId;
+  scenarioData.financialModelId = modelId;
   
   // Calculate scenario results before saving
   const results = financeService.calculateScenario(scenarioData, model, assumptions);
@@ -232,8 +281,14 @@ router.post('/projects/:projectId/financial-models/:modelId/scenarios', (req, re
 });
 
 // Get scenarios
-router.get('/projects/:projectId/financial-models/:modelId/scenarios', (req, res) => {
-  const scenarios = db.getFinancialScenariosByModelId(req.params.modelId);
+router.get('/projects/:projectId/financial-models/:modelId/scenarios', requireFinanceAccess(), (req, res) => {
+  const { projectId, modelId } = req.params;
+  const model = db.getFinancialModelById(modelId);
+  if (!model || model.projectId !== projectId) {
+    return res.status(404).json({ error: 'مدل مالی متعلق به این پروژه یافت نشد' });
+  }
+
+  const scenarios = db.getFinancialScenariosByModelId(modelId);
   res.json(scenarios);
 });
 

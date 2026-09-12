@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "../db/index.js";
 import { verifyAuthToken } from "./auth.js";
+import { checkProjectAccess } from "./projects.js";
 import { projectReadinessService } from "../services/projectReadinessService.js";
 import { projectMatchingService } from "../services/projectMatchingService.js";
 import { projectRepository } from "../repositories/projectRepository.js";
@@ -15,11 +16,19 @@ router.get("/projects/:projectId/opportunity", (req, res) => {
   res.json(opp);
 });
 
-// Create or update opportunity for a specific project
-router.post("/projects/:projectId/opportunity", (req, res) => {
+// Create or update opportunity for a specific project (Owner / Admin only)
+router.post("/projects/:projectId/opportunity", verifyAuthToken, (req: any, res) => {
   const { projectId } = req.params;
-  const project = projectRepository.findById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+  const user = req.user;
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  const access = checkProjectAccess(projectId, user.id, user.role);
+  if (!access.allowed) {
+    return res.status(access.status || 403).json({ error: access.error });
+  }
+  if (!access.isOwner && user.role !== 'admin') {
+    return res.status(403).json({ error: "تنها مالک پروژه یا مدیر مجاز به ثبت و ویرایش فرصت سرمایه‌گذاری هستند" });
+  }
 
   const existing = db.getInvestmentOpportunityByProjectId(projectId);
   if (existing) {
@@ -27,11 +36,10 @@ router.post("/projects/:projectId/opportunity", (req, res) => {
     return res.json(updated);
   }
 
-  const user = (req as any).user;
   const newOpp = db.createInvestmentOpportunity({
     ...req.body,
     projectId,
-    createdByUserId: user?.id || project.ownerId || 'unknown',
+    createdByUserId: user.id || access.project?.ownerId || 'unknown',
     opportunityCode: 'OPP-PRJ-' + Math.floor(Math.random() * 100000).toString().padStart(5, '0'),
     status: req.body.status || 'PUBLISHED',
     visibility: req.body.visibility || 'PUBLIC_SUMMARY',
@@ -46,9 +54,17 @@ router.post("/projects/:projectId/opportunity", (req, res) => {
 });
 
 // Project readiness calculation
-router.get("/projects/:projectId/readiness", (req, res) => {
+router.get("/projects/:projectId/readiness", verifyAuthToken, (req: any, res) => {
   const { projectId } = req.params;
-  const project = projectRepository.findById(projectId);
+  const user = req.user;
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  const access = checkProjectAccess(projectId, user.id, user.role);
+  if (!access.allowed) {
+    return res.status(access.status || 403).json({ error: access.error });
+  }
+
+  const project = access.project;
   const opp = db.getInvestmentOpportunityByProjectId(projectId);
   
   if (!opp && !project) return res.status(404).json({ error: "Project not found" });

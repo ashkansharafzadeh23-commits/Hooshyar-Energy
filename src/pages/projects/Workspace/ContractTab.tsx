@@ -51,6 +51,11 @@ export const ContractTab: React.FC<ContractTabProps> = ({ projectId }) => {
   const [crScheduleImpactDays, setCrScheduleImpactDays] = useState<number>(0);
   const [crReason, setCrReason] = useState<'CLIENT_REQUEST' | 'SITE_CONDITIONS' | 'REGULATORY' | 'DESIGN_CHANGE'>('DESIGN_CHANGE');
 
+  // External Signed Document Upload Modal
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadContractId, setUploadContractId] = useState<string | null>(null);
+  const [uploadFileUrl, setUploadFileUrl] = useState('');
+
   useEffect(() => {
     fetchContractData();
   }, [projectId]);
@@ -133,12 +138,53 @@ export const ContractTab: React.FC<ContractTabProps> = ({ projectId }) => {
     }
   };
 
-  const handleSignContractParty = async (contractId: string, partyId: string) => {
+  const handleMarkReadyToSign = async (contractId: string) => {
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/execution/${projectId}/contracts/${contractId}/parties/${partyId}/sign`, {
+      const res = await fetch(`/api/execution/${projectId}/contracts/${contractId}/ready-to-sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        await fetchContractData();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUploadSignedDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadContractId || !uploadFileUrl.trim()) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/execution/${projectId}/contracts/${uploadContractId}/upload-signed-document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileUrl: uploadFileUrl })
+      });
+      if (res.ok) {
+        setShowUploadModal(false);
+        setUploadFileUrl('');
+        setUploadContractId(null);
+        await fetchContractData();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmSignedDocument = async (contractId: string) => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/execution/${projectId}/contracts/${contractId}/confirm-signed-document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
       });
       if (res.ok) {
         await fetchContractData();
@@ -407,12 +453,16 @@ export const ContractTab: React.FC<ContractTabProps> = ({ projectId }) => {
                         <span className={`px-2.5 py-1 text-xs font-bold rounded-lg ${
                           contract.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                           contract.status === 'COMPLETED' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                          contract.status === 'SIGNED' ? 'bg-teal-50 text-teal-700 border border-teal-200' :
+                          contract.status === 'READY_TO_SIGN' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
                           contract.status === 'PENDING_SIGNATURE' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
                           contract.status === 'UNDER_REVIEW' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
                           'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}>
                           {contract.status === 'ACTIVE' ? 'قرارداد نافذ و فعال (ACTIVE)' :
-                           contract.status === 'PENDING_SIGNATURE' ? 'در انتظار امضای طرفین (PENDING SIGNATURE)' :
+                           contract.status === 'SIGNED' ? 'بارگذاری اسکن امضاشده (SIGNED - نیازمند تایید)' :
+                           contract.status === 'READY_TO_SIGN' ? 'آماده امضای خارج سامانه (READY TO SIGN)' :
+                           contract.status === 'PENDING_SIGNATURE' ? 'در انتظار امضای فیزیکی طرفین' :
                            contract.status === 'UNDER_REVIEW' ? 'در حال بازبینی حقوقی (UNDER REVIEW)' :
                            contract.status === 'DRAFT' ? 'پیش‌نویس قرارداد (DRAFT)' :
                            contract.status === 'COMPLETED' ? 'تکمیل و تحویل نهایی' : contract.status}
@@ -492,12 +542,69 @@ export const ContractTab: React.FC<ContractTabProps> = ({ projectId }) => {
                   </div>
                 </div>
 
+                {/* Official External Signing Workflow Notice */}
+                <div className="bg-amber-50 border-b border-amber-200 p-4 text-xs text-amber-900 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <ShieldCheck className="text-amber-600 shrink-0 mt-0.5" size={18} />
+                    <div>
+                      <strong className="block mb-0.5 text-amber-950 font-bold">فرآیند رسمی امضای قراردادهای اجرایی:</strong>
+                      <span>قراردادها خارج از سامانه به صورت رسمی امضا و مبادله می‌شوند. نسخه اسکن‌شده جهت بایگانی و فعال‌سازی پروژه بارگذاری می‌گردد. سامانه هوشیار انرژی صادرکننده گواهی امضای الکترونیک دیجیتال نیست.</span>
+                    </div>
+                  </div>
+
+                  {/* Workflow Action Buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {(contract.status === 'DRAFT' || contract.status === 'UNDER_REVIEW') && (
+                      <button
+                        onClick={() => handleMarkReadyToSign(contract.id)}
+                        disabled={actionLoading}
+                        className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                      >
+                        <FileCheck size={14} />
+                        آماده‌سازی برای امضای خارج سامانه
+                      </button>
+                    )}
+
+                    {contract.status === 'READY_TO_SIGN' && (
+                      <button
+                        onClick={() => {
+                          setUploadContractId(contract.id);
+                          setShowUploadModal(true);
+                        }}
+                        disabled={actionLoading}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                      >
+                        <FileText size={14} />
+                        بارگذاری اسکن نسخه امضا شده فیزیکی
+                      </button>
+                    )}
+
+                    {(contract.status === 'SIGNED' || (contract.signedDocumentId && contract.status !== 'ACTIVE')) && (
+                      <button
+                        onClick={() => handleConfirmSignedDocument(contract.id)}
+                        disabled={actionLoading}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                      >
+                        <CheckCircle size={14} />
+                        تایید صحت امضا و فعال‌سازی قرارداد
+                      </button>
+                    )}
+
+                    {contract.status === 'ACTIVE' && (
+                      <div className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center gap-1">
+                        <CheckCircle size={14} />
+                        قرارداد رسمی تایید و فعال شده است
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Contract Parties & Signing Status */}
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-gray-100">
                   <div>
                     <h4 className="font-bold text-gray-900 text-sm mb-3 flex items-center gap-2">
                       <Building size={16} className="text-blue-600" />
-                      طرفین قرارداد و امضای دیجیتال (Contract Parties & Signatures)
+                      طرفین قرارداد و نمایندگان رسمی (Contract Parties & Representatives)
                     </h4>
                     <div className="space-y-3 text-xs">
                       {contractParties.length > 0 ? (
@@ -509,27 +616,23 @@ export const ContractTab: React.FC<ContractTabProps> = ({ projectId }) => {
                                 <span className="font-normal mr-1.5 text-gray-700">{p.legalName}</span>
                               </div>
                               {p.representativeName && (
-                                <span className="text-gray-500 block mt-0.5">نماینده مجاز: {p.representativeName}</span>
+                                <span className="text-gray-500 block mt-0.5">نماینده مجاز حقوقی: {p.representativeName}</span>
                               )}
                               {p.signedAt && (
                                 <span className="text-emerald-600 block mt-0.5">
-                                  امضا شده در {new Date(p.signedAt).toLocaleDateString('fa-IR')}
+                                  تایید صحت امضا در {new Date(p.signedAt).toLocaleDateString('fa-IR')}
                                 </span>
                               )}
                             </div>
                             <div>
                               {p.signStatus === 'SIGNED' ? (
                                 <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1">
-                                  <CheckCircle size={12} /> امضا شده
+                                  <CheckCircle size={12} /> امضا شده در نسخه فیزیکی
                                 </span>
                               ) : (
-                                <button
-                                  onClick={() => handleSignContractParty(contract.id, p.id)}
-                                  disabled={actionLoading}
-                                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition-colors disabled:opacity-50"
-                                >
-                                  <PenTool size={12} /> امضای قرارداد
-                                </button>
+                                <span className="px-2.5 py-1 bg-gray-100 text-gray-600 border border-gray-300 rounded-lg text-xs font-medium flex items-center gap-1">
+                                  <Clock size={12} /> در انتظار امضا و مبادله نسخه فیزیکی
+                                </span>
                               )}
                             </div>
                           </div>
@@ -827,6 +930,65 @@ export const ContractTab: React.FC<ContractTabProps> = ({ projectId }) => {
                 >
                   {actionLoading ? <Loader2 className="animate-spin" size={16} /> : null}
                   ثبت برای بررسی و تصویب
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Scanned Signed Contract Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95">
+            <button 
+              onClick={() => {
+                setShowUploadModal(false);
+                setUploadContractId(null);
+              }}
+              className="absolute left-4 top-4 text-gray-400 hover:text-gray-600"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">بارگذاری اسکن قرارداد امضاشده فیزیکی</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              لطفاً فایل PDF یا تصویر اسکن‌شده از نسخه چاپی با مهر و امضای معتبر طرفین را جهت آرشیو حقوقی و فعال‌سازی پروژه بارگذاری نمایید.
+            </p>
+
+            <form onSubmit={handleUploadSignedDocument} className="space-y-4 text-right">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">نشانی اینترنتی یا مسیر فایل سند (File URL / Path)</label>
+                <input 
+                  type="text" 
+                  value={uploadFileUrl} 
+                  onChange={e => setUploadFileUrl(e.target.value)}
+                  placeholder="https://storage.example.com/contracts/signed_epc_contract.pdf"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
+                  required
+                />
+                <span className="text-[11px] text-gray-400 mt-1 block">
+                  پس از بارگذاری، نسخه اسکن‌شده به عنوان سند بایگانی پیوست شده و توسط کارفرما بررسی و تایید می‌گردد.
+                </span>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    setUploadContractId(null);
+                  }}
+                  className="px-4 py-2.5 text-gray-600 hover:bg-gray-100 rounded-xl text-sm font-medium"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading || !uploadFileUrl.trim()}
+                  className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {actionLoading ? <Loader2 className="animate-spin" size={16} /> : <FileCheck size={16} />}
+                  ثبت سند و ارسال برای تایید کارفرما
                 </button>
               </div>
             </form>

@@ -10,17 +10,21 @@ const router = express.Router();
 router.use(verifyAuthToken);
 
 // Helper for permission check
-export function checkProjectAccess(projectId: string, userId: string, userRole?: string, allowedMemberRoles?: ProjectMemberRole[]) {
+export function checkProjectAccess(projectId: string, userId?: string, userRole?: string, allowedMemberRoles?: ProjectMemberRole[]) {
+  if (!userId) return { allowed: false, status: 401, error: "Authentication required" };
   const project = projectRepository.findById(projectId);
   if (!project) return { allowed: false, status: 404, error: "Project not found" };
 
-  if (userRole === 'admin') return { allowed: true, project, isOwner: true };
+  const roleUpper = userRole?.toUpperCase();
+  if (roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || userRole === 'admin') {
+    return { allowed: true, project, isOwner: true };
+  }
 
   const isOwner = project.ownerId === userId;
   if (isOwner) return { allowed: true, project, isOwner: true };
 
   const members = projectRepository.getMembers(projectId);
-  const member = members.find(m => m.userId === userId && m.status === 'ACTIVE');
+  const member = members.find(m => m.userId === userId && (!m.status || m.status === 'ACTIVE'));
 
   if (!member) {
     return { allowed: false, status: 403, error: "شما به این پروژه دسترسی ندارید (عدم عضویت)" };
