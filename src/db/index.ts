@@ -7,6 +7,7 @@ import { ProjectFinancialModel, FinancialAssumptionSet, FinancialScenario, Proje
 import { InvestmentOpportunity, LandProfile, InvestorProfile, ProjectMatch, ProjectReadinessScore } from '../types/investment.js';
 import { BillOfQuantities, BOQItem, ProcurementRFQ, ProcurementPackage, SupplierInvitation, VendorQuote, VendorQuoteItem, VendorQuoteRevision, SupplierAward, PurchaseOrder, PurchaseOrderItem, DeliveryRecord, DeliveryItem, DeliveryInspection } from '../types/procurement.js';
 import { EnergyAsset, AssetComponent, EquipmentWarranty, CommissioningRecord, CommissioningTest, AssetOwnershipRecord, AssetPassportSnapshot, AssetPerformanceBaseline, ProjectHandover, FinalProjectCostSummary, PunchListItem } from '../types/asset.js';
+import { TelemetrySource, TelemetryReading, AssetPerformanceSnapshot, AssetHealthAssessment } from '../types/monitoring.js';
 import { FinancialPartnerProfile, FinancingProduct, FinancingRequest, FinanceReadinessSnapshot, FinancialPartnerMatch, FinancingSubmission, FinanceInformationRequest, FinancingOffer, ProjectFinancingRecord, FinanceReviewNote, FinanceDueDiligenceChecklist } from '../types/financing.js';
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -203,6 +204,10 @@ interface DB {
   assetOwnershipRecords?: AssetOwnershipRecord[];
   assetPassportSnapshots?: AssetPassportSnapshot[];
   assetPerformanceBaselines?: AssetPerformanceBaseline[];
+  telemetrySources?: TelemetrySource[];
+  telemetryReadings?: TelemetryReading[];
+  assetPerformanceSnapshots?: AssetPerformanceSnapshot[];
+  assetHealthAssessments?: AssetHealthAssessment[];
   projectHandovers?: ProjectHandover[];
   finalProjectCostSummaries?: FinalProjectCostSummary[];
   boqs?: BillOfQuantities[];
@@ -1080,7 +1085,7 @@ export const db: any = {
     const d = readDB(); 
     if(!d.boqs) d.boqs = []; 
     const codeNum = String(d.boqs.length + 1).padStart(6, '0');
-    const n = { ...boq, id: require('uuid').v4(), boqCode: boq.boqCode || `BOQ-HSE-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    const n = { ...boq, id: uuidv4(), boqCode: boq.boqCode || `BOQ-HSE-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
     d.boqs.push(n); 
     writeDB(d); 
     return n; 
@@ -1088,7 +1093,7 @@ export const db: any = {
   updateBOQ: (id: string, updates: any) => { const d = readDB(); if(!d.boqs) d.boqs = []; const idx = d.boqs.findIndex((b: any) => b.id === id); if(idx > -1) { d.boqs[idx] = { ...d.boqs[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.boqs[idx]; } return null; },
   getBOQItems: (boqId: string) => readDB().boqItems?.filter((i: any) => i.boqId === boqId) || [],
   getBOQItemsByProjectId: (projectId: string) => readDB().boqItems?.filter((i: any) => i.projectId === projectId) || [],
-  createBOQItem: (item: any) => { const d = readDB(); if(!d.boqItems) d.boqItems = []; const n = { ...item, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.boqItems.push(n); writeDB(d); return n; },
+  createBOQItem: (item: any) => { const d = readDB(); if(!d.boqItems) d.boqItems = []; const n = { ...item, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.boqItems.push(n); writeDB(d); return n; },
   updateBOQItem: (id: string, updates: any) => { const d = readDB(); if(!d.boqItems) d.boqItems = []; const idx = d.boqItems.findIndex((i: any) => i.id === id); if(idx > -1) { d.boqItems[idx] = { ...d.boqItems[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.boqItems[idx]; } return null; },
   deleteBOQItem: (id: string) => { const d = readDB(); if(!d.boqItems) return; d.boqItems = d.boqItems.filter((i: any) => i.id !== id); writeDB(d); },
   getProcurementRFQs: (projectId: string) => readDB().procurementRfqs?.filter((r: any) => r.projectId === projectId) || [],
@@ -1097,7 +1102,7 @@ export const db: any = {
     const d = readDB(); 
     if(!d.procurementRfqs) d.procurementRfqs = []; 
     const codeNum = String(d.procurementRfqs.length + 1).padStart(6, '0');
-    const n = { ...rfq, id: require('uuid').v4(), procurementRfqCode: rfq.procurementRfqCode || `PRFQ-HSE-${codeNum}`, createdAt: new Date().toISOString() }; 
+    const n = { ...rfq, id: uuidv4(), procurementRfqCode: rfq.procurementRfqCode || `PRFQ-HSE-${codeNum}`, createdAt: new Date().toISOString() }; 
     d.procurementRfqs.push(n); 
     writeDB(d); 
     return n; 
@@ -1105,7 +1110,7 @@ export const db: any = {
   updateProcurementRFQ: (id: string, updates: any) => { const d = readDB(); if(!d.procurementRfqs) d.procurementRfqs = []; const idx = d.procurementRfqs.findIndex((r: any) => r.id === id); if(idx > -1) { d.procurementRfqs[idx] = { ...d.procurementRfqs[idx], ...updates }; writeDB(d); return d.procurementRfqs[idx]; } return null; },
   getSupplierInvitations: (rfqId: string) => readDB().supplierInvitations?.filter((i: any) => i.procurementRfqId === rfqId) || [],
   getSupplierInvitationByVendorId: (vendorId: string) => readDB().supplierInvitations?.filter((i: any) => i.vendorId === vendorId) || [],
-  createSupplierInvitation: (inv: any) => { const d = readDB(); if(!d.supplierInvitations) d.supplierInvitations = []; const n = { ...inv, id: require('uuid').v4(), invitedAt: new Date().toISOString() }; d.supplierInvitations.push(n); writeDB(d); return n; },
+  createSupplierInvitation: (inv: any) => { const d = readDB(); if(!d.supplierInvitations) d.supplierInvitations = []; const n = { ...inv, id: uuidv4(), invitedAt: new Date().toISOString() }; d.supplierInvitations.push(n); writeDB(d); return n; },
   updateSupplierInvitation: (id: string, updates: any) => { const d = readDB(); if(!d.supplierInvitations) d.supplierInvitations = []; const idx = d.supplierInvitations.findIndex((i: any) => i.id === id); if(idx > -1) { d.supplierInvitations[idx] = { ...d.supplierInvitations[idx], ...updates }; writeDB(d); return d.supplierInvitations[idx]; } return null; },
   getVendorQuotes: (rfqId: string) => readDB().vendorQuotes?.filter((q: any) => q.procurementRfqId === rfqId) || [],
   getVendorQuoteById: (id: string) => readDB().vendorQuotes?.find((q: any) => q.id === id),
@@ -1113,18 +1118,18 @@ export const db: any = {
     const d = readDB(); 
     if(!d.vendorQuotes) d.vendorQuotes = []; 
     const codeNum = String(d.vendorQuotes.length + 1).padStart(6, '0');
-    const n = { ...quote, id: require('uuid').v4(), quoteCode: quote.quoteCode || `VQ-HSE-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    const n = { ...quote, id: uuidv4(), quoteCode: quote.quoteCode || `VQ-HSE-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
     d.vendorQuotes.push(n); 
     writeDB(d); 
     return n; 
   },
   updateVendorQuote: (id: string, updates: any) => { const d = readDB(); if(!d.vendorQuotes) d.vendorQuotes = []; const idx = d.vendorQuotes.findIndex((q: any) => q.id === id); if(idx > -1) { d.vendorQuotes[idx] = { ...d.vendorQuotes[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.vendorQuotes[idx]; } return null; },
   getVendorQuoteItems: (quoteId: string) => readDB().vendorQuoteItems?.filter((i: any) => i.quoteId === quoteId) || [],
-  createVendorQuoteItem: (item: any) => { const d = readDB(); if(!d.vendorQuoteItems) d.vendorQuoteItems = []; const n = { ...item, id: require('uuid').v4() }; d.vendorQuoteItems.push(n); writeDB(d); return n; },
+  createVendorQuoteItem: (item: any) => { const d = readDB(); if(!d.vendorQuoteItems) d.vendorQuoteItems = []; const n = { ...item, id: uuidv4() }; d.vendorQuoteItems.push(n); writeDB(d); return n; },
   updateVendorQuoteItem: (id: string, updates: any) => { const d = readDB(); if(!d.vendorQuoteItems) d.vendorQuoteItems = []; const idx = d.vendorQuoteItems.findIndex((i: any) => i.id === id); if(idx > -1) { d.vendorQuoteItems[idx] = { ...d.vendorQuoteItems[idx], ...updates }; writeDB(d); return d.vendorQuoteItems[idx]; } return null; },
   getSupplierAwards: (rfqId: string) => readDB().supplierAwards?.filter((a: any) => a.procurementRfqId === rfqId) || [],
   getSupplierAwardsByProjectId: (projectId: string) => readDB().supplierAwards?.filter((a: any) => a.projectId === projectId) || [],
-  createSupplierAward: (award: any) => { const d = readDB(); if(!d.supplierAwards) d.supplierAwards = []; const n = { ...award, id: require('uuid').v4(), createdAt: new Date().toISOString() }; d.supplierAwards.push(n); writeDB(d); return n; },
+  createSupplierAward: (award: any) => { const d = readDB(); if(!d.supplierAwards) d.supplierAwards = []; const n = { ...award, id: uuidv4(), createdAt: new Date().toISOString() }; d.supplierAwards.push(n); writeDB(d); return n; },
   updateSupplierAward: (id: string, updates: any) => { const d = readDB(); if(!d.supplierAwards) d.supplierAwards = []; const idx = d.supplierAwards.findIndex((a: any) => a.id === id); if(idx > -1) { d.supplierAwards[idx] = { ...d.supplierAwards[idx], ...updates }; writeDB(d); return d.supplierAwards[idx]; } return null; },
   getPurchaseOrders: (projectId: string) => readDB().purchaseOrders?.filter((p: any) => p.projectId === projectId) || [],
   getPurchaseOrderById: (id: string) => readDB().purchaseOrders?.find((p: any) => p.id === id),
@@ -1132,14 +1137,14 @@ export const db: any = {
     const d = readDB(); 
     if(!d.purchaseOrders) d.purchaseOrders = []; 
     const codeNum = String(d.purchaseOrders.length + 1).padStart(6, '0');
-    const n = { ...po, id: require('uuid').v4(), poCode: po.poCode || `PO-HSE-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    const n = { ...po, id: uuidv4(), poCode: po.poCode || `PO-HSE-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
     d.purchaseOrders.push(n); 
     writeDB(d); 
     return n; 
   },
   updatePurchaseOrder: (id: string, updates: any) => { const d = readDB(); if(!d.purchaseOrders) d.purchaseOrders = []; const idx = d.purchaseOrders.findIndex((p: any) => p.id === id); if(idx > -1) { d.purchaseOrders[idx] = { ...d.purchaseOrders[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.purchaseOrders[idx]; } return null; },
   getPurchaseOrderItems: (poId: string) => readDB().purchaseOrderItems?.filter((i: any) => i.purchaseOrderId === poId) || [],
-  createPurchaseOrderItem: (item: any) => { const d = readDB(); if(!d.purchaseOrderItems) d.purchaseOrderItems = []; const n = { ...item, id: require('uuid').v4() }; d.purchaseOrderItems.push(n); writeDB(d); return n; },
+  createPurchaseOrderItem: (item: any) => { const d = readDB(); if(!d.purchaseOrderItems) d.purchaseOrderItems = []; const n = { ...item, id: uuidv4() }; d.purchaseOrderItems.push(n); writeDB(d); return n; },
   getDeliveryRecords: (poId: string) => readDB().deliveryRecords?.filter((d: any) => d.purchaseOrderId === poId) || [],
   getDeliveryRecordsByProjectId: (projectId: string) => readDB().deliveryRecords?.filter((d: any) => d.projectId === projectId) || [],
   getDeliveryRecordById: (id: string) => readDB().deliveryRecords?.find((d: any) => d.id === id),
@@ -1147,17 +1152,17 @@ export const db: any = {
     const d = readDB(); 
     if(!d.deliveryRecords) d.deliveryRecords = []; 
     const codeNum = String(d.deliveryRecords.length + 1).padStart(6, '0');
-    const n = { ...rec, id: require('uuid').v4(), deliveryNumber: rec.deliveryNumber || `DLV-HSE-${codeNum}`, createdAt: new Date().toISOString() }; 
+    const n = { ...rec, id: uuidv4(), deliveryNumber: rec.deliveryNumber || `DLV-HSE-${codeNum}`, createdAt: new Date().toISOString() }; 
     d.deliveryRecords.push(n); 
     writeDB(d); 
     return n; 
   },
   updateDeliveryRecord: (id: string, updates: any) => { const d = readDB(); if(!d.deliveryRecords) d.deliveryRecords = []; const idx = d.deliveryRecords.findIndex((dr: any) => dr.id === id); if(idx > -1) { d.deliveryRecords[idx] = { ...d.deliveryRecords[idx], ...updates }; writeDB(d); return d.deliveryRecords[idx]; } return null; },
   getDeliveryItems: (deliveryRecordId: string) => readDB().deliveryItems?.filter((i: any) => i.deliveryRecordId === deliveryRecordId) || [],
-  createDeliveryItem: (item: any) => { const d = readDB(); if(!d.deliveryItems) d.deliveryItems = []; const n = { ...item, id: require('uuid').v4() }; d.deliveryItems.push(n); writeDB(d); return n; },
+  createDeliveryItem: (item: any) => { const d = readDB(); if(!d.deliveryItems) d.deliveryItems = []; const n = { ...item, id: uuidv4() }; d.deliveryItems.push(n); writeDB(d); return n; },
   updateDeliveryItem: (id: string, updates: any) => { const d = readDB(); if(!d.deliveryItems) d.deliveryItems = []; const idx = d.deliveryItems.findIndex((i: any) => i.id === id); if(idx > -1) { d.deliveryItems[idx] = { ...d.deliveryItems[idx], ...updates }; writeDB(d); return d.deliveryItems[idx]; } return null; },
   getDeliveryInspections: (deliveryRecordId: string) => readDB().deliveryInspections?.filter((i: any) => i.deliveryRecordId === deliveryRecordId) || [],
-  createDeliveryInspection: (inspection: any) => { const d = readDB(); if(!d.deliveryInspections) d.deliveryInspections = []; const n = { ...inspection, id: require('uuid').v4(), createdAt: new Date().toISOString() }; d.deliveryInspections.push(n); writeDB(d); return n; },
+  createDeliveryInspection: (inspection: any) => { const d = readDB(); if(!d.deliveryInspections) d.deliveryInspections = []; const n = { ...inspection, id: uuidv4(), createdAt: new Date().toISOString() }; d.deliveryInspections.push(n); writeDB(d); return n; },
 
   // Asset & Commissioning
   getAssets: () => readDB().energyAssets || [],
@@ -1167,30 +1172,30 @@ export const db: any = {
     const d = readDB(); 
     if(!d.energyAssets) d.energyAssets = []; 
     const codeNum = String(d.energyAssets.length + 1).padStart(6, '0');
-    const n = { ...asset, id: require('uuid').v4(), assetCode: asset.assetCode || `HEA-IR-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    const n = { ...asset, id: uuidv4(), assetCode: asset.assetCode || `HEA-IR-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
     d.energyAssets.push(n); 
     writeDB(d); 
     return n; 
   },
   updateAsset: (id: string, updates: any) => { const d = readDB(); if(!d.energyAssets) d.energyAssets = []; const idx = d.energyAssets.findIndex((a: any) => a.id === id); if(idx > -1) { d.energyAssets[idx] = { ...d.energyAssets[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.energyAssets[idx]; } return null; },
   getAssetComponents: (assetId: string) => readDB().assetComponents?.filter((c: any) => c.assetId === assetId) || [],
-  createAssetComponent: (comp: any) => { const d = readDB(); if(!d.assetComponents) d.assetComponents = []; const n = { ...comp, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.assetComponents.push(n); writeDB(d); return n; },
+  createAssetComponent: (comp: any) => { const d = readDB(); if(!d.assetComponents) d.assetComponents = []; const n = { ...comp, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.assetComponents.push(n); writeDB(d); return n; },
   updateAssetComponent: (id: string, updates: any) => { const d = readDB(); if(!d.assetComponents) d.assetComponents = []; const idx = d.assetComponents.findIndex((c: any) => c.id === id); if(idx > -1) { d.assetComponents[idx] = { ...d.assetComponents[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.assetComponents[idx]; } return null; },
   getEquipmentWarranties: (assetId: string) => readDB().equipmentWarranties?.filter((w: any) => w.assetId === assetId) || [],
   getEquipmentWarrantiesByProjectId: (projectId: string) => readDB().equipmentWarranties?.filter((w: any) => w.projectId === projectId) || [],
-  createEquipmentWarranty: (warranty: any) => { const d = readDB(); if(!d.equipmentWarranties) d.equipmentWarranties = []; const n = { ...warranty, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.equipmentWarranties.push(n); writeDB(d); return n; },
+  createEquipmentWarranty: (warranty: any) => { const d = readDB(); if(!d.equipmentWarranties) d.equipmentWarranties = []; const n = { ...warranty, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.equipmentWarranties.push(n); writeDB(d); return n; },
   updateEquipmentWarranty: (id: string, updates: any) => { const d = readDB(); if(!d.equipmentWarranties) d.equipmentWarranties = []; const idx = d.equipmentWarranties.findIndex((w: any) => w.id === id); if(idx > -1) { d.equipmentWarranties[idx] = { ...d.equipmentWarranties[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.equipmentWarranties[idx]; } return null; },
   getCommissioningRecords: (projectId: string) => readDB().commissioningRecords?.filter((r: any) => r.projectId === projectId) || [],
   getCommissioningRecordById: (id: string) => readDB().commissioningRecords?.find((r: any) => r.id === id),
-  createCommissioningRecord: (record: any) => { const d = readDB(); if(!d.commissioningRecords) d.commissioningRecords = []; const n = { ...record, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.commissioningRecords.push(n); writeDB(d); return n; },
+  createCommissioningRecord: (record: any) => { const d = readDB(); if(!d.commissioningRecords) d.commissioningRecords = []; const n = { ...record, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.commissioningRecords.push(n); writeDB(d); return n; },
   updateCommissioningRecord: (id: string, updates: any) => { const d = readDB(); if(!d.commissioningRecords) d.commissioningRecords = []; const idx = d.commissioningRecords.findIndex((r: any) => r.id === id); if(idx > -1) { d.commissioningRecords[idx] = { ...d.commissioningRecords[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.commissioningRecords[idx]; } return null; },
   getCommissioningTests: (recordId: string) => readDB().commissioningTests?.filter((t: any) => t.commissioningRecordId === recordId) || [],
   getCommissioningTestById: (id: string) => readDB().commissioningTests?.find((t: any) => t.id === id),
-  createCommissioningTest: (test: any) => { const d = readDB(); if(!d.commissioningTests) d.commissioningTests = []; const n = { ...test, id: require('uuid').v4() }; d.commissioningTests.push(n); writeDB(d); return n; },
+  createCommissioningTest: (test: any) => { const d = readDB(); if(!d.commissioningTests) d.commissioningTests = []; const n = { ...test, id: uuidv4() }; d.commissioningTests.push(n); writeDB(d); return n; },
   updateCommissioningTest: (id: string, updates: any) => { const d = readDB(); if(!d.commissioningTests) d.commissioningTests = []; const idx = d.commissioningTests.findIndex((t: any) => t.id === id); if(idx > -1) { d.commissioningTests[idx] = { ...d.commissioningTests[idx], ...updates }; writeDB(d); return d.commissioningTests[idx]; } return null; },
   getProjectHandover: (projectId: string) => readDB().projectHandovers?.find((h: any) => h.projectId === projectId),
   getProjectHandoverById: (id: string) => readDB().projectHandovers?.find((h: any) => h.id === id),
-  createProjectHandover: (handover: any) => { const d = readDB(); if(!d.projectHandovers) d.projectHandovers = []; const n = { ...handover, id: require('uuid').v4() }; d.projectHandovers.push(n); writeDB(d); return n; },
+  createProjectHandover: (handover: any) => { const d = readDB(); if(!d.projectHandovers) d.projectHandovers = []; const n = { ...handover, id: uuidv4() }; d.projectHandovers.push(n); writeDB(d); return n; },
   updateProjectHandover: (id: string, updates: any) => { const d = readDB(); if(!d.projectHandovers) d.projectHandovers = []; const idx = d.projectHandovers.findIndex((h: any) => h.id === id); if(idx > -1) { d.projectHandovers[idx] = { ...d.projectHandovers[idx], ...updates }; writeDB(d); return d.projectHandovers[idx]; } return null; },
   getPunchListItems: (projectId: string) => readDB().punchListItems?.filter((p: any) => p.projectId === projectId) || [],
   getPunchListItemById: (id: string) => readDB().punchListItems?.find((p: any) => p.id === id),
@@ -1198,7 +1203,7 @@ export const db: any = {
     const d = readDB(); 
     if(!d.punchListItems) d.punchListItems = []; 
     const codeNum = String(d.punchListItems.length + 1).padStart(4, '0');
-    const n = { ...item, id: require('uuid').v4(), itemNumber: item.itemNumber || `PL-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
+    const n = { ...item, id: uuidv4(), itemNumber: item.itemNumber || `PL-${codeNum}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; 
     d.punchListItems.push(n); 
     writeDB(d); 
     return n; 
@@ -1206,18 +1211,162 @@ export const db: any = {
   updatePunchListItem: (id: string, updates: any) => { const d = readDB(); if(!d.punchListItems) d.punchListItems = []; const idx = d.punchListItems.findIndex((p: any) => p.id === id); if(idx > -1) { d.punchListItems[idx] = { ...d.punchListItems[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.punchListItems[idx]; } return null; },
   deletePunchListItem: (id: string) => { const d = readDB(); if(!d.punchListItems) return; d.punchListItems = d.punchListItems.filter((p: any) => p.id !== id); writeDB(d); },
   getAssetPassportSnapshots: (assetId: string) => readDB().assetPassportSnapshots?.filter((s: any) => s.assetId === assetId) || [],
-  createAssetPassportSnapshot: (snapshot: any) => { const d = readDB(); if(!d.assetPassportSnapshots) d.assetPassportSnapshots = []; const n = { ...snapshot, id: require('uuid').v4(), generatedAt: new Date().toISOString() }; d.assetPassportSnapshots.push(n); writeDB(d); return n; },
+  createAssetPassportSnapshot: (snapshot: any) => { const d = readDB(); if(!d.assetPassportSnapshots) d.assetPassportSnapshots = []; const n = { ...snapshot, id: uuidv4(), generatedAt: new Date().toISOString() }; d.assetPassportSnapshots.push(n); writeDB(d); return n; },
   getAssetPerformanceBaselines: (assetId: string) => readDB().assetPerformanceBaselines?.filter((b: any) => b.assetId === assetId) || [],
-  createAssetPerformanceBaseline: (baseline: any) => { const d = readDB(); if(!d.assetPerformanceBaselines) d.assetPerformanceBaselines = []; const n = { ...baseline, id: require('uuid').v4(), calculatedAt: new Date().toISOString() }; d.assetPerformanceBaselines.push(n); writeDB(d); return n; },
+  createAssetPerformanceBaseline: (baseline: any) => { const d = readDB(); if(!d.assetPerformanceBaselines) d.assetPerformanceBaselines = []; const n = { ...baseline, id: uuidv4(), calculatedAt: new Date().toISOString() }; d.assetPerformanceBaselines.push(n); writeDB(d); return n; },
   getFinalProjectCostSummaries: (projectId: string) => readDB().finalProjectCostSummaries?.filter((c: any) => c.projectId === projectId) || [],
-  createFinalProjectCostSummary: (summary: any) => { const d = readDB(); if(!d.finalProjectCostSummaries) d.finalProjectCostSummaries = []; const n = { ...summary, id: require('uuid').v4(), calculatedAt: new Date().toISOString() }; d.finalProjectCostSummaries.push(n); writeDB(d); return n; },
+  createFinalProjectCostSummary: (summary: any) => { const d = readDB(); if(!d.finalProjectCostSummaries) d.finalProjectCostSummaries = []; const n = { ...summary, id: uuidv4(), calculatedAt: new Date().toISOString() }; d.finalProjectCostSummaries.push(n); writeDB(d); return n; },
+
+  // --- Phase 7-A Telemetry & Operational Monitoring Methods ---
+  getTelemetrySources: (projectId?: string, assetId?: string) => {
+    let all = readDB().telemetrySources || [];
+    if (projectId) all = all.filter((s: any) => s.projectId === projectId);
+    if (assetId) all = all.filter((s: any) => s.assetId === assetId);
+    return all;
+  },
+  getTelemetrySourceById: (id: string) => readDB().telemetrySources?.find((s: any) => s.id === id),
+  createTelemetrySource: (source: any) => {
+    const d = readDB();
+    if (!d.telemetrySources) d.telemetrySources = [];
+    const n = {
+      ...source,
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    d.telemetrySources.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateTelemetrySource: (id: string, updates: any) => {
+    const d = readDB();
+    if (!d.telemetrySources) d.telemetrySources = [];
+    const idx = d.telemetrySources.findIndex((s: any) => s.id === id);
+    if (idx > -1) {
+      d.telemetrySources[idx] = {
+        ...d.telemetrySources[idx],
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      writeDB(d);
+      return d.telemetrySources[idx];
+    }
+    return null;
+  },
+  deleteTelemetrySource: (id: string) => {
+    const d = readDB();
+    if (!d.telemetrySources) return false;
+    const initialLen = d.telemetrySources.length;
+    d.telemetrySources = d.telemetrySources.filter((s: any) => s.id !== id);
+    if (d.telemetrySources.length !== initialLen) {
+      writeDB(d);
+      return true;
+    }
+    return false;
+  },
+
+  getTelemetryReadings: (assetId: string, filters?: { from?: string; to?: string; metricType?: string; sourceId?: string; quality?: string }) => {
+    let list = (readDB().telemetryReadings || []).filter((r: any) => r.assetId === assetId);
+    if (filters?.from) {
+      const fromMs = new Date(filters.from).getTime();
+      list = list.filter((r: any) => new Date(r.timestamp).getTime() >= fromMs);
+    }
+    if (filters?.to) {
+      const toMs = new Date(filters.to).getTime();
+      list = list.filter((r: any) => new Date(r.timestamp).getTime() <= toMs);
+    }
+    if (filters?.metricType) {
+      list = list.filter((r: any) => r.metricType === filters.metricType);
+    }
+    if (filters?.sourceId) {
+      list = list.filter((r: any) => r.sourceId === filters.sourceId);
+    }
+    if (filters?.quality) {
+      list = list.filter((r: any) => r.quality === filters.quality);
+    }
+    return list.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  },
+  getTelemetryReadingById: (id: string) => readDB().telemetryReadings?.find((r: any) => r.id === id),
+  createTelemetryReading: (reading: any) => {
+    const d = readDB();
+    if (!d.telemetryReadings) d.telemetryReadings = [];
+    const n = {
+      ...reading,
+      id: uuidv4(),
+      createdAt: new Date().toISOString()
+    };
+    d.telemetryReadings.push(n);
+    writeDB(d);
+    return n;
+  },
+  createTelemetryReadingsBatch: (readings: any[]) => {
+    const d = readDB();
+    if (!d.telemetryReadings) d.telemetryReadings = [];
+    const now = new Date().toISOString();
+    const created = readings.map((r: any) => ({
+      ...r,
+      id: r.id || uuidv4(),
+      createdAt: r.createdAt || now
+    }));
+    d.telemetryReadings.push(...created);
+    writeDB(d);
+    return created;
+  },
+
+  getAssetPerformanceSnapshots: (assetId: string) => {
+    return (readDB().assetPerformanceSnapshots || [])
+      .filter((s: any) => s.assetId === assetId)
+      .sort((a: any, b: any) => new Date(b.calculatedAt).getTime() - new Date(a.calculatedAt).getTime());
+  },
+  getLatestAssetPerformanceSnapshot: (assetId: string) => {
+    const all = (readDB().assetPerformanceSnapshots || [])
+      .filter((s: any) => s.assetId === assetId)
+      .sort((a: any, b: any) => new Date(b.calculatedAt).getTime() - new Date(a.calculatedAt).getTime());
+    return all[0] || null;
+  },
+  createAssetPerformanceSnapshot: (snapshot: any) => {
+    const d = readDB();
+    if (!d.assetPerformanceSnapshots) d.assetPerformanceSnapshots = [];
+    const n = {
+      ...snapshot,
+      id: uuidv4(),
+      calculatedAt: new Date().toISOString()
+    };
+    d.assetPerformanceSnapshots.push(n);
+    writeDB(d);
+    return n;
+  },
+
+  getAssetHealthAssessments: (assetId: string) => {
+    return (readDB().assetHealthAssessments || [])
+      .filter((h: any) => h.assetId === assetId)
+      .sort((a: any, b: any) => new Date(b.calculatedAt).getTime() - new Date(a.calculatedAt).getTime());
+  },
+  getLatestAssetHealthAssessment: (assetId: string) => {
+    const all = (readDB().assetHealthAssessments || [])
+      .filter((h: any) => h.assetId === assetId)
+      .sort((a: any, b: any) => new Date(b.calculatedAt).getTime() - new Date(a.calculatedAt).getTime());
+    return all[0] || null;
+  },
+  createAssetHealthAssessment: (assessment: any) => {
+    const d = readDB();
+    if (!d.assetHealthAssessments) d.assetHealthAssessments = [];
+    const n = {
+      ...assessment,
+      id: uuidv4(),
+      calculatedAt: new Date().toISOString()
+    };
+    d.assetHealthAssessments.push(n);
+    writeDB(d);
+    return n;
+  },
   // --- Phase 8 Financing Marketplace & Workflow Methods ---
   getFinancialPartnerProfiles: () => readDB().financialPartnerProfiles || [],
   getFinancialPartnerProfileById: (id: string) => readDB().financialPartnerProfiles?.find((p: any) => p.id === id),
   createFinancialPartnerProfile: (profile: any) => {
     const d = readDB();
     if (!d.financialPartnerProfiles) d.financialPartnerProfiles = [];
-    const n = { ...profile, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const n = { ...profile, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     d.financialPartnerProfiles.push(n);
     writeDB(d);
     return n;
@@ -1227,7 +1376,7 @@ export const db: any = {
   createFinancingProduct: (prod: any) => {
     const d = readDB();
     if (!d.financingProducts) d.financingProducts = [];
-    const n = { ...prod, id: require('uuid').v4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    const n = { ...prod, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
     d.financingProducts.push(n);
     writeDB(d);
     return n;
@@ -1243,7 +1392,7 @@ export const db: any = {
     const codeNum = String(d.financingRequests.length + 1).padStart(6, '0');
     const n = {
       ...req,
-      id: require('uuid').v4(),
+      id: uuidv4(),
       requestCode: `FIN-HSE-${codeNum}`,
       currency: 'IRR',
       status: req.status || 'DRAFT',
@@ -1269,7 +1418,7 @@ export const db: any = {
   createFinanceReadinessSnapshot: (snapshot: any) => {
     const d = readDB();
     if (!d.financeReadinessSnapshots) d.financeReadinessSnapshots = [];
-    const n = { ...snapshot, id: require('uuid').v4(), evaluatedAt: new Date().toISOString() };
+    const n = { ...snapshot, id: uuidv4(), evaluatedAt: new Date().toISOString() };
     d.financeReadinessSnapshots.push(n);
     writeDB(d);
     return n;
@@ -1292,7 +1441,7 @@ export const db: any = {
   createFinancingSubmission: (sub: any) => {
     const d = readDB();
     if (!d.financingSubmissions) d.financingSubmissions = [];
-    const n = { ...sub, id: require('uuid').v4(), status: sub.status || 'SUBMITTED', submittedAt: new Date().toISOString() };
+    const n = { ...sub, id: uuidv4(), status: sub.status || 'SUBMITTED', submittedAt: new Date().toISOString() };
     d.financingSubmissions.push(n);
     writeDB(d);
     return n;
@@ -1312,7 +1461,7 @@ export const db: any = {
   createFinanceInformationRequest: (req: any) => {
     const d = readDB();
     if (!d.financeInformationRequests) d.financeInformationRequests = [];
-    const n = { ...req, id: require('uuid').v4(), status: 'OPEN', createdAt: new Date().toISOString() };
+    const n = { ...req, id: uuidv4(), status: 'OPEN', createdAt: new Date().toISOString() };
     d.financeInformationRequests.push(n);
     writeDB(d);
     return n;
@@ -1339,7 +1488,7 @@ export const db: any = {
     const codeNum = String(d.financingOffers.length + 1).padStart(6, '0');
     const n = {
       ...offer,
-      id: require('uuid').v4(),
+      id: uuidv4(),
       offerCode: `FO-HSE-${codeNum}`,
       currency: 'IRR',
       status: offer.status || 'SUBMITTED',
@@ -1370,7 +1519,7 @@ export const db: any = {
     if (!d.projectFinancingRecords) d.projectFinancingRecords = [];
     const n = {
       ...rec,
-      id: require('uuid').v4(),
+      id: uuidv4(),
       status: rec.status || 'APPROVED',
       currency: 'IRR',
       createdAt: new Date().toISOString(),
@@ -1395,7 +1544,7 @@ export const db: any = {
   createFinanceReviewNote: (note: any) => {
     const d = readDB();
     if (!d.financeReviewNotes) d.financeReviewNotes = [];
-    const n = { ...note, id: require('uuid').v4(), createdAt: new Date().toISOString() };
+    const n = { ...note, id: uuidv4(), createdAt: new Date().toISOString() };
     d.financeReviewNotes.push(n);
     writeDB(d);
     return n;
