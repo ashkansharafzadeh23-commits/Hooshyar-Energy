@@ -224,9 +224,14 @@ export class ProcurementService {
     // Log Activity
     projectRepository.addActivity({
       projectId: rfq.projectId,
-      userId,
-      activityType: 'PROCUREMENT_AWARDED',
-      description: `تأمین‌کننده برای استعلام ${rfq.procurementRfqCode} انتخاب و برنده اعلام شد.`
+      actorUserId: userId,
+      eventType: 'PROCUREMENT_AWARDED',
+      metadata: {
+        description: `تأمین‌کننده برای استعلام ${rfq.procurementRfqCode} انتخاب و برنده اعلام شد.`,
+        rfqId,
+        quoteId,
+        awardId: award.id
+      }
     });
 
     return award;
@@ -282,9 +287,13 @@ export class ProcurementService {
     // Log Activity
     projectRepository.addActivity({
       projectId: award.projectId,
-      userId,
-      activityType: 'PURCHASE_ORDER_ISSUED',
-      description: `سفارش خرید ${po.poCode} صادر گردید.`
+      actorUserId: userId,
+      eventType: 'PURCHASE_ORDER_ISSUED',
+      metadata: {
+        description: `سفارش خرید ${po.poCode} صادر گردید.`,
+        purchaseOrderId: po.id,
+        awardId
+      }
     });
 
     return po;
@@ -343,9 +352,13 @@ export class ProcurementService {
     // Log Activity
     projectRepository.addActivity({
       projectId,
-      userId,
-      activityType: 'DELIVERY_RECORDED',
-      description: `محموله جدید ${deliveryRecord.deliveryNumber} برای سفارش خرید ${po.poCode} ثبت شد.`
+      actorUserId: userId,
+      eventType: 'DELIVERY_RECORDED',
+      metadata: {
+        description: `محموله جدید ${deliveryRecord.deliveryNumber} برای سفارش خرید ${po.poCode} ثبت شد.`,
+        purchaseOrderId,
+        deliveryRecordId: deliveryRecord.id
+      }
     });
 
     return deliveryRecord;
@@ -410,15 +423,20 @@ export class ProcurementService {
               }
             }
 
+            const startDate = new Date().toISOString();
+            const warrantyYears = matchedBoqItem?.requiredWarrantyYears;
+            const endDate = warrantyYears ? new Date(Date.now() + warrantyYears * 365 * 86400000).toISOString() : '';
             assetRepository.createEquipmentWarranty({
+              assetId: '',
               projectId,
               purchaseOrderId: po.id,
               boqItemId: matchedPoi.boqItemId,
-              manufacturer: matchedBoqItem?.manufacturerPreference || 'استاندارد',
-              model: matchedBoqItem?.modelPreference || matchedBoqItem?.itemType || 'تجهیزات تأیید شده',
-              warrantyStart: new Date().toISOString(),
-              warrantyEnd: new Date(Date.now() + (matchedBoqItem?.requiredWarrantyYears || 5) * 365 * 86400000).toISOString(),
-              warrantyType: 'MANUFACTURER'
+              warrantyProvider: matchedBoqItem?.manufacturerPreference || 'تأمین‌کننده تجهیز',
+              warrantyType: 'MANUFACTURER',
+              startDate,
+              endDate,
+              coverageSummary: `گارانتی تجهیز ${matchedBoqItem?.itemType || matchedBoqItem?.modelPreference || ''}`,
+              status: (startDate && endDate) ? 'ACTIVE' : 'INSUFFICIENT_DATA'
             });
           }
         }
@@ -474,9 +492,13 @@ export class ProcurementService {
     // Log Activity
     projectRepository.addActivity({
       projectId,
-      userId,
-      activityType: 'DELIVERY_INSPECTED',
-      description: `بازرسی و تحویل‌گیری محموله ${delivery.deliveryNumber} با وضعیت ${inspectionStatus} ثبت شد.`
+      actorUserId: userId,
+      eventType: 'DELIVERY_INSPECTED',
+      metadata: {
+        description: `بازرسی و تحویل‌گیری محموله ${delivery.deliveryNumber} با وضعیت ${inspectionStatus} ثبت شد.`,
+        deliveryRecordId,
+        status: inspectionStatus
+      }
     });
 
     return { deliveryRecord: updatedDelivery, inspection };

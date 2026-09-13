@@ -95,12 +95,15 @@ export interface AssetComponent {
   updatedAt: string;
 }
 
-export type EquipmentWarrantyStatus = 'ACTIVE' | 'EXPIRING' | 'EXPIRED' | 'CLAIM_IN_PROGRESS' | 'VOID';
-export type WarrantyType = 'PRODUCT' | 'PERFORMANCE' | 'WORKMANSHIP' | 'BATTERY' | 'INVERTER' | 'EPC' | 'O_AND_M' | 'OTHER';
+export type EquipmentWarrantyStatus = 'ACTIVE' | 'EXPIRING' | 'EXPIRED' | 'CLAIM_IN_PROGRESS' | 'VOID' | 'INSUFFICIENT_DATA';
+export type WarrantyType = 'PRODUCT' | 'PERFORMANCE' | 'WORKMANSHIP' | 'BATTERY' | 'INVERTER' | 'EPC' | 'O_AND_M' | 'MANUFACTURER' | 'OTHER';
 
 export interface EquipmentWarranty {
   id: string;
   assetId: string;
+  projectId?: string;
+  purchaseOrderId?: string;
+  boqItemId?: string;
   componentId?: string;
   warrantyProvider: string;
   warrantyType: WarrantyType;

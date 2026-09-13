@@ -5,8 +5,8 @@ import { ProjectRFQ, RFQInvitation, EPCBid, EPCBidRevision } from '../types/rfq.
 import { Organization } from '../types/organization.js';
 import { ProjectFinancialModel, FinancialAssumptionSet, FinancialScenario, ProjectProposal } from '../types/finance.js';
 import { InvestmentOpportunity, LandProfile, InvestorProfile, ProjectMatch, ProjectReadinessScore } from '../types/investment.js';
-import { BillOfQuantities, BOQItem, ProcurementRFQ, ProcurementPackage, SupplierInvitation, VendorQuote, VendorQuoteItem, VendorQuoteRevision, SupplierAward, PurchaseOrder, PurchaseOrderItem, DeliveryRecord, DeliveryItem } from '../types/procurement.js';
-import { EnergyAsset, AssetComponent, EquipmentWarranty, CommissioningRecord, CommissioningTest, AssetOwnershipRecord, AssetPassportSnapshot, AssetPerformanceBaseline, ProjectHandover, FinalProjectCostSummary } from '../types/asset.js';
+import { BillOfQuantities, BOQItem, ProcurementRFQ, ProcurementPackage, SupplierInvitation, VendorQuote, VendorQuoteItem, VendorQuoteRevision, SupplierAward, PurchaseOrder, PurchaseOrderItem, DeliveryRecord, DeliveryItem, DeliveryInspection } from '../types/procurement.js';
+import { EnergyAsset, AssetComponent, EquipmentWarranty, CommissioningRecord, CommissioningTest, AssetOwnershipRecord, AssetPassportSnapshot, AssetPerformanceBaseline, ProjectHandover, FinalProjectCostSummary, PunchListItem } from '../types/asset.js';
 import { FinancialPartnerProfile, FinancingProduct, FinancingRequest, FinanceReadinessSnapshot, FinancialPartnerMatch, FinancingSubmission, FinanceInformationRequest, FinancingOffer, ProjectFinancingRecord, FinanceReviewNote, FinanceDueDiligenceChecklist } from '../types/financing.js';
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -218,6 +218,8 @@ interface DB {
   purchaseOrderItems?: PurchaseOrderItem[];
   deliveryRecords?: DeliveryRecord[];
   deliveryItems?: DeliveryItem[];
+  deliveryInspections?: DeliveryInspection[];
+  punchListItems?: PunchListItem[];
   equipmentWarranties?: EquipmentWarranty[];
   projectContracts?: ProjectContract[];
   contractParties?: ContractParty[];

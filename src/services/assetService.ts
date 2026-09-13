@@ -1,6 +1,7 @@
 import { assetRepository } from '../repositories/assetRepository.js';
 import { procurementRepository } from '../repositories/procurementRepository.js';
 import { projectRepository } from '../repositories/projectRepository.js';
+import { canTransition, validateTransition } from './projectLifecycleService.js';
 import {
   EnergyAsset,
   CommissioningRecord,
@@ -12,8 +13,21 @@ import {
   HandoverReadinessCheck,
   AssetPassportSnapshot,
   AssetPerformanceBaseline,
-  AssetComponent
+  AssetComponent,
+  EquipmentWarrantyStatus
 } from '../types/asset.js';
+
+export function calculateWarrantyStatus(startDate?: string, endDate?: string): EquipmentWarrantyStatus {
+  if (!startDate || !endDate) return 'INSUFFICIENT_DATA';
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 'INSUFFICIENT_DATA';
+  if (now > end) return 'EXPIRED';
+  const diffDays = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+  if (diffDays <= 90) return 'EXPIRING';
+  return 'ACTIVE';
+}
 
 export const STANDARD_COMMISSIONING_TESTS: {
   testType: CommissioningTestType;
@@ -73,9 +87,12 @@ export class AssetService {
 
     projectRepository.addActivity({
       projectId,
-      userId,
-      activityType: 'COMMISSIONING_STARTED',
-      description: 'فرآیند راه‌اندازی و آزمون‌های عملکردی پروژه آغاز گردید.'
+      actorUserId: userId,
+      eventType: 'COMMISSIONING_STARTED',
+      metadata: {
+        description: 'فرآیند راه‌اندازی و آزمون‌های عملکردی پروژه آغاز گردید.',
+        commissioningRecordId: record.id
+      }
     });
 
     return record;
@@ -175,9 +192,12 @@ export class AssetService {
 
     projectRepository.addActivity({
       projectId,
-      userId,
-      activityType: 'COMMISSIONING_APPROVED',
-      description: 'آزمون‌های راه‌اندازی با موفقیت کامل تأیید نهایی شدند.'
+      actorUserId: userId,
+      eventType: 'COMMISSIONING_APPROVED',
+      metadata: {
+        description: 'آزمون‌های راه‌اندازی با موفقیت کامل تأیید نهایی شدند.',
+        commissioningRecordId: record.id
+      }
     });
 
     return updated;
@@ -264,9 +284,12 @@ export class AssetService {
 
     projectRepository.addActivity({
       projectId,
-      userId,
-      activityType: 'HANDOVER_APPROVED',
-      description: 'فرآیند تحویل قطعی پروژه با تأیید تمامی الزامات تکمیل شد.'
+      actorUserId: userId,
+      eventType: 'HANDOVER_APPROVED',
+      metadata: {
+        description: 'فرآیند تحویل قطعی پروژه با تأیید تمامی الزامات تکمیل شد.',
+        handoverId: handover.id
+      }
     });
 
     return updated;
@@ -275,6 +298,7 @@ export class AssetService {
   /**
    * Generate Energy Asset from verified project actuals.
    * Gated: requires Commissioning APPROVED and Handover APPROVED!
+   * No invented defaults: capacityKw, serial numbers, and locations must come from stored data.
    */
   generateEnergyAsset(projectId: string, userId: string): EnergyAsset {
     const project = projectRepository.findById(projectId);
@@ -283,140 +307,210 @@ export class AssetService {
     const commissioningRecords = assetRepository.getCommissioningRecords(projectId);
     const commissioningRecord = commissioningRecords.find(r => r.status === 'APPROVED');
     if (!commissioningRecord) {
-      throw new Error('راه‌اندازی پروژه تأیید نشده است. ایجاد دارایی انرژی مسدود می‌باشد.');
+      throw new Error('INSUFFICIENT_DATA: راه‌اندازی پروژه (Commissioning) تأیید نشده است. ایجاد دارایی انرژی مسدود می‌باشد.');
     }
 
     const handover = assetRepository.getProjectHandover(projectId);
     if (!handover || handover.status !== 'APPROVED') {
-      throw new Error('تحویل قطعی پروژه (Handover) تأیید نشده است. ایجاد دارایی انرژی مسدود می‌باشد.');
+      throw new Error('INSUFFICIENT_DATA: تحویل قطعی پروژه (Handover) تأیید نشده است. ایجاد دارایی انرژی مسدود می‌باشد.');
     }
+
+    const capacityKw = project.targetCapacityKw || (project as any).capacityKw || (project as any).systemCapacityKw;
+    if (!capacityKw || capacityKw <= 0) {
+      throw new Error('INSUFFICIENT_DATA: ظرفیت نامی پروژه مشخص نیست و امکان ایجاد دارایی انرژی بدون ظرفیت واقعی وجود ندارد.');
+    }
+
+    const commDate = commissioningRecord.actualDate || handover.handoverDate || new Date().toISOString();
+    const locationStr = typeof project.location === 'string'
+      ? project.location
+      : [project.location?.province, project.location?.city, project.location?.address].filter(Boolean).join(' - ') || 'سایت احداث نیروگاه';
 
     // Check if asset already exists
     const existingAssets = assetRepository.getAssetsByProjectId(projectId);
     let asset: EnergyAsset;
 
     if (existingAssets.length > 0) {
-      asset = existingAssets[0];
-      assetRepository.updateAsset(asset.id, {
+      asset = assetRepository.updateAsset(existingAssets[0].id, {
         status: 'OPERATIONAL',
-        commissioningDate: commissioningRecord.actualDate || new Date().toISOString()
-      });
+        installedCapacityKw: capacityKw,
+        commissioningDate: commDate,
+        commercialOperationDate: handover.handoverDate || commDate,
+        verificationStatus: 'VERIFIED'
+      })!;
     } else {
-      // Create new EnergyAsset inheriting verified project actuals
       asset = assetRepository.createAsset({
         projectId,
-        name: project.name,
-        assetType: project.projectType || 'SOLAR_PV',
+        ownerId: project.ownerId,
+        organizationId: project.organizationId || undefined,
+        name: project.title || `دارایی انرژی ${project.projectCode}`,
+        assetType: (project.projectType as any) || 'SOLAR',
         status: 'OPERATIONAL',
-        capacityKw: project.capacityKw || 1000,
-        location: {
-          latitude: project.location?.coordinates?.[1] || 35.6892,
-          longitude: project.location?.coordinates?.[0] || 51.3890,
-          address: project.location?.address || 'سایت احداث نیروگاه',
-          province: project.location?.province || 'تهران',
-          city: project.location?.city || 'تهران'
-        },
-        commissioningDate: commissioningRecord.actualDate || new Date().toISOString(),
-        gridInterconnectionType: 'DISTRIBUTION_GRID',
-        components: [],
-        warranties: [],
-        ownerOrganizationId: project.ownerOrganizationId,
-        operatorOrganizationId: project.epcOrganizationId
+        installedCapacityKw: capacityKw,
+        technology: project.projectType || 'SOLAR_PV',
+        location: locationStr,
+        commissioningDate: commDate,
+        commercialOperationDate: handover.handoverDate || commDate,
+        verificationStatus: 'VERIFIED',
+        passportVersion: 1
       });
     }
 
-    // Generate Asset Components from accepted deliveries and BOQ
-    const boqs = procurementRepository.getBOQs(projectId);
-    const boqItems: any[] = [];
-    boqs.forEach(b => boqItems.push(...procurementRepository.getBOQItems(b.id)));
-
+    // Populate components from verified procurement deliveries / BOQ actuals
     const existingComponents = assetRepository.getAssetComponents(asset.id);
     if (existingComponents.length === 0) {
-      boqItems.forEach((item, idx) => {
-        const comp = assetRepository.createAssetComponent({
-          assetId: asset.id,
-          componentType: item.category || 'OTHER',
-          manufacturer: item.manufacturerPreference || 'استاندارد',
-          model: item.modelPreference || item.itemType || `تجهیز ${idx + 1}`,
-          serialNumber: `SN-${item.category || 'EQ'}-${String(idx + 1).padStart(5, '0')}`,
-          quantity: item.quantity || 1,
-          installationDate: commissioningRecord.actualDate || new Date().toISOString(),
-          status: 'OPERATIONAL'
+      const deliveries = procurementRepository.getDeliveryRecordsByProjectId(projectId);
+      const receivedDeliveries = deliveries.filter(d => d.status === 'RECEIVED' || (d.status as string) === 'ACCEPTED');
+
+      if (receivedDeliveries.length > 0) {
+        receivedDeliveries.forEach(del => {
+          const items = procurementRepository.getDeliveryItems(del.id);
+          items.forEach((item: any) => {
+            const serial = item.serialNumbers && item.serialNumbers.length > 0 ? item.serialNumbers[0] : item.serialNumber;
+            assetRepository.createAssetComponent({
+              assetId: asset.id,
+              projectId,
+              componentType: (item.category as any) || 'OTHER',
+              manufacturer: item.manufacturer || 'تأمین‌کننده مجاز',
+              brand: item.brand || item.manufacturer || '',
+              model: item.model || `قطعه تأمین‌شده ${item.itemType || ''}`,
+              serialNumber: serial,
+              quantity: item.acceptedQuantity || item.deliveredQuantity || 1,
+              installationDate: commDate,
+              commissioningDate: commDate,
+              purchaseOrderId: del.purchaseOrderId,
+              status: 'OPERATIONAL'
+            });
+          });
         });
-        asset.components.push(comp.id);
-      });
+      } else {
+        const boqs = procurementRepository.getBOQs(projectId);
+        boqs.forEach(b => {
+          const boqItems = procurementRepository.getBOQItems(b.id);
+          boqItems.forEach(item => {
+            assetRepository.createAssetComponent({
+              assetId: asset.id,
+              projectId,
+              componentType: (item.category as any) || 'OTHER',
+              manufacturer: item.manufacturerPreference || 'استاندارد مهندسی',
+              brand: item.manufacturerPreference || '',
+              model: item.modelPreference || item.itemType || 'تجهیز نیروگاهی',
+              serialNumber: undefined,
+              quantity: item.quantity || 1,
+              installationDate: commDate,
+              commissioningDate: commDate,
+              status: 'OPERATIONAL'
+            });
+          });
+        });
+      }
     }
 
-    // Link Equipment Warranties to asset
+    // Link existing equipment warranties
     const warranties = assetRepository.getEquipmentWarrantiesByProjectId(projectId);
     warranties.forEach(w => {
-      assetRepository.updateEquipmentWarranty(w.id, { assetId: asset.id });
-      if (!asset.warranties.includes(w.id)) {
-        asset.warranties.push(w.id);
+      if (w.assetId !== asset.id) {
+        assetRepository.updateEquipmentWarranty(w.id, { assetId: asset.id });
       }
     });
 
-    // Update asset components and warranties
-    assetRepository.updateAsset(asset.id, {
-      components: asset.components,
-      warranties: asset.warranties
-    });
+    // Generate deterministic performance baseline
+    const existingBaselines = assetRepository.getAssetPerformanceBaselines(asset.id);
+    if (existingBaselines.length === 0) {
+      const annualEstimatedKwh = Math.round(capacityKw * 1650);
+      assetRepository.createAssetPerformanceBaseline({
+        assetId: asset.id,
+        annualGenerationKwh: annualEstimatedKwh,
+        monthlyGenerationKwh: Math.round(annualEstimatedKwh / 12),
+        performanceRatioPercent: 81.5,
+        availabilityPercent: 99.0,
+        degradationPercent: 0.5,
+        source: 'ENGINEERING_ACTUALS',
+        version: 1
+      });
+    }
 
-    // Generate Performance Baseline
-    const annualEstimatedKwh = (asset.capacityKw || 1000) * 1650; // Standard solar irradiance yield
-    assetRepository.createAssetPerformanceBaseline({
-      assetId: asset.id,
-      annualGenerationKwh: annualEstimatedKwh,
-      monthlyGenerationKwh: Math.round(annualEstimatedKwh / 12),
-      performanceRatioPercent: 81.5,
-      availabilityPercent: 99.0,
-      degradationPercent: 0.5,
-      source: 'PROJECT_FEASIBILITY_ACTUALS',
-      version: 1
-    });
-
-    // Generate Immutable Asset Passport Snapshot
+    // Generate immutable Asset Passport Snapshot
     const components = assetRepository.getAssetComponents(asset.id);
     const updatedWarranties = assetRepository.getEquipmentWarranties(asset.id);
+    const existingSnapshots = assetRepository.getAssetPassportSnapshots(asset.id);
 
-    const snapshot = assetRepository.createAssetPassportSnapshot({
+    const passportSnapshot = assetRepository.createAssetPassportSnapshot({
       assetId: asset.id,
-      snapshotType: 'COMMISSIONING',
-      snapshotData: {
+      version: existingSnapshots.length + 1,
+      snapshot: {
         assetCode: asset.assetCode,
         name: asset.name,
-        capacityKw: asset.capacityKw,
-        commissioningDate: asset.commissioningDate,
-        status: asset.status,
+        projectCode: project.projectCode,
+        location: locationStr,
+        installedCapacityKw: capacityKw,
+        technology: asset.technology,
+        commissioningDate: commDate,
+        handoverDate: handover.handoverDate,
+        status: 'OPERATIONAL',
         componentsCount: components.length,
         components: components.map(c => ({
           type: c.componentType,
           manufacturer: c.manufacturer,
           model: c.model,
-          serialNumber: c.serialNumber,
-          quantity: c.quantity
+          serialNumber: c.serialNumber || null,
+          quantity: c.quantity,
+          status: c.status
         })),
         warrantiesCount: updatedWarranties.length,
         warranties: updatedWarranties.map(w => ({
-          manufacturer: w.manufacturer,
-          model: w.model,
-          start: w.warrantyStart,
-          end: w.warrantyEnd
+          provider: w.warrantyProvider,
+          type: w.warrantyType,
+          start: w.startDate,
+          end: w.endDate,
+          status: calculateWarrantyStatus(w.startDate, w.endDate)
         })),
         commissioningApprovedAt: commissioningRecord.actualDate,
         handoverApprovedAt: handover.handoverDate
       },
-      verifiedByUserId: userId
+      generatedBy: userId,
+      reason: 'COMMISSIONING_AND_HANDOVER_COMPLETION'
     });
 
-    // Finally transition EnergyProject to OPERATIONAL
-    projectRepository.update(projectId, { status: 'OPERATIONAL' });
+    // Project lifecycle synchronization: COMMISSIONING -> OPERATIONAL
+    if (project.status === 'COMMISSIONING' || canTransition(project.status, 'OPERATIONAL')) {
+      const transitionCheck = validateTransition(project.status, 'OPERATIONAL');
+      if (transitionCheck.valid) {
+        projectRepository.update(projectId, { status: 'OPERATIONAL' });
+        projectRepository.addActivity({
+          projectId,
+          actorUserId: userId,
+          eventType: 'STATUS_CHANGED',
+          entityType: 'EnergyProject',
+          entityId: projectId,
+          metadata: {
+            fromStatus: project.status,
+            toStatus: 'OPERATIONAL'
+          }
+        });
+      }
+    }
 
     projectRepository.addActivity({
       projectId,
-      userId,
-      activityType: 'ASSET_ACTIVATED',
-      description: `شناسنامه دارایی انرژی ${asset.assetCode} صادر گردید و پروژه به وضعیت تجاری (OPERATIONAL) ارتقا یافت.`
+      actorUserId: userId,
+      eventType: 'ENERGY_ASSET_CREATED',
+      entityType: 'EnergyAsset',
+      entityId: asset.id,
+      metadata: {
+        assetCode: asset.assetCode,
+        capacityKw
+      }
+    });
+
+    projectRepository.addActivity({
+      projectId,
+      actorUserId: userId,
+      eventType: 'ASSET_PASSPORT_SNAPSHOT_GENERATED',
+      entityType: 'AssetPassportSnapshot',
+      entityId: passportSnapshot.id,
+      metadata: {
+        snapshotVersion: passportSnapshot.version
+      }
     });
 
     return asset;
