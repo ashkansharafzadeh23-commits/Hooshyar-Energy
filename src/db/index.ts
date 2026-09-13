@@ -8,6 +8,7 @@ import { InvestmentOpportunity, LandProfile, InvestorProfile, ProjectMatch, Proj
 import { BillOfQuantities, BOQItem, ProcurementRFQ, ProcurementPackage, SupplierInvitation, VendorQuote, VendorQuoteItem, VendorQuoteRevision, SupplierAward, PurchaseOrder, PurchaseOrderItem, DeliveryRecord, DeliveryItem, DeliveryInspection } from '../types/procurement.js';
 import { EnergyAsset, AssetComponent, EquipmentWarranty, CommissioningRecord, CommissioningTest, AssetOwnershipRecord, AssetPassportSnapshot, AssetPerformanceBaseline, ProjectHandover, FinalProjectCostSummary, PunchListItem } from '../types/asset.js';
 import { TelemetrySource, TelemetryReading, AssetPerformanceSnapshot, AssetHealthAssessment } from '../types/monitoring.js';
+import { AssetAlert, AlertRule, MaintenanceCase, MaintenanceDiagnosis, MaintenanceAction, MaintenanceAssignmentHistory } from '../types/maintenance.js';
 import { FinancialPartnerProfile, FinancingProduct, FinancingRequest, FinanceReadinessSnapshot, FinancialPartnerMatch, FinancingSubmission, FinanceInformationRequest, FinancingOffer, ProjectFinancingRecord, FinanceReviewNote, FinanceDueDiligenceChecklist } from '../types/financing.js';
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
@@ -208,6 +209,12 @@ interface DB {
   telemetryReadings?: TelemetryReading[];
   assetPerformanceSnapshots?: AssetPerformanceSnapshot[];
   assetHealthAssessments?: AssetHealthAssessment[];
+  assetAlerts?: AssetAlert[];
+  alertRules?: AlertRule[];
+  maintenanceCases?: MaintenanceCase[];
+  maintenanceDiagnoses?: MaintenanceDiagnosis[];
+  maintenanceActions?: MaintenanceAction[];
+  maintenanceAssignmentHistories?: MaintenanceAssignmentHistory[];
   projectHandovers?: ProjectHandover[];
   finalProjectCostSummaries?: FinalProjectCostSummary[];
   boqs?: BillOfQuantities[];
@@ -1546,6 +1553,226 @@ export const db: any = {
     if (!d.financeReviewNotes) d.financeReviewNotes = [];
     const n = { ...note, id: uuidv4(), createdAt: new Date().toISOString() };
     d.financeReviewNotes.push(n);
+    writeDB(d);
+    return n;
+  },
+
+  // --- Phase 7-B Alert Engine & Maintenance Methods ---
+  getAssetAlerts: (projectId?: string, assetId?: string): AssetAlert[] => {
+    let all = readDB().assetAlerts || [];
+    if (projectId) all = all.filter((a: any) => a.projectId === projectId);
+    if (assetId) all = all.filter((a: any) => a.assetId === assetId);
+    return all;
+  },
+  getAssetAlertById: (id: string): AssetAlert | undefined => {
+    return (readDB().assetAlerts || []).find((a: any) => a.id === id);
+  },
+  createAssetAlert: (alert: any): AssetAlert => {
+    const d = readDB();
+    if (!d.assetAlerts) d.assetAlerts = [];
+    const count = d.assetAlerts.length + 1;
+    const alertCode = alert.alertCode || `ALT-HSE-${String(count).padStart(6, '0')}`;
+    const now = new Date().toISOString();
+    const n: AssetAlert = {
+      ...alert,
+      id: uuidv4(),
+      alertCode,
+      status: alert.status || 'OPEN',
+      detectedAt: alert.detectedAt || now,
+      createdAt: alert.createdAt || now,
+      updatedAt: alert.updatedAt || now
+    };
+    d.assetAlerts.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateAssetAlert: (id: string, updates: Partial<AssetAlert>): AssetAlert | null => {
+    const d = readDB();
+    if (!d.assetAlerts) d.assetAlerts = [];
+    const idx = d.assetAlerts.findIndex((a: any) => a.id === id);
+    if (idx > -1) {
+      d.assetAlerts[idx] = {
+        ...d.assetAlerts[idx],
+        ...updates
+      };
+      writeDB(d);
+      return d.assetAlerts[idx];
+    }
+    return null;
+  },
+  deleteAssetAlert: (id: string): boolean => {
+    const d = readDB();
+    if (!d.assetAlerts) return false;
+    const initialLen = d.assetAlerts.length;
+    d.assetAlerts = d.assetAlerts.filter((a: any) => a.id !== id);
+    if (d.assetAlerts.length !== initialLen) {
+      writeDB(d);
+      return true;
+    }
+    return false;
+  },
+
+  getAlertRules: (projectId?: string, assetId?: string): AlertRule[] => {
+    let all = readDB().alertRules || [];
+    if (projectId) all = all.filter((r: any) => r.projectId === projectId);
+    if (assetId) all = all.filter((r: any) => !r.assetId || r.assetId === assetId);
+    return all;
+  },
+  getAlertRuleById: (id: string): AlertRule | undefined => {
+    return (readDB().alertRules || []).find((r: any) => r.id === id);
+  },
+  createAlertRule: (rule: Omit<AlertRule, 'id' | 'createdAt' | 'updatedAt'>): AlertRule => {
+    const d = readDB();
+    if (!d.alertRules) d.alertRules = [];
+    const n: AlertRule = {
+      ...rule,
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    d.alertRules.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateAlertRule: (id: string, updates: Partial<AlertRule>): AlertRule | null => {
+    const d = readDB();
+    if (!d.alertRules) d.alertRules = [];
+    const idx = d.alertRules.findIndex((r: any) => r.id === id);
+    if (idx > -1) {
+      d.alertRules[idx] = {
+        ...d.alertRules[idx],
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      writeDB(d);
+      return d.alertRules[idx];
+    }
+    return null;
+  },
+  deleteAlertRule: (id: string): boolean => {
+    const d = readDB();
+    if (!d.alertRules) return false;
+    const initialLen = d.alertRules.length;
+    d.alertRules = d.alertRules.filter((r: any) => r.id !== id);
+    if (d.alertRules.length !== initialLen) {
+      writeDB(d);
+      return true;
+    }
+    return false;
+  },
+
+  getMaintenanceCases: (projectId?: string, assetId?: string): MaintenanceCase[] => {
+    let all = readDB().maintenanceCases || [];
+    if (projectId) all = all.filter((c: any) => c.projectId === projectId);
+    if (assetId) all = all.filter((c: any) => c.assetId === assetId);
+    return all;
+  },
+  getMaintenanceCaseById: (id: string): MaintenanceCase | undefined => {
+    return (readDB().maintenanceCases || []).find((c: any) => c.id === id);
+  },
+  createMaintenanceCase: (mCase: Omit<MaintenanceCase, 'id' | 'createdAt' | 'updatedAt' | 'caseNumber'> & { caseNumber?: string }): MaintenanceCase => {
+    const d = readDB();
+    if (!d.maintenanceCases) d.maintenanceCases = [];
+    const count = d.maintenanceCases.length + 1;
+    const year = new Date().getFullYear();
+    const caseNumber = mCase.caseNumber || `MC-${year}-${String(count).padStart(4, '0')}`;
+    const n: MaintenanceCase = {
+      ...mCase,
+      id: uuidv4(),
+      caseNumber,
+      actionsTaken: mCase.actionsTaken || [],
+      sparePartsUsed: mCase.sparePartsUsed || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    d.maintenanceCases.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateMaintenanceCase: (id: string, updates: Partial<MaintenanceCase>): MaintenanceCase | null => {
+    const d = readDB();
+    if (!d.maintenanceCases) d.maintenanceCases = [];
+    const idx = d.maintenanceCases.findIndex((c: any) => c.id === id);
+    if (idx > -1) {
+      d.maintenanceCases[idx] = {
+        ...d.maintenanceCases[idx],
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      writeDB(d);
+      return d.maintenanceCases[idx];
+    }
+    return null;
+  },
+  deleteMaintenanceCase: (id: string): boolean => {
+    const d = readDB();
+    if (!d.maintenanceCases) return false;
+    const initialLen = d.maintenanceCases.length;
+    d.maintenanceCases = d.maintenanceCases.filter((c: any) => c.id !== id);
+    if (d.maintenanceCases.length !== initialLen) {
+      writeDB(d);
+      return true;
+    }
+    return false;
+  },
+
+  getMaintenanceDiagnoses: (assetId?: string, alertId?: string): MaintenanceDiagnosis[] => {
+    let all = readDB().maintenanceDiagnoses || [];
+    if (assetId) all = all.filter((diag: any) => diag.assetId === assetId);
+    if (alertId) all = all.filter((diag: any) => diag.alertId === alertId);
+    return all;
+  },
+  getMaintenanceDiagnosisById: (id: string): MaintenanceDiagnosis | undefined => {
+    return (readDB().maintenanceDiagnoses || []).find((diag: any) => diag.id === id);
+  },
+  createMaintenanceDiagnosis: (diag: Omit<MaintenanceDiagnosis, 'id' | 'createdAt'>): MaintenanceDiagnosis => {
+    const d = readDB();
+    if (!d.maintenanceDiagnoses) d.maintenanceDiagnoses = [];
+    const n: MaintenanceDiagnosis = {
+      ...diag,
+      id: uuidv4(),
+      createdAt: new Date().toISOString()
+    };
+    d.maintenanceDiagnoses.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateMaintenanceDiagnosis: (id: string, updates: Partial<MaintenanceDiagnosis>): MaintenanceDiagnosis | null => {
+    const d = readDB();
+    if (!d.maintenanceDiagnoses) d.maintenanceDiagnoses = [];
+    const idx = d.maintenanceDiagnoses.findIndex((diag: any) => diag.id === id);
+    if (idx > -1) {
+      d.maintenanceDiagnoses[idx] = {
+        ...d.maintenanceDiagnoses[idx],
+        ...updates
+      };
+      writeDB(d);
+      return d.maintenanceDiagnoses[idx];
+    }
+    return null;
+  },
+
+  getMaintenanceActions: (caseId: string): MaintenanceAction[] => {
+    const all = readDB().maintenanceActions || [];
+    return all.filter((a: any) => a.maintenanceCaseId === caseId);
+  },
+  createMaintenanceAction: (action: Omit<MaintenanceAction, 'id'>): MaintenanceAction => {
+    const d = readDB();
+    if (!d.maintenanceActions) d.maintenanceActions = [];
+    const n: MaintenanceAction = {
+      ...action,
+      id: uuidv4()
+    };
+    d.maintenanceActions.push(n);
+    // Also append to case if case exists
+    if (d.maintenanceCases) {
+      const caseIdx = d.maintenanceCases.findIndex((c: any) => c.id === action.maintenanceCaseId);
+      if (caseIdx > -1) {
+        if (!d.maintenanceCases[caseIdx].actionsTaken) d.maintenanceCases[caseIdx].actionsTaken = [];
+        d.maintenanceCases[caseIdx].actionsTaken.push(n);
+        d.maintenanceCases[caseIdx].updatedAt = new Date().toISOString();
+      }
+    }
     writeDB(d);
     return n;
   },
