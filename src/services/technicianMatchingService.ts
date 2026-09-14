@@ -106,5 +106,20 @@ export const technicianMatchingService = {
     // Sort descending by score
     matches.sort((a, b) => b.matchScore - a.matchScore);
     return matches;
+  },
+
+  /**
+   * Matches verified technicians for a specific maintenance case ID
+   */
+  matchTechniciansForCase: (caseId: string): TechnicianMatch[] => {
+    const mCase = db.getMaintenanceCaseById(caseId);
+    if (!mCase) return [];
+    return technicianMatchingService.matchTechnicians({
+      projectId: mCase.projectId,
+      assetId: mCase.assetId,
+      symptoms: [mCase.title, mCase.description],
+      category: mCase.category,
+      componentType: mCase.componentId
+    });
   }
 };

@@ -2,11 +2,16 @@ export type AlertSeverity = 'INFO' | 'WARNING' | 'HIGH' | 'CRITICAL';
 
 export type AlertStatus = 
   | 'OPEN'
+  | 'TRIGGERED'
   | 'ACKNOWLEDGED'
   | 'UNDER_INVESTIGATION'
   | 'MAINTENANCE_REQUIRED'
+  | 'CASE_CREATED'
   | 'RESOLVED'
-  | 'DISMISSED';
+  | 'DISMISSED'
+  | 'SUPPRESSED';
+
+export type AlertSource = 'TELEMETRY' | 'RULE' | 'DIAGNOSIS' | 'MANUAL' | 'SYSTEM' | 'EXTERNAL' | 'PERFORMANCE' | 'HEALTH';
 
 export type AlertType = 
   | 'PERFORMANCE_DEVIATION'
@@ -29,6 +34,7 @@ export interface AssetAlert {
   assetId: string;
   componentId?: string;
   sourceId?: string;
+  source?: string;
   alertType: AlertType;
   severity: AlertSeverity;
   status: AlertStatus;
@@ -39,9 +45,12 @@ export interface AssetAlert {
   lastObservedAt?: string;
   metricType?: string;
   observedValue?: number;
+  metricValue?: number;
   expectedValue?: number;
   deviationPercent?: number;
   thresholdRuleId?: string;
+  ruleId?: string;
+  thresholdValue?: number;
   performanceSnapshotId?: string;
   healthAssessmentId?: string;
   investigationNotes?: string[];
@@ -51,6 +60,8 @@ export interface AssetAlert {
   resolvedAt?: string;
   resolvedBy?: string;
   resolutionNote?: string;
+  resolutionNotes?: string;
+  metadata?: any;
   createdAt: string;
   updatedAt: string;
 }
@@ -61,21 +72,26 @@ export type AlertRuleType =
   | 'DEVIATION_ABOVE'
   | 'DEVIATION_BELOW'
   | 'TELEMETRY_MISSING'
-  | 'HEALTH_SCORE_BELOW';
+  | 'HEALTH_SCORE_BELOW'
+  | 'TELEMETRY_THRESHOLD';
 
 export interface AlertRule {
   id: string;
   projectId?: string;
   assetId?: string;
   name: string;
+  description?: string;
   metricType?: string;
   ruleType: AlertRuleType;
   operator: '>' | '<' | '>=' | '<=' | '==' | '!=';
   thresholdValue?: number;
   thresholdPercent?: number;
   durationMinutes?: number;
+  cooldownMinutes?: number;
   severity: AlertSeverity;
   enabled: boolean;
+  isEnabled?: boolean;
+  condition?: any;
   sourceType?: string;
   createdAt: string;
   updatedAt: string;
@@ -87,43 +103,108 @@ export type DiagnosisStatus =
   | 'MANUAL_REVIEW_REQUIRED'
   | 'ACTION_RECOMMENDED';
 
+export type DiagnosisRootCause = { cause: string; probability: number; description?: string; componentId?: string };
+export type DiagnosisAction = { 
+  action: string; 
+  priority: string; 
+  description?: string; 
+  estimatedCost?: number; 
+  estimatedCostIrr?: number;
+  estimatedHours?: number;
+};
+export type WarrantyImpact = { 
+  eligible?: boolean; 
+  summary?: string; 
+  provider?: string; 
+  hasWarrantyCoverage?: boolean; 
+  warrantyNotes?: string;
+  warrantyId?: string;
+  warrantyType?: string;
+  warrantyStatus?: string;
+  claimProcedure?: string;
+};
+export type DiagnosisMethod = 'RULE_BASED' | 'STATISTICAL' | 'AI_ASSISTED' | 'HYBRID' | 'EXPERT_RULESET';
+
 export interface MaintenanceDiagnosis {
   id: string;
   projectId: string;
   assetId: string;
   alertId?: string;
   componentId?: string;
-  diagnosisStatus: DiagnosisStatus;
-  facts: string[];
-  inferences: string[];
-  possibleCauses: string[];
-  evidence: string[];
-  recommendedActions: string[];
-  requiredExpertise: string[];
+  diagnosisStatus?: DiagnosisStatus;
+  facts?: string[];
+  inferences?: string[];
+  possibleCauses?: string[];
+  likelyRootCauses?: any;
+  evidence?: string[];
+  recommendedActions?: any;
+  requiredExpertise?: string[];
   warrantyStatus?: 'ACTIVE' | 'EXPIRED' | 'INSUFFICIENT_DATA';
   warrantyDetails?: string;
+  warrantyImpact?: WarrantyImpact;
+  symptoms?: string[];
+  rootCauses?: DiagnosisRootCause[];
+  actions?: DiagnosisAction[];
+  method?: DiagnosisMethod;
+  diagnosisMethod?: DiagnosisMethod;
   confidence?: number;
-  generatedBy: string; // 'DETERMINISTIC_ENGINE' | 'AI_ASSISTED' | user ID
+  confidenceScore?: number;
+  rawAiResponse?: any;
+  generatedBy?: string; // 'DETERMINISTIC_ENGINE' | 'AI_ASSISTED' | user ID
   createdAt: string;
 }
 
 export type MaintenancePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type MaintenanceCasePriority = MaintenancePriority;
 
 export type MaintenanceStatus = 
   | 'OPEN'
+  | 'DRAFT'
   | 'DIAGNOSING'
   | 'AWAITING_ASSIGNMENT'
   | 'ASSIGNED'
   | 'SCHEDULED'
   | 'IN_PROGRESS'
   | 'AWAITING_VERIFICATION'
+  | 'PENDING_VERIFICATION'
+  | 'VERIFIED'
   | 'COMPLETED'
   | 'CLOSED'
   | 'CANCELLED';
+export type MaintenanceCaseStatus = MaintenanceStatus;
+
+export type MaintenanceCategory = 
+  | 'CORRECTIVE' 
+  | 'PREVENTIVE' 
+  | 'PREDICTIVE' 
+  | 'INSPECTION' 
+  | 'EMERGENCY' 
+  | 'UPGRADE' 
+  | 'OTHER';
+
+export interface SparePartUsage {
+  partName: string;
+  partNumber?: string;
+  quantity: number;
+  costIrr?: number;
+  replacedComponentId?: string;
+}
+
+export interface MaintenanceHistorySummary {
+  assetId: string;
+  projectId: string;
+  totalCases: number;
+  resolvedCases: number;
+  totalCostIrr: number;
+  totalLaborHours: number;
+  commonFailureCauses: { cause: string; count: number }[];
+  cases: MaintenanceCase[];
+}
 
 export interface MaintenanceCase {
   id: string;
   maintenanceCode: string; // MNT-HSE-000001
+  caseNumber?: string;
   projectId: string;
   assetId: string;
   componentId?: string;
@@ -137,21 +218,29 @@ export interface MaintenanceCase {
   reportedAt: string;
   diagnosisId?: string;
   assignedTechnicianId?: string;
+  assignedTechnicianName?: string;
+  assignedTechnicianPhone?: string;
   assignedOrganizationId?: string;
   scheduledAt?: string;
+  scheduledDate?: string;
   startedAt?: string;
   completedAt?: string;
+  completedDate?: string;
+  closureNotes?: string;
   verifiedAt?: string;
   verifiedBy?: string;
   verificationNotes?: string;
   verificationPassed?: boolean;
   resolutionSummary?: string;
   rootCause?: string;
-  actionsTaken?: string;
+  actionsTaken?: any;
   downtimeMinutes?: number | null;
   laborCost?: number | null;
   partsCost?: number | null;
   totalCost?: number | null;
+  totalCostIrr?: number;
+  totalLaborHours?: number;
+  sparePartsUsed?: SparePartUsage[];
   currency?: string;
   postMaintenanceCheck?: {
     status: 'IMPROVED' | 'UNCHANGED' | 'DEGRADED' | 'INSUFFICIENT_DATA';
@@ -183,7 +272,8 @@ export type MaintenanceActionType =
   | 'CONFIGURATION'
   | 'PART_REPLACEMENT'
   | 'TEST'
-  | 'OTHER';
+  | 'OTHER'
+  | string;
 
 export interface MaintenanceAction {
   id: string;
@@ -196,8 +286,22 @@ export interface MaintenanceAction {
   newComponentModel?: string;
   performedBy: string;
   performedAt: string;
+  resultStatus?: string;
   notes?: string;
   createdAt: string;
+}
+
+export interface TechnicianMatch {
+  technicianId: string;
+  fullName: string;
+  phone: string;
+  specialties: string[];
+  serviceCities: string[];
+  yearsExperience: number;
+  rating?: number | null;
+  matchScore: number;
+  matchReasons: string[];
+  status: string;
 }
 
 export interface TechnicianMatchResult {

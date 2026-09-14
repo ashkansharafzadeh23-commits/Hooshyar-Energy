@@ -883,6 +883,26 @@ export const db: any = {
     writeDB(data);
     return newPro;
   },
+  updateProfessional: (id: string, updates: Partial<Professional>) => {
+    const data = readDB();
+    const idx = data.professionals.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      data.professionals[idx] = { ...data.professionals[idx], ...updates };
+      writeDB(data);
+      return data.professionals[idx];
+    }
+    return null;
+  },
+  updateProfessionalStatus: (id: string, status: "pending_review" | "approved" | "rejected") => {
+    const data = readDB();
+    const idx = data.professionals.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      data.professionals[idx].status = status;
+      writeDB(data);
+      return data.professionals[idx];
+    }
+    return null;
+  },
   getAds: (placement?: string) => {
     const ads = readDB().ads.filter(a => a.status === "active");
     if (placement) return ads.filter(a => a.placement === placement);
@@ -1670,16 +1690,20 @@ export const db: any = {
   getMaintenanceCaseById: (id: string): MaintenanceCase | undefined => {
     return (readDB().maintenanceCases || []).find((c: any) => c.id === id);
   },
-  createMaintenanceCase: (mCase: Omit<MaintenanceCase, 'id' | 'createdAt' | 'updatedAt' | 'caseNumber'> & { caseNumber?: string }): MaintenanceCase => {
+  createMaintenanceCase: (mCase: Omit<MaintenanceCase, 'id' | 'createdAt' | 'updatedAt' | 'caseNumber' | 'maintenanceCode' | 'reportedBy' | 'reportedAt'> & { caseNumber?: string; maintenanceCode?: string; reportedBy?: string; reportedAt?: string }): MaintenanceCase => {
     const d = readDB();
     if (!d.maintenanceCases) d.maintenanceCases = [];
     const count = d.maintenanceCases.length + 1;
     const year = new Date().getFullYear();
     const caseNumber = mCase.caseNumber || `MC-${year}-${String(count).padStart(4, '0')}`;
+    const maintenanceCode = mCase.maintenanceCode || caseNumber;
     const n: MaintenanceCase = {
       ...mCase,
       id: uuidv4(),
       caseNumber,
+      maintenanceCode,
+      reportedBy: mCase.reportedBy || 'SYSTEM',
+      reportedAt: mCase.reportedAt || new Date().toISOString(),
       actionsTaken: mCase.actionsTaken || [],
       sparePartsUsed: mCase.sparePartsUsed || [],
       createdAt: new Date().toISOString(),
@@ -1756,12 +1780,13 @@ export const db: any = {
     const all = readDB().maintenanceActions || [];
     return all.filter((a: any) => a.maintenanceCaseId === caseId);
   },
-  createMaintenanceAction: (action: Omit<MaintenanceAction, 'id'>): MaintenanceAction => {
+  createMaintenanceAction: (action: Omit<MaintenanceAction, 'id' | 'createdAt'> & { createdAt?: string }): MaintenanceAction => {
     const d = readDB();
     if (!d.maintenanceActions) d.maintenanceActions = [];
     const n: MaintenanceAction = {
       ...action,
-      id: uuidv4()
+      id: uuidv4(),
+      createdAt: action.createdAt || new Date().toISOString()
     };
     d.maintenanceActions.push(n);
     // Also append to case if case exists
@@ -1776,6 +1801,39 @@ export const db: any = {
     writeDB(d);
     return n;
   },
+
+  getMaintenanceAssignmentHistories: (caseId?: string): MaintenanceAssignmentHistory[] => {
+    let all = readDB().maintenanceAssignmentHistories || [];
+    if (caseId) all = all.filter((h: any) => h.maintenanceCaseId === caseId);
+    return all;
+  },
+  createMaintenanceAssignmentHistory: (history: Omit<MaintenanceAssignmentHistory, 'id' | 'assignedAt'> & { assignedAt?: string }): MaintenanceAssignmentHistory => {
+    const d = readDB();
+    if (!d.maintenanceAssignmentHistories) d.maintenanceAssignmentHistories = [];
+    const n: MaintenanceAssignmentHistory = {
+      ...history,
+      id: uuidv4(),
+      assignedAt: history.assignedAt || new Date().toISOString()
+    };
+    d.maintenanceAssignmentHistories.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateMaintenanceAssignmentHistory: (id: string, updates: Partial<MaintenanceAssignmentHistory>): MaintenanceAssignmentHistory | null => {
+    const d = readDB();
+    if (!d.maintenanceAssignmentHistories) d.maintenanceAssignmentHistories = [];
+    const idx = d.maintenanceAssignmentHistories.findIndex((h: any) => h.id === id);
+    if (idx > -1) {
+      d.maintenanceAssignmentHistories[idx] = {
+        ...d.maintenanceAssignmentHistories[idx],
+        ...updates
+      };
+      writeDB(d);
+      return d.maintenanceAssignmentHistories[idx];
+    }
+    return null;
+  },
+
   setDBPath: (newPath: string) => {
     currentDbPath = newPath;
   },

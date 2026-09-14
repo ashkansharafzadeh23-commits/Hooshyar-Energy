@@ -11,6 +11,9 @@ export const monitoringRepository = {
   getSources: (projectId?: string, assetId?: string): TelemetrySource[] => {
     return db.getTelemetrySources(projectId, assetId);
   },
+  getTelemetrySources: (projectId?: string, assetId?: string): TelemetrySource[] => {
+    return db.getTelemetrySources(projectId, assetId);
+  },
 
   getSourceById: (id: string): TelemetrySource | undefined => {
     return db.getTelemetrySourceById(id);
@@ -39,6 +42,9 @@ export const monitoringRepository = {
       quality?: string;
     }
   ): TelemetryReading[] => {
+    return db.getTelemetryReadings(assetId, filters);
+  },
+  getTelemetryReadings: (assetId: string, filters?: any): TelemetryReading[] => {
     return db.getTelemetryReadings(assetId, filters);
   },
 

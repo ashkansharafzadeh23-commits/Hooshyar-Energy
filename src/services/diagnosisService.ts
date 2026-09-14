@@ -32,8 +32,9 @@ export const diagnosisService = {
     alertId?: string;
     componentId?: string;
     symptoms?: string[];
+    triggerAiAssisted?: boolean;
   }): Promise<MaintenanceDiagnosis> => {
-    const { assetId, alertId, componentId } = params;
+    const { assetId, alertId, componentId, triggerAiAssisted } = params;
 
     const asset = assetRepository.getAssetById(assetId);
     if (!asset) {
@@ -52,13 +53,16 @@ export const diagnosisService = {
     }
 
     // 1. Check Warranties
-    const warranties = assetRepository.getEquipmentWarranties(assetId);
+    const dbWarranties = assetRepository.getEquipmentWarranties(assetId);
+    const passportWarranties = (asset as any).equipmentPassport?.warranties || [];
+    const warranties = dbWarranties.length > 0 ? dbWarranties : passportWarranties;
+
     let warrantyImpact: WarrantyImpact = {
       hasWarrantyCoverage: false,
       warrantyNotes: 'اطلاعات گارانتی در دسترس نیست یا دوره گارانتی منقضی شده است.'
     };
 
-    const activeWarranty = warranties.find(w => {
+    const activeWarranty = warranties.find((w: any) => {
       if (w.status !== 'ACTIVE') return false;
       if (componentId && w.componentId === componentId) return true;
       return true; // general asset warranty
@@ -68,10 +72,10 @@ export const diagnosisService = {
       warrantyImpact = {
         hasWarrantyCoverage: true,
         warrantyId: activeWarranty.id,
-        warrantyType: activeWarranty.warrantyType,
+        warrantyType: activeWarranty.warrantyType || activeWarranty.equipmentType,
         warrantyStatus: activeWarranty.status,
         claimProcedure: activeWarranty.claimProcedure || 'ثبت درخواست گارانتی از طریق فرم رسمی سازنده و تحویل به پیمانکار EPC',
-        warrantyNotes: `تحت پوشش گارانتی معتبر (${activeWarranty.coverageSummary}) تا تاریخ ${activeWarranty.endDate}`
+        warrantyNotes: `تحت پوشش گارانتی معتبر (${activeWarranty.coverageSummary || activeWarranty.terms}) تا تاریخ ${activeWarranty.endDate}`
       };
     }
 
@@ -177,7 +181,7 @@ export const diagnosisService = {
     let rawAiResponse: string | undefined = undefined;
 
     const ai = getGeminiClient();
-    if (ai) {
+    if (ai && triggerAiAssisted !== false) {
       try {
         const prompt = `شما یک مهندس ارشد و کارشناس عیب‌یابی نیروگاه‌های خورشیدی و سیستم‌های انرژی تجدیدپذیر هستید.
 اطلاعات دارایی:
@@ -189,10 +193,16 @@ export const diagnosisService = {
 بر اساس این شواهد، لطفاً تحلیل فنی علت ریشه‌ای و ۳ اقدام پیشنهادی دارای اولویت را ارائه دهید.
 پاسخ را خلاصه، تخصصی و به زبان فارسی بنویسید.`;
 
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+        const aiPromise = ai.models.generateContent({
+          model: 'gemini-flash-latest',
           contents: prompt
         });
+
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('AI generation timeout')), 3000)
+        );
+
+        const response: any = await Promise.race([aiPromise, timeoutPromise]);
 
         if (response && response.text) {
           rawAiResponse = response.text;
@@ -200,7 +210,7 @@ export const diagnosisService = {
           confidenceScore = Math.min(95, confidenceScore + 5);
         }
       } catch (aiErr) {
-        console.warn('Gemini diagnosis enrichment skipped due to error:', aiErr);
+        console.warn('Gemini diagnosis enrichment skipped or timed out:', aiErr);
         // Fallback remains EXPERT_RULESET
       }
     }
@@ -211,7 +221,9 @@ export const diagnosisService = {
       projectId,
       componentId,
       symptoms: collectedSymptoms,
+      rootCauses: likelyRootCauses,
       likelyRootCauses,
+      actions: recommendedActions,
       recommendedActions,
       confidenceScore,
       warrantyImpact,
@@ -220,5 +232,26 @@ export const diagnosisService = {
     });
 
     return created;
+  },
+
+  /**
+   * Convenience alias to diagnose an alert directly by alert ID
+   */
+  diagnoseAlert: async (
+    alertId: string,
+    options?: { triggerAiAssisted?: boolean; symptoms?: string[] }
+  ): Promise<MaintenanceDiagnosis> => {
+    const alert = maintenanceRepository.getAlertById(alertId);
+    if (!alert) {
+      throw new Error(`هشدار با شناسه ${alertId} یافت نشد.`);
+    }
+
+    return diagnosisService.generateDiagnosis({
+      assetId: alert.assetId,
+      alertId: alert.id,
+      componentId: alert.componentId,
+      symptoms: options?.symptoms,
+      triggerAiAssisted: options?.triggerAiAssisted
+    });
   }
 };

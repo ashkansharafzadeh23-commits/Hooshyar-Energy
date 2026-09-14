@@ -2,9 +2,11 @@ import { db } from '../db/index.js';
 import {
   AssetAlert,
   AlertRule,
+  AlertType,
   MaintenanceCase,
   MaintenanceDiagnosis,
-  MaintenanceAction
+  MaintenanceAction,
+  MaintenanceAssignmentHistory
 } from '../types/maintenance.js';
 
 export const maintenanceRepository = {
@@ -17,7 +19,7 @@ export const maintenanceRepository = {
     return db.getAssetAlertById(id);
   },
 
-  createAlert: (alert: Omit<AssetAlert, 'id' | 'detectedAt'> & { detectedAt?: string }): AssetAlert => {
+  createAlert: (alert: Omit<AssetAlert, 'id' | 'detectedAt' | 'createdAt' | 'updatedAt' | 'alertCode' | 'alertType'> & { detectedAt?: string; alertCode?: string; alertType?: AlertType; createdAt?: string; updatedAt?: string }): AssetAlert => {
     return db.createAssetAlert(alert);
   },
 
@@ -70,7 +72,7 @@ export const maintenanceRepository = {
     return db.getMaintenanceCaseById(id);
   },
 
-  createCase: (mCase: Omit<MaintenanceCase, 'id' | 'createdAt' | 'updatedAt' | 'caseNumber'> & { caseNumber?: string }): MaintenanceCase => {
+  createCase: (mCase: Omit<MaintenanceCase, 'id' | 'createdAt' | 'updatedAt' | 'caseNumber' | 'maintenanceCode' | 'reportedBy' | 'reportedAt'> & { caseNumber?: string; maintenanceCode?: string; reportedBy?: string; reportedAt?: string }): MaintenanceCase => {
     return db.createMaintenanceCase(mCase);
   },
 
@@ -104,7 +106,20 @@ export const maintenanceRepository = {
     return db.getMaintenanceActions(caseId);
   },
 
-  createAction: (action: Omit<MaintenanceAction, 'id'>): MaintenanceAction => {
+  createAction: (action: Omit<MaintenanceAction, 'id' | 'createdAt'> & { createdAt?: string }): MaintenanceAction => {
     return db.createMaintenanceAction(action);
+  },
+
+  // Assignment History
+  getAssignmentHistories: (caseId?: string): MaintenanceAssignmentHistory[] => {
+    return db.getMaintenanceAssignmentHistories(caseId);
+  },
+
+  createAssignmentHistory: (history: Omit<MaintenanceAssignmentHistory, 'id' | 'assignedAt'> & { assignedAt?: string }): MaintenanceAssignmentHistory => {
+    return db.createMaintenanceAssignmentHistory(history);
+  },
+
+  updateAssignmentHistory: (id: string, updates: Partial<MaintenanceAssignmentHistory>): MaintenanceAssignmentHistory | null => {
+    return db.updateMaintenanceAssignmentHistory(id, updates);
   }
 };
