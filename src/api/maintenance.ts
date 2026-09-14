@@ -329,6 +329,34 @@ maintenanceRouter.post('/alerts/:alertId/dismiss', (req: Request, res: Response)
 });
 
 /**
+ * PATCH /api/alerts/:alertId
+ * Update alert details while strictly rejecting or ignoring parent identity tampering (assetId, projectId, id)
+ */
+maintenanceRouter.patch('/alerts/:alertId', (req: Request, res: Response) => {
+  const alertId = getParam(req.params.alertId);
+  const alert = maintenanceRepository.getAlertById(alertId);
+  if (!alert) {
+    return res.status(404).json({ error: 'هشدار مورد نظر یافت نشد.' });
+  }
+
+  const access = checkProjectAccess(alert.projectId, req.user?.id, req.user?.role);
+  if (!access.allowed) {
+    return res.status(access.status || 403).json({ error: access.error });
+  }
+
+  // Strictly sanitize updates to prevent parent identity tampering
+  const safeUpdates: any = { ...req.body };
+  delete safeUpdates.id;
+  delete safeUpdates.assetId;
+  delete safeUpdates.projectId;
+  delete safeUpdates.alertCode;
+  delete safeUpdates.createdAt;
+
+  const updated = maintenanceRepository.updateAlert(alertId, safeUpdates);
+  return res.json(updated);
+});
+
+/**
  * POST /api/alerts/:alertId/diagnose
  * Run deterministic + AI-assisted root-cause diagnosis on alert
  */

@@ -52,31 +52,71 @@ export const diagnosisService = {
       }
     }
 
-    // 1. Check Warranties
+    // 1. Check Warranties (Strict validation: invalid/missing/past dates never become ACTIVE)
     const dbWarranties = assetRepository.getEquipmentWarranties(assetId);
     const passportWarranties = (asset as any).equipmentPassport?.warranties || [];
     const warranties = dbWarranties.length > 0 ? dbWarranties : passportWarranties;
 
+    let warrantyStatus: 'ACTIVE' | 'EXPIRING' | 'EXPIRED' | 'INSUFFICIENT_DATA' = 'INSUFFICIENT_DATA';
     let warrantyImpact: WarrantyImpact = {
       hasWarrantyCoverage: false,
-      warrantyNotes: 'اطلاعات گارانتی در دسترس نیست یا دوره گارانتی منقضی شده است.'
+      warrantyStatus: 'INSUFFICIENT_DATA',
+      warrantyNotes: 'اطلاعات گارانتی در دسترس نیست یا ثبت نشده است.'
     };
 
-    const activeWarranty = warranties.find((w: any) => {
-      if (w.status !== 'ACTIVE') return false;
-      if (componentId && w.componentId === componentId) return true;
-      return true; // general asset warranty
-    });
+    if (warranties.length > 0) {
+      // First try exact component match
+      let activeWarranty = componentId ? warranties.find((w: any) => {
+        if (!w.endDate) return false;
+        const end = new Date(w.endDate);
+        if (isNaN(end.getTime()) || end.getTime() < Date.now()) return false;
+        if (w.status !== 'ACTIVE') return false;
+        return w.componentId === componentId;
+      }) : undefined;
 
-    if (activeWarranty) {
-      warrantyImpact = {
-        hasWarrantyCoverage: true,
-        warrantyId: activeWarranty.id,
-        warrantyType: activeWarranty.warrantyType || activeWarranty.equipmentType,
-        warrantyStatus: activeWarranty.status,
-        claimProcedure: activeWarranty.claimProcedure || 'ثبت درخواست گارانتی از طریق فرم رسمی سازنده و تحویل به پیمانکار EPC',
-        warrantyNotes: `تحت پوشش گارانتی معتبر (${activeWarranty.coverageSummary || activeWarranty.terms}) تا تاریخ ${activeWarranty.endDate}`
-      };
+      // If no exact component match, check general asset warranty or active equipment warranty for this asset
+      if (!activeWarranty) {
+        activeWarranty = warranties.find((w: any) => {
+          if (!w.endDate) return false;
+          const end = new Date(w.endDate);
+          if (isNaN(end.getTime()) || end.getTime() < Date.now()) return false;
+          if (w.status !== 'ACTIVE') return false;
+          return true;
+        });
+      }
+
+      if (activeWarranty) {
+        const end = new Date(activeWarranty.endDate);
+        const daysLeft = Math.round((end.getTime() - Date.now()) / (1000 * 3600 * 24));
+        warrantyStatus = daysLeft <= 30 ? 'EXPIRING' : 'ACTIVE';
+
+        warrantyImpact = {
+          hasWarrantyCoverage: true,
+          eligible: true,
+          warrantyId: activeWarranty.id,
+          warrantyType: activeWarranty.warrantyType || activeWarranty.equipmentType,
+          warrantyStatus,
+          provider: activeWarranty.provider || activeWarranty.manufacturer || 'سازنده تجهیز',
+          claimProcedure: activeWarranty.claimProcedure || 'ثبت درخواست گارانتی از طریق فرم رسمی سازنده و تحویل به پیمانکار EPC (منوط به بررسی و کارشناسی فنی)',
+          warrantyNotes: `تحت پوشش گارانتی معتبر (${activeWarranty.coverageSummary || activeWarranty.terms || 'پوشش استاندارد'}) تا تاریخ ${activeWarranty.endDate} (${daysLeft} روز باقیمانده). تایید نهایی مطالبه منوط به بررسی فنی شرکت سازنده می‌باشد.`
+        };
+      } else {
+        const expiredWarranty = warranties.find((w: any) => {
+          if (!w.endDate) return false;
+          const end = new Date(w.endDate);
+          return !isNaN(end.getTime()) && end.getTime() < Date.now();
+        });
+
+        warrantyStatus = expiredWarranty ? 'EXPIRED' : 'INSUFFICIENT_DATA';
+        warrantyImpact = {
+          hasWarrantyCoverage: false,
+          eligible: false,
+          warrantyStatus,
+          warrantyNotes: expiredWarranty 
+            ? `دوره گارانتی تجهیزات در تاریخ ${expiredWarranty.endDate} منقضی شده است.`
+            : 'شرایط گارانتی فعال برای این تجهیز احراز نشد.'
+        };
+      }
     }
 
     // 2. Fetch Recent Telemetry & Context
@@ -88,14 +128,28 @@ export const diagnosisService = {
     const likelyRootCauses: DiagnosisRootCause[] = [];
     const recommendedActions: DiagnosisAction[] = [];
     let confidenceScore = 80;
+    let diagnosisStatus: 'INSUFFICIENT_DATA' | 'POSSIBLE_CAUSE_IDENTIFIED' | 'MANUAL_REVIEW_REQUIRED' | 'ACTION_RECOMMENDED' = 'ACTION_RECOMMENDED';
 
+    const isInverterRelated = symptomsText.includes('inverter') || symptomsText.includes('اینورتر') || alert?.alertType === 'INVERTER_FAULT' || alert?.metricType === 'V_DC';
     const isBatteryRelated = symptomsText.includes('battery') || symptomsText.includes('soc') || symptomsText.includes('باتری') || alert?.metricType === 'BATTERY_SOC';
     const isTempRelated = symptomsText.includes('temperature') || symptomsText.includes('دما') || symptomsText.includes('حرارت') || alert?.metricType === 'MODULE_TEMPERATURE';
     const isPerformanceDrop = symptomsText.includes('performance') || symptomsText.includes('افت') || symptomsText.includes('تولید') || alert?.metricType === 'PERFORMANCE_DEVIATION' || alert?.metricType === 'PERFORMANCE_RATIO';
     const isGridRelated = symptomsText.includes('frequency') || symptomsText.includes('voltage') || symptomsText.includes('فرکانس') || symptomsText.includes('ولتاژ') || alert?.metricType === 'FREQUENCY' || alert?.metricType === 'VOLTAGE';
     const isTelemetryLoss = symptomsText.includes('loss') || symptomsText.includes('مفقودی') || symptomsText.includes('قطع ارتباط') || alert?.source === 'TELEMETRY_LOSS';
 
-    if (isBatteryRelated) {
+    if (isInverterRelated) {
+      likelyRootCauses.push(
+        { cause: 'خطای ایزولاسیون سمت DC یا اتصال زمین استرینگ‌ها (Isolation Fault / Ground Fault)', probability: 0.55, description: 'افت مقاومت عایقی کابل‌های DC متصل به ورودی اینورتر' },
+        { cause: 'اشکال در ماژول‌های قدرت IGBT یا خرابی برد کنترل اینورتر', probability: 0.30, description: 'داغ شدن بیش از حد یا اتصال کوتاه در طبقه اینورتینگ' },
+        { cause: 'انحراف ولتاژ DC ورودی فراتر از محدوده کاری MPPT', probability: 0.15, description: 'ولتاژ ورودی خارج از محدوده مجاز راه اندازی اینورتر' }
+      );
+      recommendedActions.push(
+        { action: 'تست عایقی (میگر) استرینگ‌های DC ورودی به اینورتر', priority: 'CRITICAL', estimatedCostIrr: 12000000, estimatedHours: 2.5 },
+        { action: 'بررسی کدهای خطای ثبت‌شده در لاگ اینورتر و تست کارت ارتباطی', priority: 'HIGH', estimatedCostIrr: 5000000, estimatedHours: 1.5 }
+      );
+      confidenceScore = 85;
+      diagnosisStatus = 'ACTION_RECOMMENDED';
+    } else if (isBatteryRelated) {
       likelyRootCauses.push(
         { cause: 'خرابی سلول باتری یا افت ظرفیت چرخه شارژ (SOH Degradation)', probability: 0.60, description: 'کاهش نرخ پذیرش شارژ یا اتصال کوتاه داخلی در یکی از بلوک‌های باتری' },
         { cause: 'تنظیمات نادرست شارژر یا اختلال سیستم مدیریت باتری (BMS Cutoff)', probability: 0.25, description: 'قطع پیش از موعد رله شارژ به دلیل قرائت اشتباه دمای باتری' },
@@ -106,6 +160,7 @@ export const diagnosisService = {
         { action: 'بررسی تنظیمات آستانه ولتاژ قطع و پارامترهای ارتباطی BMS', priority: 'HIGH', estimatedCostIrr: 5000000, estimatedHours: 2 }
       );
       confidenceScore = 88;
+      diagnosisStatus = 'ACTION_RECOMMENDED';
     } else if (isTempRelated) {
       likelyRootCauses.push(
         { cause: 'انسداد مسیر هوارسانی و عدم گردش طبیعی هوا در زیر ماژول‌ها', probability: 0.50, description: 'تجمع ضایعات یا طراحی نامناسب فاصله استراکچر تا سطح زمین' },
@@ -117,6 +172,7 @@ export const diagnosisService = {
         { action: 'بررسی جریان خروجی دیودهای هرزگرد (Bypass Diodes) جعبه تقسیم ماژول', priority: 'MEDIUM', estimatedCostIrr: 10000000, estimatedHours: 2 }
       );
       confidenceScore = 85;
+      diagnosisStatus = 'ACTION_RECOMMENDED';
     } else if (isPerformanceDrop) {
       likelyRootCauses.push(
         { cause: 'انباشت گرد و غبار، ذرات صنعتی یا رسوب بر سطح شیشه ماژول‌ها (Soiling)', probability: 0.45, description: 'کاهش تابش موثر ورودی به سلول‌ها' },
@@ -128,6 +184,7 @@ export const diagnosisService = {
         { action: 'اندازه‌گیری ولتاژ مدار باز (Voc) و جریان نامی (Isc) تک‌تک استرینگ‌ها', priority: 'HIGH', estimatedCostIrr: 12000000, estimatedHours: 3 }
       );
       confidenceScore = 82;
+      diagnosisStatus = 'ACTION_RECOMMENDED';
     } else if (isGridRelated) {
       likelyRootCauses.push(
         { cause: 'نوسانات ولتاژ شبکه توزیع و فعال‌شدن حفاظت ضدجزیره‌ای اینورتر', probability: 0.65, description: 'تغییرات بار لحظه‌ای پست برق بالادست' },
@@ -138,6 +195,7 @@ export const diagnosisService = {
         { action: 'هماهنگی با اداره برق منطقه و تنظیم مجدد فریم‌های حفاظتی اینورتر', priority: 'MEDIUM', estimatedCostIrr: 5000000, estimatedHours: 2 }
       );
       confidenceScore = 80;
+      diagnosisStatus = 'ACTION_RECOMMENDED';
     } else if (isTelemetryLoss) {
       likelyRootCauses.push(
         { cause: 'قطعی تغذیه یا آسیب به منبع تغذیه مودم / دیتالاگر خورشیدی', probability: 0.55, description: 'نوسان برق ورودی یا اتمام باتری پشتیبان گیت‌وی' },
@@ -149,32 +207,54 @@ export const diagnosisService = {
         { action: 'تست پیوستگی سیگنال خط فیزیکی RS485 با مولتی‌متر', priority: 'MEDIUM', estimatedCostIrr: 6000000, estimatedHours: 1.5 }
       );
       confidenceScore = 85;
+      diagnosisStatus = 'ACTION_RECOMMENDED';
     } else {
       // General or insufficient symptoms
       if (!hasTelemetryData && collectedSymptoms.length === 0) {
         likelyRootCauses.push({
-          cause: 'اطلاعات کافی جهت تشخیص دقیق وجود ندارد (INSUFFICIENT_DATA)',
+          cause: 'شواهد یا داده تله‌متری کافی جهت استنتاج علت ریشه‌ای وجود ندارد (INSUFFICIENT_DATA)',
           probability: 1.0,
-          description: 'هیچ داده تله‌متری یا شواهد عملکردی برای این دارایی ثبت نشده است.'
+          description: 'هیچ داده تله‌متری یا نشانه عینی برای این دارایی ثبت نشده است.'
         });
         recommendedActions.push({
-          action: 'اتصال منابع تله‌متری فعال یا ثبت گزارش بازدید چشمی تکنسین',
+          action: 'اتصال منابع تله‌متری فعال یا ثبت گزارش بازدید میدانی کارشناس',
           priority: 'MEDIUM',
           estimatedCostIrr: 0,
           estimatedHours: 1
         });
-        confidenceScore = 15;
+        confidenceScore = 10;
+        diagnosisStatus = 'INSUFFICIENT_DATA';
       } else {
         likelyRootCauses.push(
-          { cause: 'بررسی عمومی تجهیزات، افت راندمان سیستم فتوولتائیک یا استهلاک طبیعی', probability: 0.70, description: 'نیاز به پایش جامع‌تر جریان و ولتاژ' },
-          { cause: 'اتصالات سست در ترمینال‌های تابلوهای AC/DC', probability: 0.30, description: 'افزایش مقاومت تماسی' }
+          { cause: 'افت راندمان عمومی یا نیاز به بازرسی دوره‌ای تجهیزات', probability: 0.70, description: 'نیاز به داده‌های تحلیلی تکمیلی جهت بررسی دقیق‌تر' },
+          { cause: 'احتمال اتصالات سست در ترمینال‌ها', probability: 0.30, description: 'افزایش مقاومت تماسی' }
         );
         recommendedActions.push(
-          { action: 'اجرای چک‌لیست کامل سرویس و نگهداری پیشگیرانه (PM)', priority: 'MEDIUM', estimatedCostIrr: 20000000, estimatedHours: 4 }
+          { action: 'اجرای چک‌لیست کامل سرویس و نگهداری پیشگیرانه (PM) و بررسی تخصصی', priority: 'MEDIUM', estimatedCostIrr: 20000000, estimatedHours: 4 }
         );
-        confidenceScore = 65;
+        confidenceScore = 55;
+        diagnosisStatus = 'MANUAL_REVIEW_REQUIRED';
       }
     }
+
+    // Explicitly assemble verified FACTS (not inferred)
+    const facts: string[] = [
+      `دارایی: ${asset.name || asset.assetCode} (نوع: ${asset.assetType || 'خورشیدی'})`,
+      `ظرفیت نامی: ${asset.installedCapacityKw || 0} کیلووات`,
+      `وضعیت تله‌متری: ${hasTelemetryData ? `${recentReadings.length} قرائت در دسترس` : 'فاقد سوابق تله‌متری'}`,
+      `وضعیت گارانتی تجهیزات: ${warrantyStatus} (${warrantyImpact.warrantyNotes || ''})`
+    ];
+    if (alert) {
+      facts.push(`هشدار دریافتی: کد ${alert.alertCode}، عنوان: ${alert.title} (شدت: ${alert.severity})`);
+      if (alert.metricType) {
+        facts.push(`متریک ثبت‌شده: ${alert.metricType} با مقدار ${alert.metricValue ?? 'ثبت‌نشده'}`);
+      }
+    }
+
+    // Inferences explicitly distinct from facts
+    const inferences: string[] = likelyRootCauses.map(
+      rc => `[استنتاج تحلیلی - احتمال ${(rc.probability * 100).toFixed(0)}٪]: ${rc.cause}`
+    );
 
     // 4. Optional AI Enrichment Layer
     let diagnosisMethod: DiagnosisMethod = 'EXPERT_RULESET';
@@ -220,6 +300,9 @@ export const diagnosisService = {
       assetId,
       projectId,
       componentId,
+      diagnosisStatus,
+      facts,
+      inferences,
       symptoms: collectedSymptoms,
       rootCauses: likelyRootCauses,
       likelyRootCauses,

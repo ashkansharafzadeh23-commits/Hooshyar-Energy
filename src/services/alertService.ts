@@ -24,7 +24,7 @@ export const alertService = {
   ): AssetAlert[] => {
     const alerts: AssetAlert[] = [];
 
-    // Helper to evaluate and add alert with deduplication
+    // Deduplication check: check if an active alert already exists
     const maybeAddAlert = (params: {
       ruleId?: string;
       source: AlertSource;
@@ -39,7 +39,12 @@ export const alertService = {
       // Deduplication check: check if an active alert already exists
       const existing = maintenanceRepository.findActiveAlert(assetId, params.ruleId, params.metricType);
       if (existing) {
-        return; // Don't duplicate active alert
+        maintenanceRepository.updateAlert(existing.id, {
+          lastObservedAt: reading.timestamp || new Date().toISOString(),
+          metricValue: params.metricValue !== undefined ? params.metricValue : existing.metricValue,
+          updatedAt: new Date().toISOString()
+        });
+        return; // Don't duplicate active alert, occurrence tracking updated
       }
 
       // Check cooldown if rule specified
@@ -57,6 +62,7 @@ export const alertService = {
         }
       }
 
+      const timestamp = reading.timestamp || new Date().toISOString();
       const created = maintenanceRepository.createAlert({
         assetId,
         projectId,
@@ -69,6 +75,8 @@ export const alertService = {
         metricType: params.metricType,
         metricValue: params.metricValue,
         thresholdValue: params.thresholdValue,
+        firstObservedAt: timestamp,
+        lastObservedAt: timestamp,
         metadata: {
           readingId: reading.id,
           sourceId: reading.sourceId,
@@ -78,103 +86,26 @@ export const alertService = {
       alerts.push(created);
     };
 
-    // 1. Built-in Telemetry Thresholds
-    if (reading.metricType === 'BATTERY_SOC') {
-      if (reading.value < 10) {
-        maybeAddAlert({
-          source: 'TELEMETRY',
-          severity: 'CRITICAL',
-          title: 'افت بحرانی شارژ باتری (SoC)',
-          description: `سطح شارژ باتری به ${reading.value}% کاهش یافته است که کمتر از آستانه اضطراری ۱۰٪ می‌باشد.`,
-          metricType: 'BATTERY_SOC',
-          metricValue: reading.value,
-          thresholdValue: 10,
-          cooldownMinutes: 60
-        });
-      } else if (reading.value < 20) {
-        maybeAddAlert({
-          source: 'TELEMETRY',
-          severity: 'WARNING',
-          title: 'هشدار افت شارژ باتری (SoC)',
-          description: `سطح شارژ باتری به ${reading.value}% کاهش یافته است که کمتر از آستانه هشدار ۲۰٪ می‌باشد.`,
-          metricType: 'BATTERY_SOC',
-          metricValue: reading.value,
-          thresholdValue: 20,
-          cooldownMinutes: 60
-        });
-      }
-    }
+    // User-Configured and Verified System Rules (no invented thresholds)
+    const configuredRules = maintenanceRepository.getRules(projectId, assetId)
+      .filter(r => (r.enabled !== false && r.isEnabled !== false));
 
-    if (reading.metricType === 'MODULE_TEMPERATURE') {
-      if (reading.value > 85) {
-        maybeAddAlert({
-          source: 'TELEMETRY',
-          severity: 'CRITICAL',
-          title: 'دمای بحرانی ماژول خورشیدی',
-          description: `دمای ماژول به ${reading.value}°C رسیده است که فراتر از آستانه مجاز ۸۵ درجه می‌باشد و خطر آسیب حرارتی دارد.`,
-          metricType: 'MODULE_TEMPERATURE',
-          metricValue: reading.value,
-          thresholdValue: 85,
-          cooldownMinutes: 30
-        });
-      } else if (reading.value > 75) {
-        maybeAddAlert({
-          source: 'TELEMETRY',
-          severity: 'WARNING',
-          title: 'هشدار افزایش دمای ماژول خورشیدی',
-          description: `دمای ماژول به ${reading.value}°C رسیده است و ممکن است باعث افت راندمان حرارتی (Thermal Derating) گردد.`,
-          metricType: 'MODULE_TEMPERATURE',
-          metricValue: reading.value,
-          thresholdValue: 75,
-          cooldownMinutes: 30
-        });
-      }
-    }
-
-    if (reading.metricType === 'FREQUENCY') {
-      if (reading.value < 48 || reading.value > 52) {
-        maybeAddAlert({
-          source: 'TELEMETRY',
-          severity: 'CRITICAL',
-          title: 'انحراف فرکانس شبکه برق',
-          description: `فرکانس شبکه بر روی ${reading.value} Hz ثبت شده که خارج از بازه استاندارد ۴۸ تا ۵۲ هرتز است.`,
-          metricType: 'FREQUENCY',
-          metricValue: reading.value,
-          thresholdValue: reading.value < 48 ? 48 : 52,
-          cooldownMinutes: 15
-        });
-      }
-    }
-
-    if (reading.metricType === 'VOLTAGE') {
-      if (reading.value < 180 || reading.value > 265) {
-        maybeAddAlert({
-          source: 'TELEMETRY',
-          severity: 'WARNING',
-          title: 'نوسان ولتاژ خارج از بازه نامی',
-          description: `ولتاژ ثبت‌شده ${reading.value}V خارج از محدوده استاندارد ۱۸۰ تا ۲۶۵ ولت است.`,
-          metricType: 'VOLTAGE',
-          metricValue: reading.value,
-          thresholdValue: reading.value < 180 ? 180 : 265,
-          cooldownMinutes: 30
-        });
-      }
-    }
-
-    // 2. Custom User-Configured Rules
-    const customRules = maintenanceRepository.getRules(projectId, assetId)
-      .filter(r => r.isEnabled && r.ruleType === 'TELEMETRY_THRESHOLD');
-
-    for (const rule of customRules) {
-      if (rule.condition.metricType && rule.condition.metricType !== reading.metricType) {
+    for (const rule of configuredRules) {
+      const conditionMetric = rule.metricType || rule.condition?.metricType;
+      if (conditionMetric && conditionMetric !== reading.metricType) {
         continue;
       }
 
       const val = reading.value;
-      const target = rule.condition.threshold;
+      const target = rule.thresholdValue !== undefined ? rule.thresholdValue : rule.condition?.threshold;
+      if (target === undefined || isNaN(Number(target))) {
+        continue;
+      }
+
+      const operator = rule.operator || rule.condition?.operator;
       let matched = false;
 
-      switch (rule.condition.operator) {
+      switch (operator) {
         case '>': matched = val > target; break;
         case '<': matched = val < target; break;
         case '>=': matched = val >= target; break;
@@ -186,10 +117,10 @@ export const alertService = {
       if (matched) {
         maybeAddAlert({
           ruleId: rule.id,
-          source: 'TELEMETRY',
+          source: (rule.sourceType as AlertSource) || 'RULE',
           severity: rule.severity,
           title: rule.name,
-          description: `${rule.description} (مقدار: ${val} ${reading.unit}، آستانه: ${target} ${reading.unit})`,
+          description: `${rule.description || rule.name} (مقدار: ${val} ${reading.unit || ''}، آستانه: ${target} ${reading.unit || ''})`,
           metricType: reading.metricType,
           metricValue: val,
           thresholdValue: target,
@@ -220,8 +151,16 @@ export const alertService = {
       thresholdValue?: number;
     }) => {
       const existing = maintenanceRepository.findActiveAlert(assetId, params.ruleId, params.metricType);
-      if (existing) return;
+      if (existing) {
+        maintenanceRepository.updateAlert(existing.id, {
+          lastObservedAt: snapshot.periodEnd || new Date().toISOString(),
+          metricValue: params.metricValue !== undefined ? params.metricValue : existing.metricValue,
+          updatedAt: new Date().toISOString()
+        });
+        return;
+      }
 
+      const timestamp = snapshot.periodEnd || new Date().toISOString();
       const created = maintenanceRepository.createAlert({
         assetId,
         projectId,
@@ -234,6 +173,8 @@ export const alertService = {
         metricType: params.metricType,
         metricValue: params.metricValue,
         thresholdValue: params.thresholdValue,
+        firstObservedAt: timestamp,
+        lastObservedAt: timestamp,
         metadata: {
           snapshotId: snapshot.id,
           periodStart: snapshot.periodStart,
@@ -324,8 +265,16 @@ export const alertService = {
       thresholdValue?: number;
     }) => {
       const existing = maintenanceRepository.findActiveAlert(assetId, undefined, params.metricType);
-      if (existing) return;
+      if (existing) {
+        maintenanceRepository.updateAlert(existing.id, {
+          lastObservedAt: assessment.evaluatedAt || new Date().toISOString(),
+          metricValue: params.metricValue !== undefined ? params.metricValue : existing.metricValue,
+          updatedAt: new Date().toISOString()
+        });
+        return;
+      }
 
+      const timestamp = assessment.evaluatedAt || new Date().toISOString();
       const created = maintenanceRepository.createAlert({
         assetId,
         projectId,
@@ -337,6 +286,8 @@ export const alertService = {
         metricType: params.metricType,
         metricValue: params.metricValue,
         thresholdValue: params.thresholdValue,
+        firstObservedAt: timestamp,
+        lastObservedAt: timestamp,
         metadata: {
           assessmentId: assessment.id,
           riskFactors: assessment.riskFactors,
@@ -389,7 +340,13 @@ export const alertService = {
       if (sourceReadings.length === 0) {
         // No readings ever
         const existing = maintenanceRepository.findActiveAlert(assetId, undefined, `LOSS_${source.id}`);
-        if (!existing) {
+        if (existing) {
+          maintenanceRepository.updateAlert(existing.id, {
+            lastObservedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+        } else {
+          const nowStr = new Date().toISOString();
           alerts.push(maintenanceRepository.createAlert({
             assetId,
             projectId,
@@ -399,6 +356,8 @@ export const alertService = {
             title: `عدم دریافت داده از منبع ${source.name}`,
             description: `هیچ دیتایی از منبع تله‌متری ${source.name} تاکنون دریافت نشده است.`,
             metricType: `LOSS_${source.id}`,
+            firstObservedAt: nowStr,
+            lastObservedAt: nowStr,
             metadata: { sourceId: source.id }
           }));
         }
@@ -412,7 +371,14 @@ export const alertService = {
 
       if (diffHours > maxInactiveHours) {
         const existing = maintenanceRepository.findActiveAlert(assetId, undefined, `LOSS_${source.id}`);
-        if (!existing) {
+        if (existing) {
+          maintenanceRepository.updateAlert(existing.id, {
+            lastObservedAt: new Date().toISOString(),
+            metricValue: diffHours,
+            updatedAt: new Date().toISOString()
+          });
+        } else {
+          const nowStr = new Date().toISOString();
           alerts.push(maintenanceRepository.createAlert({
             assetId,
             projectId,
@@ -424,6 +390,8 @@ export const alertService = {
             metricType: `LOSS_${source.id}`,
             metricValue: diffHours,
             thresholdValue: maxInactiveHours,
+            firstObservedAt: nowStr,
+            lastObservedAt: nowStr,
             metadata: {
               sourceId: source.id,
               lastTimestamp: sourceReadings[0].timestamp
