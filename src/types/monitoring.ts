@@ -22,7 +22,7 @@ export interface TelemetrySource {
   lastSyncAt?: string;
   samplingIntervalSeconds?: number;
   configuration?: Record<string, any>;
-  createdAt: string;
+  createdAt?: string;
   updatedAt: string;
 }
 
@@ -57,7 +57,7 @@ export interface TelemetryReading {
   unit: string;
   quality: TelemetryReadingQuality;
   metadata?: Record<string, any>;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export type PerformanceSnapshotStatus = 'NORMAL' | 'WARNING' | 'CRITICAL' | 'INSUFFICIENT_DATA';

@@ -8,15 +8,15 @@ export interface EnergyAsset {
   ownerId?: string;
   organizationId?: string;
   assetType: EnergyAssetType;
-  status: EnergyAssetStatus;
+  status?: EnergyAssetStatus;
   operationalStatus?: string;
   gridConnectionStatus?: string;
   name: string;
-  location: string;
+  location?: string;
   installedCapacityKw: number;
   batteryCapacityKwh?: number;
   generatorCapacityKva?: number;
-  technology: string;
+  technology?: string;
   commissioningDate?: string;
   commercialOperationDate?: string;
   epcOrganizationId?: string;
@@ -25,8 +25,8 @@ export interface EnergyAsset {
   assetValue?: number;
   expectedAnnualGenerationKwh?: number;
   designLifetimeYears?: number;
-  verificationStatus: string;
-  passportVersion: number;
+  verificationStatus?: string;
+  passportVersion?: number;
   createdAt: string;
   updatedAt: string;
   source?: string;
@@ -141,7 +141,7 @@ export interface AssetOwnershipRecord {
   effectiveFrom: string;
   effectiveTo?: string;
   sourceDocumentId?: string;
-  verificationStatus: string;
+  verificationStatus?: string;
   createdAt: string;
 }
 
@@ -168,16 +168,18 @@ export interface ProjectHandover {
 export interface AssetPerformanceBaseline {
   id: string;
   assetId: string;
-  annualGenerationKwh: number;
-  monthlyGenerationKwh: number;
+  annualGenerationKwh?: number;
+  monthlyGenerationKwh?: number;
   monthlyExpectedKwh?: any;
   expectedDailyAverageKwh?: number;
-  performanceRatioPercent: number;
-  availabilityPercent: number;
-  degradationPercent: number;
-  source: string;
+  expectedPrPercent?: number;
+  performanceRatioPercent?: number;
+  availabilityPercent?: number;
+  degradationPercent?: number;
+  source?: string;
+  dataSource?: string;
   calculatedAt: string;
-  version: number;
+  version?: number;
 }
 
 export interface FinalProjectCostSummary {
