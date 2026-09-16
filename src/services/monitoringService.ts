@@ -26,6 +26,7 @@ export const HEALTH_WEIGHTS = {
 // Supported metric types
 const SUPPORTED_METRICS: TelemetryMetricType[] = [
   'POWER_KW',
+  'ACTIVE_POWER_KW',
   'ENERGY_KWH',
   'VOLTAGE',
   'CURRENT',

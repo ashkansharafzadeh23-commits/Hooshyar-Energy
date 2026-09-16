@@ -22,6 +22,10 @@ export const monitoringRepository = {
   createSource: (source: Omit<TelemetrySource, 'id' | 'createdAt' | 'updatedAt'>): TelemetrySource => {
     return db.createTelemetrySource(source);
   },
+  
+  createTelemetrySource: (source: Omit<TelemetrySource, 'id' | 'createdAt' | 'updatedAt'>): TelemetrySource => {
+    return db.createTelemetrySource(source);
+  },
 
   updateSource: (id: string, updates: Partial<TelemetrySource>): TelemetrySource | null => {
     return db.updateTelemetrySource(id, updates);

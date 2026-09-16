@@ -10,6 +10,27 @@ import {
 } from '../types/maintenance.js';
 
 export const maintenanceRepository = {
+  createTechnicianProfile: (profile: any): any => {
+    const prof = db.createProfessional({
+      userId: profile.userId,
+      fullName: profile.name,
+      phone: profile.phone,
+      specialties: profile.skills || [],
+      serviceCities: profile.serviceLocations || [],
+      yearsExperience: 5,
+      bio: '',
+      profileImageUrl: '',
+      certifications: profile.certifications ? profile.certifications.map((c: any) => ({ title: c.title, imageUrl: '' })) : []
+    });
+    if (profile.approvalStatus === 'APPROVED') {
+      db.updateProfessionalStatus(prof.id, 'approved');
+    }
+    if (profile.rating !== undefined) {
+      db.updateProfessional(prof.id, { rating: profile.rating });
+    }
+    return { ...prof, userId: profile.userId };
+  },
+
   // Alerts
   getAlerts: (projectId?: string, assetId?: string): AssetAlert[] => {
     return db.getAssetAlerts(projectId, assetId);

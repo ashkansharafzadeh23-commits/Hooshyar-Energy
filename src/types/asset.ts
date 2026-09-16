@@ -1,4 +1,4 @@
-export type EnergyAssetType = 'SOLAR' | 'SOLAR_BATTERY' | 'SOLAR_GENERATOR' | 'HYBRID' | 'GENERATOR' | 'BATTERY_STORAGE';
+export type EnergyAssetType = 'SOLAR_PV' | 'SOLAR' | 'SOLAR_BATTERY' | 'SOLAR_GENERATOR' | 'HYBRID' | 'GENERATOR' | 'BATTERY_STORAGE';
 export type EnergyAssetStatus = 'COMMISSIONING' | 'OPERATIONAL' | 'PARTIALLY_OPERATIONAL' | 'SUSPENDED' | 'UNDER_MAINTENANCE' | 'DECOMMISSIONED';
 
 export interface EnergyAsset {
@@ -9,6 +9,8 @@ export interface EnergyAsset {
   organizationId?: string;
   assetType: EnergyAssetType;
   status: EnergyAssetStatus;
+  operationalStatus?: string;
+  gridConnectionStatus?: string;
   name: string;
   location: string;
   installedCapacityKw: number;
@@ -105,7 +107,9 @@ export interface EquipmentWarranty {
   purchaseOrderId?: string;
   boqItemId?: string;
   componentId?: string;
-  warrantyProvider: string;
+  equipmentType?: string;
+  warrantyProvider?: string;
+  provider?: string;
   warrantyType: WarrantyType;
   startDate: string;
   endDate: string;
@@ -166,6 +170,8 @@ export interface AssetPerformanceBaseline {
   assetId: string;
   annualGenerationKwh: number;
   monthlyGenerationKwh: number;
+  monthlyExpectedKwh?: any;
+  expectedDailyAverageKwh?: number;
   performanceRatioPercent: number;
   availabilityPercent: number;
   degradationPercent: number;

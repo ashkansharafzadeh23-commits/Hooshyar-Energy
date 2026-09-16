@@ -112,6 +112,7 @@ export interface OTP {
 
 export interface Professional {
   id: string;
+  userId?: string;
   fullName: string;
   phone: string;
   specialties: string[];
@@ -608,10 +609,32 @@ export const db: any = {
 
   getEnergyProjects: () => readDB().energyProjects || [],
   getEnergyProjectById: (id: string) => readDB().energyProjects?.find(p => p.id === id),
+  getProjectById: (id: string) => readDB().energyProjects?.find(p => p.id === id), // Alias for getEnergyProjectById
   createEnergyProject: (project: Omit<EnergyProject, "id" | "createdAt" | "updatedAt">) => {
     const data = readDB();
     if (!data.energyProjects) data.energyProjects = [];
     const newProject = { ...project, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    data.energyProjects.push(newProject as EnergyProject);
+    writeDB(data);
+    return newProject as EnergyProject;
+  },
+  createProject: (project: any) => {
+    // Alias for createEnergyProject to support test files
+    const data = readDB();
+    if (!data.energyProjects) data.energyProjects = [];
+    const newProject = { 
+      ...project, 
+      projectCode: project.projectCode || `PRJ-${Date.now()}`,
+      title: project.title || project.name || 'Untitled Project',
+      projectType: project.type || project.projectType || 'SOLAR',
+      ownerId: project.userId || project.ownerId,
+      targetCapacityKw: project.capacityKw || project.targetCapacityKw || 0,
+      location: project.location || { province: project.province, city: project.city },
+      status: project.status || 'DRAFT',
+      id: uuidv4(), 
+      createdAt: new Date().toISOString(), 
+      updatedAt: new Date().toISOString() 
+    };
     data.energyProjects.push(newProject as EnergyProject);
     writeDB(data);
     return newProject as EnergyProject;

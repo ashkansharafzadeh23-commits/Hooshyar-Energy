@@ -14,7 +14,8 @@ export interface TelemetrySource {
   assetId: string;
   projectId: string;
   sourceType: TelemetrySourceType;
-  provider: string;
+  protocol?: string;
+  provider?: string;
   externalSourceId?: string;
   name: string;
   status: TelemetrySourceStatus;
@@ -27,8 +28,10 @@ export interface TelemetrySource {
 
 export type TelemetryMetricType = 
   | 'POWER_KW'
+  | 'ACTIVE_POWER_KW'
   | 'ENERGY_KWH'
   | 'VOLTAGE'
+  | 'GRID_FREQ'
   | 'CURRENT'
   | 'FREQUENCY'
   | 'IRRADIANCE'
@@ -40,13 +43,15 @@ export type TelemetryMetricType =
   | 'GRID_EXPORT_KW'
   | 'OTHER';
 
-export type TelemetryReadingQuality = 'VALID' | 'ESTIMATED' | 'INVALID' | 'MISSING';
+export type TelemetryReadingQuality = 'VALID' | 'ESTIMATED' | 'INVALID' | 'MISSING' | 'GOOD';
 
 export interface TelemetryReading {
   id: string;
   assetId: string;
+  projectId?: string;
   sourceId: string;
   timestamp: string; // ISO 8601
+  receivedAt?: string;
   metricType: TelemetryMetricType;
   value: number;
   unit: string;
@@ -56,6 +61,7 @@ export interface TelemetryReading {
 }
 
 export type PerformanceSnapshotStatus = 'NORMAL' | 'WARNING' | 'CRITICAL' | 'INSUFFICIENT_DATA';
+
 
 export interface AssetPerformanceSnapshot {
   id: string;
@@ -79,6 +85,7 @@ export interface AssetPerformanceSnapshot {
 
 export type AssetHealthStatus = 'HEALTHY' | 'DEGRADED' | 'CRITICAL' | 'INSUFFICIENT_DATA';
 
+
 export interface AssetHealthAssessment {
   id: string;
   assetId: string;
@@ -87,6 +94,7 @@ export interface AssetHealthAssessment {
   score: number | null;
   riskFactors: string[];
   detectedIssues: string[];
+  evaluatedAt?: string;
   assessmentPeriodStart: string;
   assessmentPeriodEnd: string;
   factorBreakdown?: {
@@ -129,4 +137,5 @@ export interface PerformanceDeviation {
   expectedGenerationKwh: number;
   deviationPercent: number;
   severity: 'NORMAL' | 'WARNING' | 'CRITICAL';
+
 }

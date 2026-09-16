@@ -472,11 +472,15 @@ maintenanceRouter.get('/maintenance/:maintenanceCaseId', (req: Request, res: Res
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  // Technician-only check: If user is a technician, allow only if assigned
-  if (req.user?.role === 'technician' || req.user?.role === 'professional') {
-    if (mCase.assignedTechnicianId !== req.user.id) {
-      return res.status(403).json({ error: 'شما به عنوان تکنسین تنها به پرونده‌های محول شده به خودتان دسترسی دارید.' });
-    }
+  // If user is the assigned technician, allow access
+  const isAssignedTechnician = mCase.assignedTechnicianId === req.user?.id;
+  const techRoles = ['technician', 'professional', 'expert', 'expert', 'technician'];
+  const isTechRole = techRoles.includes(req.user?.role?.toLowerCase() || '');
+  
+  if (isAssignedTechnician) {
+    // Allow access without project check
+  } else if (isTechRole) {
+    return res.status(403).json({ error: 'شما به عنوان تکنسین تنها به پرونده‌های محول شده به خودتان دسترسی دارید.' });
   } else {
     const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
     if (!access.allowed) {
@@ -631,7 +635,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/accept', (req: Request, 
   }
 
   const updated = maintenanceRepository.updateCase(caseId, {
-    status: 'ASSIGNED'
+    status: 'IN_PROGRESS'
   });
 
   maintenanceRepository.createAssignmentHistory({
@@ -781,7 +785,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/actions', (req: Request,
     totalCostIrr: totalCost
   });
 
-  return res.status(201).json(createdAction);
+  return res.status(200).json(createdAction);
 });
 
 /**
@@ -1127,4 +1131,26 @@ maintenanceRouter.delete('/alert-rules/:ruleId', (req: Request, res: Response) =
 
   maintenanceRepository.deleteRule(ruleId);
   return res.json({ success: true, message: 'قاعده با موفقیت حذف گردید.' });
+});
+
+// ==========================================
+// 5. TECHNICIANS (Admin only)
+// ==========================================
+
+maintenanceRouter.post('/maintenance/technicians/:id/approve', (req: Request, res: Response) => {
+  const techId = getParam(req.params.id);
+  
+  if (req.user?.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'دسترسی غیرمجاز. فقط مدیر سیستم می‌تواند تکنسین را تایید کند.' });
+  }
+
+  try {
+    const updated = db.updateProfessionalStatus(techId, 'approved');
+    if (!updated) {
+      return res.status(404).json({ error: 'تکنسین یافت نشد.' });
+    }
+    return res.json({ success: true, professional: updated });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
 });

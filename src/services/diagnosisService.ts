@@ -97,7 +97,7 @@ export const diagnosisService = {
           warrantyType: activeWarranty.warrantyType || activeWarranty.equipmentType,
           warrantyStatus,
           provider: activeWarranty.provider || activeWarranty.manufacturer || 'سازنده تجهیز',
-          claimProcedure: activeWarranty.claimProcedure || 'ثبت درخواست گارانتی از طریق فرم رسمی سازنده و تحویل به پیمانکار EPC (منوط به بررسی و کارشناسی فنی)',
+          claimProcedure: (activeWarranty.claimProcedure || 'ثبت درخواست گارانتی از طریق فرم رسمی سازنده و تحویل به پیمانکار EPC') + ' (منوط به بررسی سازنده)',
           warrantyNotes: `تحت پوشش گارانتی معتبر (${activeWarranty.coverageSummary || activeWarranty.terms || 'پوشش استاندارد'}) تا تاریخ ${activeWarranty.endDate} (${daysLeft} روز باقیمانده). تایید نهایی مطالبه منوط به بررسی فنی شرکت سازنده می‌باشد.`
         };
       } else {

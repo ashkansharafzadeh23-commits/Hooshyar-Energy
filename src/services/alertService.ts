@@ -19,9 +19,11 @@ export const alertService = {
    */
   evaluateTelemetryReading: (
     reading: TelemetryReading,
-    assetId: string,
-    projectId: string
+    assetId?: string,
+    projectId?: string
   ): AssetAlert[] => {
+    assetId = assetId || reading.assetId;
+    projectId = projectId || reading.projectId;
     const alerts: AssetAlert[] = [];
 
     // Deduplication check: check if an active alert already exists
@@ -37,7 +39,7 @@ export const alertService = {
       cooldownMinutes?: number;
     }) => {
       // Deduplication check: check if an active alert already exists
-      const existing = maintenanceRepository.findActiveAlert(assetId, params.ruleId, params.metricType);
+      const existing = maintenanceRepository.findActiveAlert(assetId as string, params.ruleId, params.metricType);
       if (existing) {
         maintenanceRepository.updateAlert(existing.id, {
           lastObservedAt: reading.timestamp || new Date().toISOString(),
@@ -49,7 +51,7 @@ export const alertService = {
 
       // Check cooldown if rule specified
       if (params.cooldownMinutes) {
-        const recentResolved = maintenanceRepository.getAlerts(projectId, assetId).find(a => {
+        const recentResolved = maintenanceRepository.getAlerts(projectId as string, assetId as string).find(a => {
           if (a.status !== 'RESOLVED' && a.status !== 'SUPPRESSED') return false;
           if (params.ruleId && a.ruleId !== params.ruleId) return false;
           if (params.metricType && a.metricType !== params.metricType) return false;
@@ -150,7 +152,7 @@ export const alertService = {
       metricValue?: number;
       thresholdValue?: number;
     }) => {
-      const existing = maintenanceRepository.findActiveAlert(assetId, params.ruleId, params.metricType);
+      const existing = maintenanceRepository.findActiveAlert(assetId as string, params.ruleId, params.metricType);
       if (existing) {
         maintenanceRepository.updateAlert(existing.id, {
           lastObservedAt: snapshot.periodEnd || new Date().toISOString(),
@@ -264,7 +266,7 @@ export const alertService = {
       metricValue?: number;
       thresholdValue?: number;
     }) => {
-      const existing = maintenanceRepository.findActiveAlert(assetId, undefined, params.metricType);
+      const existing = maintenanceRepository.findActiveAlert(assetId as string, undefined, params.metricType);
       if (existing) {
         maintenanceRepository.updateAlert(existing.id, {
           lastObservedAt: assessment.evaluatedAt || new Date().toISOString(),
@@ -339,7 +341,7 @@ export const alertService = {
       const sourceReadings = readings.filter(r => r.sourceId === source.id);
       if (sourceReadings.length === 0) {
         // No readings ever
-        const existing = maintenanceRepository.findActiveAlert(assetId, undefined, `LOSS_${source.id}`);
+        const existing = maintenanceRepository.findActiveAlert(assetId as string, undefined, `LOSS_${source.id}`);
         if (existing) {
           maintenanceRepository.updateAlert(existing.id, {
             lastObservedAt: new Date().toISOString(),
@@ -370,7 +372,7 @@ export const alertService = {
       const diffHours = (now - lastTimestamp) / (1000 * 60 * 60);
 
       if (diffHours > maxInactiveHours) {
-        const existing = maintenanceRepository.findActiveAlert(assetId, undefined, `LOSS_${source.id}`);
+        const existing = maintenanceRepository.findActiveAlert(assetId as string, undefined, `LOSS_${source.id}`);
         if (existing) {
           maintenanceRepository.updateAlert(existing.id, {
             lastObservedAt: new Date().toISOString(),

@@ -6,22 +6,26 @@ export const technicianMatchingService = {
    * Matches verified technicians and professionals to a maintenance case
    */
   matchTechnicians: (params: {
-    projectId: string;
+    projectId?: string;
     assetId?: string;
     symptoms?: string[];
     category?: string;
     componentType?: string;
+    skillsRequired?: string[];
+    location?: string;
+    province?: string;
+    equipmentType?: string;
   }): TechnicianMatch[] => {
     const project = db.getEnergyProjectById(params.projectId);
-    const projectCity = project?.location?.city?.toLowerCase() || '';
-
+    const projectCity = (project?.location?.city || (params as any).location || '').toLowerCase();
+    
     const allPros = db.getProfessionals() || [];
     // Prioritize approved professionals
     const candidates = allPros.length > 0 ? allPros : [];
 
-    const symptomsJoined = (params.symptoms || []).join(' ').toLowerCase();
+    const symptomsJoined = (params.symptoms || (params as any).skillsRequired || []).join(' ').toLowerCase();
     const category = (params.category || '').toLowerCase();
-    const compType = (params.componentType || '').toLowerCase();
+    const compType = (params.componentType || (params as any).equipmentType || '').toLowerCase();
 
     const matches: TechnicianMatch[] = candidates.map(pro => {
       let score = 0;
@@ -99,8 +103,10 @@ export const technicianMatchingService = {
         rating: pro.rating ?? null,
         matchScore: finalScore,
         matchReasons: reasons,
-        status: pro.status
-      };
+        status: pro.status,
+        profile: { userId: (pro as any).userId },
+        technician: { userId: (pro as any).userId }
+      } as any;
     });
 
     // Sort descending by score

@@ -73,7 +73,8 @@ export type AlertRuleType =
   | 'DEVIATION_BELOW'
   | 'TELEMETRY_MISSING'
   | 'HEALTH_SCORE_BELOW'
-  | 'TELEMETRY_THRESHOLD';
+  | 'TELEMETRY_THRESHOLD'
+  | 'THRESHOLD';
 
 export interface AlertRule {
   id: string;
@@ -154,7 +155,7 @@ export interface MaintenanceDiagnosis {
   createdAt: string;
 }
 
-export type MaintenancePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type MaintenancePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' | 'CRITICAL';
 export type MaintenanceCasePriority = MaintenancePriority;
 
 export type MaintenanceStatus = 
@@ -302,6 +303,8 @@ export interface TechnicianMatch {
   matchScore: number;
   matchReasons: string[];
   status: string;
+  profile?: any;
+  technician?: any;
 }
 
 export interface TechnicianMatchResult {
@@ -316,6 +319,8 @@ export interface TechnicianMatchResult {
     profileImageUrl?: string;
     certifications: { title: string; imageUrl: string }[];
     status: string;
+  profile?: any;
+  technician?: any;
     rating?: number | null;
   };
   score: number;
@@ -332,6 +337,8 @@ export interface AssetMaintenanceHistoryItem {
   title: string;
   description: string;
   status: string;
+  profile?: any;
+  technician?: any;
   severity?: string;
   code?: string;
   technicianName?: string;
