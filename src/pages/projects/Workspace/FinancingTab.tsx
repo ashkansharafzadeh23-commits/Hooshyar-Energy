@@ -124,8 +124,13 @@ export const FinancingTab: React.FC<FinancingTabProps> = ({ projectId, project }
           const compRes = await fetch(`/api/financing-requests/${current.id}/compare-offers`);
           if (compRes.ok) {
             const compData = await compRes.json();
-            setOfferComparisons(compData);
-            setOffers(compData.map((c: any) => c.offer));
+            if (Array.isArray(compData)) {
+              setOfferComparisons(compData);
+              setOffers(compData.map((c: any) => c.offer).filter(Boolean));
+            } else if (compData && Array.isArray(compData.comparisons)) {
+              setOfferComparisons(compData.comparisons);
+              setOffers(compData.comparisons.map((c: any) => c.offer).filter(Boolean));
+            }
           }
         }
       }

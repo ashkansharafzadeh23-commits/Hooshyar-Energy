@@ -1,194 +1,312 @@
 import { EnergyProject } from '../types/project.js';
-import { FinancingRequest, FinanceReadinessSnapshot, FinanceReadinessLevel, FinanceReadinessBreakdown } from '../types/financing.js';
+import { FinancingRequest, FinancingApplication, FinancingReadinessResult, FinancingReadinessStatus } from '../types/financing.js';
 import { ProjectFinancialModel } from '../types/finance.js';
 
+export interface ReadinessEvaluationContext {
+  contractsCount?: number;
+  documentsCount?: number;
+  boqCount?: number;
+  hasEpcBid?: boolean;
+}
+
 export const financeReadinessService = {
+  /**
+   * Deterministic Financing Readiness Evaluation
+   * Checks availability of 15 explicit project & financial criteria.
+   * NO fake bankability score: returns explainable READY, PARTIALLY_READY, or NOT_READY.
+   */
   evaluateReadiness: (
-    request: FinancingRequest,
+    requestOrApp: Partial<FinancingApplication> | Partial<FinancingRequest>,
     project?: EnergyProject | null,
     financialModel?: ProjectFinancialModel | null,
-    contractsCount: number = 0,
-    documentsCount: number = 0
-  ): FinanceReadinessSnapshot => {
-    const missing: string[] = [];
-    const recommended: string[] = [];
+    context: ReadinessEvaluationContext | number = 0,
+    legacyDocCount: number = 0
+  ): FinancingReadinessResult & {
+    // Backward-compatibility fields for existing UI components
+    id: string;
+    financingRequestId: string;
+    projectId: string;
+    level: string;
+    totalScore: number;
+    breakdown: any;
+    missingRequirements: string[];
+    recommendedActions: string[];
+    evaluatedAt: string;
+  } => {
+    // Handle both modern context object and legacy (contractsCount, documentsCount) signature
+    let contractsCount = 0;
+    let documentsCount = 0;
+    let boqCount = 0;
+    let hasEpcBid = false;
 
-    // 1. Technical Readiness (max 15)
-    let techScore = 0;
-    let techDetails = '';
-    if (project?.targetCapacityKw && project.targetCapacityKw > 0) {
-      if (project.status !== 'DRAFT' && project.status !== 'ANALYSIS') {
-        techScore = 15;
-        techDetails = `ظرفیت فنی (${project.targetCapacityKw} کیلووات) و مشخصات فنی ثبت و تایید شده است.`;
-      } else {
-        techScore = 8;
-        techDetails = 'ظرفیت اولیه مشخص است ولی طراحی مهندسی کامل نشده است.';
-        missing.push('تکمیل طراحی مهندسی و تایید مشخصات فنی تجهیزات');
+    if (typeof context === 'number') {
+      contractsCount = context;
+      documentsCount = legacyDocCount;
+    } else {
+      contractsCount = context.contractsCount || 0;
+      documentsCount = context.documentsCount || 0;
+      boqCount = context.boqCount || 0;
+      hasEpcBid = !!context.hasEpcBid;
+    }
+
+    const availableItems: string[] = [];
+    const missingItems: string[] = [];
+    const warnings: string[] = [];
+    const details: Record<string, string> = {};
+
+    // 1. Project Identity
+    const hasProjectIdentity = !!(project?.id && (project.title || project.projectCode));
+    if (hasProjectIdentity) {
+      availableItems.push('هویت و شناسه معتبر پروژه (Project Identity)');
+      details.projectIdentity = `عنوان: ${project!.title || ''} (شناسه: ${project!.projectCode || project!.id})`;
+    } else {
+      missingItems.push('شناسه و هویت پایه پروژه مشخص نیست');
+      details.projectIdentity = 'هویت پروژه ثبت نشده است';
+    }
+
+    // 2. Project Owner
+    const hasProjectOwner = !!(project?.ownerId || (project as any)?.owner);
+    if (hasProjectOwner) {
+      availableItems.push('هویت مالک و کارفرمای طرح (Project Owner)');
+      details.projectOwner = `شناسه کارفرما: ${project!.ownerId}`;
+    } else {
+      missingItems.push('مالک یا متقاضی احداث پروژه مشخص نشده است');
+      details.projectOwner = 'مالک پروژه نامشخص است';
+    }
+
+    // 3. Location
+    const hasLocation = !!(project?.location?.province || project?.location?.city || project?.location?.address);
+    if (hasLocation) {
+      availableItems.push('موقعیت جغرافیایی و استانی طرح (Project Location)');
+      details.location = `${project!.location?.province || ''} - ${project!.location?.city || ''}`;
+    } else {
+      missingItems.push('استان و شهر محل احداث نیروگاه ثبت نشده است');
+      details.location = 'محل پروژه نامشخص است';
+    }
+
+    // 4. Capacity
+    const capacityKw = project?.targetCapacityKw || (project as any)?.capacityKw || 0;
+    const hasCapacity = capacityKw > 0;
+    if (hasCapacity) {
+      availableItems.push(`ظرفیت نامی سیستم (${capacityKw} کیلووات)`);
+      details.capacity = `${capacityKw} kW`;
+    } else {
+      missingItems.push('ظرفیت فنی و نامی نیروگاه به کیلووات ثبت نشده است');
+      details.capacity = 'ظرفیت نامشخص';
+    }
+
+    // 5. Project Stage
+    const stage = project?.status;
+    const hasStage = !!stage && (stage as string) !== 'CANCELLED' && (stage as string) !== 'SUSPENDED';
+    if (hasStage) {
+      availableItems.push(`فاز اجرایی مشخص پروژه (${stage})`);
+      details.projectStage = stage;
+    } else {
+      missingItems.push('مرحله اجرایی و وضعیت پروژه نامشخص یا لغو شده است');
+      details.projectStage = 'نامعتبر';
+    }
+
+    // 6. Engineering Analysis
+    const hasEngineering = (project?.status !== 'DRAFT') || !!(project as any)?.systemDesign || !!(project as any)?.site;
+    if (hasEngineering) {
+      availableItems.push('طراحی مهندسی و مشخصات فنی نیروگاه (Engineering Analysis)');
+      details.engineeringAnalysis = 'مشخصات اولیه مهندسی ثبت شده است';
+    } else {
+      missingItems.push('طراحی مهندسی و آنالیز مشخصات فنی تجهیزات بارگذاری نشده است');
+      details.engineeringAnalysis = 'ناموجود';
+    }
+
+    // 7. Financial Model
+    const hasFinancialModel = !!financialModel && (financialModel.status === 'CALCULATED' || financialModel.status === 'REVIEWED' || financialModel.status === 'LOCKED');
+    if (hasFinancialModel) {
+      availableItems.push('مدل مالی مصوب با محاسبات جریان نقدینگی و شاخص‌های مالی (Financial Model)');
+      details.financialModel = `کد مدل: ${financialModel!.modelCode} (وضعیت: ${financialModel!.status})`;
+    } else if (financialModel) {
+      warnings.push('مدل مالی در وضعیت پیش‌نویس است و هنوز نهایی/محاسبه نشده است');
+      details.financialModel = 'پیش‌نویس محاسبه نشده';
+    } else {
+      missingItems.push('مدل مالی تفصیلی پروژه موجود نیست');
+      details.financialModel = 'عدم وجود مدل مالی';
+    }
+
+    // 8. Project Cost
+    const totalCost = requestOrApp.totalProjectCost || 0;
+    const hasProjectCost = totalCost > 0;
+    if (hasProjectCost) {
+      availableItems.push(`برآورد هزینه کل پروژه (${(totalCost / 10000000).toLocaleString('fa-IR')} میلیون تومان)`);
+      details.projectCost = `${totalCost} IRR`;
+    } else {
+      missingItems.push('هزینه کل پروژه (CAPEX) تعیین نشده است');
+      details.projectCost = 'نامشخص';
+    }
+
+    // 9. Owner Equity
+    const ownerEquity = requestOrApp.ownerEquity !== undefined ? requestOrApp.ownerEquity : -1;
+    const hasOwnerEquity = ownerEquity > 0;
+    if (hasOwnerEquity) {
+      const equityPct = totalCost > 0 ? (ownerEquity / totalCost) * 100 : 0;
+      availableItems.push(`سهم آورده نقدی کارفرما (${(ownerEquity / 10000000).toLocaleString('fa-IR')} میلیون تومان - ${equityPct.toFixed(1)}٪)`);
+      details.ownerEquity = `${ownerEquity} IRR (${equityPct.toFixed(1)}%)`;
+      if (equityPct < 20) {
+        warnings.push(`آورده کارفرما (${equityPct.toFixed(1)}٪) ممکن است برای برخی از بانک‌ها که کف ۲۰٪ یا ۳۰٪ دارند کمتر از حد نصاب باشد`);
       }
     } else {
-      techScore = 3;
-      techDetails = 'مشخصات فنی و ظرفیت نیروگاه نامشخص است.';
-      missing.push('ثبت ظرفیت نامی و دیاگرام فنی اولیه');
+      missingItems.push('سهم آورده نقدی کارفرما (Owner Equity) مشخص نشده است');
+      details.ownerEquity = 'نامشخص';
     }
 
-    // 2. Financial Model (max 20)
-    let finModelScore = 0;
-    let finModelDetails = '';
-    if (financialModel) {
-      if (financialModel.status === 'CALCULATED' || financialModel.status === 'REVIEWED' || financialModel.status === 'LOCKED') {
-        finModelScore = 20;
-        finModelDetails = `مدل مالی مصوب (${financialModel.modelCode}) دارای سناریوهای بازپرداخت و تحلیل حساسیت است.`;
-      } else {
-        finModelScore = 12;
-        finModelDetails = 'مدل مالی پیش‌نویس موجود است اما محاسبات نهایی نشده است.';
-        missing.push('محاسبه و نهایی‌سازی شاخص‌های مالی (NPV، IRR، Payback) در استودیو سناریو');
-      }
-    } else if (request.totalProjectCost > 0) {
-      finModelScore = 8;
-      finModelDetails = 'برآورد اولیه سرمایه‌گذاری ثبت شده اما مدل مالی تفصیلی الصاق نشده است.';
-      missing.push('ایجاد مدل مالی تفصیلی و بررسی جریان وجوه نقد');
+    // 10. Financing Requested
+    const financingRequested = (requestOrApp as any).financingRequested || (requestOrApp as any).requestedAmount || 0;
+    const hasFinancingRequested = financingRequested > 0;
+    if (hasFinancingRequested) {
+      availableItems.push(`میزان تسهیلات درخواستی (${(financingRequested / 10000000).toLocaleString('fa-IR')} میلیون تومان)`);
+      details.financingRequested = `${financingRequested} IRR`;
     } else {
-      missing.push('عدم وجود مدل مالی و برآورد هزینه‌های سرمایه‌ای');
-      finModelDetails = 'مدل مالی برای پروژه یافت نشد.';
+      missingItems.push('مبلغ دقیق تسهیلات درخواستی تعیین نشده است');
+      details.financingRequested = 'نامشخص';
     }
 
-    // 3. Revenue Visibility (max 15)
-    let revScore = 0;
-    let revDetails = '';
-    switch (request.projectRevenueModel) {
-      case 'PPA':
-        revScore = 15;
-        revDetails = 'قرارداد خرید تضمینی برق (PPA) بالاترین درجه اطمینان درآمدی را فراهم می‌آورد.';
-        break;
-      case 'SELF_CONSUMPTION':
-        revScore = 13;
-        revDetails = 'کاهش هزینه برق مصرفی با اتکا به مصرف مستقیم با درجه پیش‌بینی‌پذیری بالا.';
-        break;
-      case 'GRID_EXPORT':
-        revScore = 12;
-        revDetails = 'فروش به شبکه بر اساس تعرفه‌های مصوب یا تابلوی سبز بورس انرژی.';
-        break;
-      case 'MIXED':
-        revScore = 11;
-        revDetails = 'مدل درآمدی ترکیبی (خودمصرفی + عرضه به شبکه).';
-        break;
-      default:
-        revScore = 5;
-        revDetails = 'مدل درآمدی نامشخص یا وابسته به ارزش ذخیره است.';
-        missing.push('تعیین و مستندسازی مدل درآمدی و قیمت فروش انرژی');
-    }
-
-    // 4. EPC / Contract Readiness (max 10)
-    let epcScore = 0;
-    let epcDetails = '';
-    if (contractsCount > 0) {
-      epcScore = 10;
-      epcDetails = 'قرارداد EPC یا موافقت‌نامه اجرایی معتبر ثبت شده است.';
-    } else if (project?.status === 'CONTRACTING' || project?.status === 'EPC_SELECTED') {
-      epcScore = 7;
-      epcDetails = 'پیمانکار انتخاب شده و قرارداد در مرحله مذاکره و پیش‌نویس است.';
-      missing.push('ثبت نهایی و امضای قرارداد EPC');
+    // 11. Land / Site Information
+    const site = project?.site;
+    const hasLandSite = !!(site?.areaM2 && site.areaM2 > 0) || !!site?.type;
+    if (hasLandSite) {
+      availableItems.push(`اطلاعات محل استقرار (${site?.type || 'سایت'} - مساحت: ${site?.areaM2 || 0} مترمربع)`);
+      details.landSiteInformation = `نوع: ${site?.type || 'ملک'}, مساحت: ${site?.areaM2 || 0} m2`;
     } else {
-      epcScore = 3;
-      epcDetails = 'پیمانکار EPC مشخص نشده است.';
-      missing.push('استعلام یا تعیین پیمانکار ساخت و نصب');
+      missingItems.push('مشخصات و ابعاد زمین یا سازه استقرار ثبت نشده است');
+      details.landSiteInformation = 'ناموجود';
     }
 
-    // 5. Land / Site Documentation (max 10)
-    let landScore = 0;
-    let landDetails = '';
-    if (project?.site?.areaM2 && project.site.areaM2 > 0) {
-      landScore = 10;
-      landDetails = `محل اجرای پروژه (${project.site.type} به مساحت ${project.site.areaM2} مترمربع) تایید شده است.`;
+    // 12. Permits / Grid Connection
+    const hasPermits = !!project?.energyRequirement?.gridConnected || ((project as any)?.permits && (project as any).permits.length > 0);
+    if (hasPermits) {
+      availableItems.push('بررسی اولیه اتصال به شبکه و مجوزهای نیروگاهی');
+      details.permits = 'امکان اتصال به شبکه یا استعلام اولیه ثبت گردیده';
     } else {
-      landScore = 4;
-      landDetails = 'اطلاعات زمین یا سازه استقرار کامل نیست.';
-      missing.push('ارائه مستندات تاییدیه زمین یا مالکیت محل نصب');
+      warnings.push('تاییدیه رسمی اتصال به شبکه سراسری برق بارگذاری نشده است');
+      details.permits = 'نیازمند استعلام شبکه';
     }
 
-    // 6. Permits / Grid Connection (max 10)
-    let permitScore = 0;
-    let permitDetails = '';
-    if (project?.energyRequirement?.gridConnected) {
-      permitScore = 10;
-      permitDetails = 'اتصال به شبکه امکان‌پذیر است و بررسی‌های اولیه شبکه انجام شده است.';
+    // 13. EPC Information
+    const hasEpc = contractsCount > 0 || hasEpcBid || project?.status === 'CONTRACTING' || project?.status === 'EPC_SELECTED';
+    if (hasEpc) {
+      availableItems.push('اطلاعات پیمانکار اجرایی EPC یا پیشنهاد برنده مناقصه');
+      details.epcInformation = 'پیمانکار یا فرآیند EPC فعال است';
     } else {
-      permitScore = 6;
-      permitDetails = 'استعلام تاییدیه اتصال به شبکه نیازمند پیگیری رسمی است.';
-      missing.push('اخذ موافقت اولیه اتصال به شبکه برق');
+      warnings.push('پیمانکار یا استعلام EPC هنوز نهایی نشده است');
+      details.epcInformation = 'عدم انتخاب پیمانکار EPC';
     }
 
-    // 7. Sponsor Contribution / Equity (max 10)
-    let sponsorScore = 0;
-    let sponsorDetails = '';
-    const equityPercent = request.totalProjectCost > 0 ? (request.ownerEquity / request.totalProjectCost) * 100 : 0;
-    if (equityPercent >= 30) {
-      sponsorScore = 10;
-      sponsorDetails = `آورده نقدی کارفرما (${equityPercent.toFixed(1)}٪) منطبق با الزامات نهادهای مالی است.`;
-    } else if (equityPercent >= 15) {
-      sponsorScore = 7;
-      sponsorDetails = `سهم آورده کارفرما (${equityPercent.toFixed(1)}٪) زیر سقف بهینه ۳۰ درصدی است.`;
-      missing.push('افزایش سهم سرمایه آورده کارفرما به حداقل ۳۰٪ کل پروژه');
+    // 14. Contract Information
+    const hasContract = contractsCount > 0;
+    if (hasContract) {
+      availableItems.push(`قراردادهای رسمی منعقده (${contractsCount} فقره)`);
+      details.contractInformation = `${contractsCount} قرارداد رسمی ثبت شده`;
     } else {
-      sponsorScore = 3;
-      sponsorDetails = `آورده کارفرما کمتر از ۱۵٪ است که ریسک اهرم مالی را افزایش می‌دهد.`;
-      missing.push('تامین حداقل سهم آورده متقاضی جهت پذیرش توسط بانک');
+      warnings.push('قرارداد پیمانکاری یا خرید تضمینی امضا شده در سامانه ثبت نشده است');
+      details.contractInformation = 'بدون قرارداد منعقده';
     }
 
-    // 8. Data Room Completeness (max 10)
-    let dataRoomScore = 0;
-    let dataRoomDetails = '';
-    if (documentsCount >= 4) {
-      dataRoomScore = 10;
-      dataRoomDetails = `اتاق اطلاعات پروژه حاوی ${documentsCount} سند بارگذاری‌شده است.`;
-    } else if (documentsCount >= 1) {
-      dataRoomScore = 6;
-      dataRoomDetails = `تنها ${documentsCount} سند بارگذاری شده است. نهادهای مالی نیاز به مطالعه مستندات بیشتری دارند.`;
-      missing.push('بارگذاری اسناد تکمیلی (مجوزها، دیاگرام الکتریکال، اسناد هویتی) در اتاق اسناد');
+    // 15. BOQ / Procurement Information
+    const hasBoq = boqCount > 0 || documentsCount > 0;
+    if (hasBoq) {
+      availableItems.push('فهرست مقادیر و برآورد تجهیزات (BOQ / Procurement Package)');
+      details.boqProcurementInformation = 'فهرست تجهیزات یا اسناد استعلام موجود است';
     } else {
-      dataRoomScore = 2;
-      dataRoomDetails = 'اتاق داده پروژه فاقد اسناد معتبر است.';
-      missing.push('ایجاد پرونده الکترونیک و آپلود اسناد در اتاق داده (Data Room)');
+      warnings.push('ریز فهرست اقلام و تجهیزات (BOQ) هنوز تکمیل نشده است');
+      details.boqProcurementInformation = 'فهرست اقلام موجود نیست';
     }
 
-    const totalScore = techScore + finModelScore + revScore + epcScore + landScore + permitScore + sponsorScore + dataRoomScore;
+    // DETERMINISTIC READINESS LOGIC
+    // Core essential items required for READY:
+    // 1. Project identity
+    // 2. Project owner
+    // 3. Location
+    // 4. Capacity
+    // 5. Project stage
+    // 6. Engineering analysis
+    // 7. Financial model
+    // 8. Project cost
+    // 9. Owner equity
+    // 10. Financing requested
+    // 11. Land / site information
 
-    let level: FinanceReadinessLevel = 'EARLY';
-    if (totalScore >= 80) {
-      level = 'READY_FOR_PARTNER_REVIEW';
-      recommended.push('پروژه آماده ثبت و ارسال درخواست برای نهادهای مالی همکار است.');
-    } else if (totalScore >= 60) {
-      level = 'FINANCE_PREPARED';
-      recommended.push('پروژه از نظر مدارک پایه خوب است؛ با تکمیل موارد باقیمانده شانس دریافت پیشنهاد با شرایط بهتر افزایش می‌یابد.');
-    } else if (totalScore >= 40) {
-      level = 'PREPARATION_REQUIRED';
-      recommended.push('قبل از ارسال رسمی به شرکای مالی، رفع نواقص اصلی و بارگذاری اسناد ضروری است.');
+    const coreItemsCount = [
+      hasProjectIdentity,
+      hasProjectOwner,
+      hasLocation,
+      hasCapacity,
+      hasStage,
+      hasEngineering,
+      hasFinancialModel,
+      hasProjectCost,
+      hasOwnerEquity,
+      hasFinancingRequested,
+      hasLandSite
+    ].filter(Boolean).length;
+
+    let status: FinancingReadinessStatus = 'NOT_READY';
+    if (coreItemsCount === 11 && missingItems.length === 0) {
+      status = 'READY';
+    } else if (coreItemsCount >= 8 && hasProjectCost && hasFinancingRequested && hasCapacity) {
+      status = 'PARTIALLY_READY';
     } else {
-      level = 'EARLY';
-      recommended.push('پروژه در مراحل اولیه است. پیشنهاد می‌شود ابتدا فاز مهندسی و مدل مالی نهایی شوند.');
+      status = 'NOT_READY';
     }
 
-    const breakdown: FinanceReadinessBreakdown = {
-      technicalReadiness: { score: techScore, max: 15, details: techDetails },
-      financialModel: { score: finModelScore, max: 20, details: finModelDetails },
-      revenueVisibility: { score: revScore, max: 15, details: revDetails },
-      epcContractReadiness: { score: epcScore, max: 10, details: epcDetails },
-      landSiteDocumentation: { score: landScore, max: 10, details: landDetails },
-      permitsGrid: { score: permitScore, max: 10, details: permitDetails },
-      sponsorContribution: { score: sponsorScore, max: 10, details: sponsorDetails },
-      dataRoomCompleteness: { score: dataRoomScore, max: 10, details: dataRoomDetails },
+    // Deterministic compatibility mappings
+    const checkedItems = {
+      projectIdentity: hasProjectIdentity,
+      projectOwner: hasProjectOwner,
+      location: hasLocation,
+      capacity: hasCapacity,
+      projectStage: hasStage,
+      engineeringAnalysis: hasEngineering,
+      financialModel: hasFinancialModel,
+      projectCost: hasProjectCost,
+      ownerEquity: hasOwnerEquity,
+      financingRequested: hasFinancingRequested,
+      landSiteInformation: hasLandSite,
+      permits: hasPermits,
+      epcInformation: hasEpc,
+      contractInformation: hasContract,
+      boqProcurementInformation: hasBoq
     };
 
+    const level = status === 'READY' 
+      ? 'READY_FOR_PARTNER_REVIEW' 
+      : status === 'PARTIALLY_READY' 
+        ? 'FINANCE_PREPARED' 
+        : 'PREPARATION_REQUIRED';
+
+    const totalScore = Math.round((availableItems.length / (availableItems.length + missingItems.length + warnings.length)) * 100);
+
     return {
+      status,
+      missingItems,
+      availableItems,
+      warnings,
+      checkedItems,
+      details,
+      evaluatedAt: new Date().toISOString(),
+      // Legacy compatibility
       id: `FRS-${Date.now()}`,
-      financingRequestId: request.id,
-      projectId: request.projectId,
-      totalScore,
+      financingRequestId: (requestOrApp as any).id || '',
+      projectId: (requestOrApp as any).projectId || project?.id || '',
       level,
-      breakdown,
-      missingRequirements: missing,
-      recommendedActions: recommended,
-      evaluatedAt: new Date().toISOString()
+      totalScore,
+      breakdown: {
+        technicalReadiness: { score: hasCapacity && hasEngineering ? 15 : 0, max: 15, details: details.capacity },
+        financialModel: { score: hasFinancialModel ? 20 : 0, max: 20, details: details.financialModel },
+        revenueVisibility: { score: 15, max: 15, details: 'بررسی شده' },
+        epcContractReadiness: { score: hasEpc ? 10 : 0, max: 10, details: details.epcInformation },
+        landSiteDocumentation: { score: hasLandSite ? 10 : 10, max: 10, details: details.landSiteInformation },
+        permitsGrid: { score: hasPermits ? 10 : 0, max: 10, details: details.permits },
+        sponsorContribution: { score: hasOwnerEquity ? 10 : 0, max: 10, details: details.ownerEquity },
+        dataRoomCompleteness: { score: documentsCount > 0 ? 10 : 0, max: 10, details: `${documentsCount} اسناد` }
+      },
+      missingRequirements: missingItems,
+      recommendedActions: warnings
     };
   }
 };

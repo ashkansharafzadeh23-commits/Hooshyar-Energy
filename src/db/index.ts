@@ -9,7 +9,7 @@ import { BillOfQuantities, BOQItem, ProcurementRFQ, ProcurementPackage, Supplier
 import { EnergyAsset, AssetComponent, EquipmentWarranty, CommissioningRecord, CommissioningTest, AssetOwnershipRecord, AssetPassportSnapshot, AssetPerformanceBaseline, ProjectHandover, FinalProjectCostSummary, PunchListItem } from '../types/asset.js';
 import { TelemetrySource, TelemetryReading, AssetPerformanceSnapshot, AssetHealthAssessment } from '../types/monitoring.js';
 import { AssetAlert, AlertRule, MaintenanceCase, MaintenanceDiagnosis, MaintenanceAction, MaintenanceAssignmentHistory } from '../types/maintenance.js';
-import { FinancialPartnerProfile, FinancingProduct, FinancingRequest, FinanceReadinessSnapshot, FinancialPartnerMatch, FinancingSubmission, FinanceInformationRequest, FinancingOffer, ProjectFinancingRecord, FinanceReviewNote, FinanceDueDiligenceChecklist } from '../types/financing.js';
+import { FinancialPartnerProfile, FinancingProduct, FinancingRequest, FinanceReadinessSnapshot, FinancialPartnerMatch, FinancingSubmission, FinanceInformationRequest, FinancingOffer, ProjectFinancingRecord, FinanceReviewNote, FinanceDueDiligenceChecklist, FinancingNeed, FinancingApplication, FinancingPartner, FinancingAgreementRecord } from '../types/financing.js';
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { ProjectContract, ContractParty, ContractRevision, ProjectMilestone, MilestoneDependency, ApprovalRequest, ChangeRequest, ProjectBaseline } from '../types/execution.js';
@@ -188,14 +188,18 @@ export interface CityIrradianceCache {
 
 interface DB {
   financialPartnerProfiles?: FinancialPartnerProfile[];
+  financingPartners?: FinancingPartner[];
   financingProducts?: FinancingProduct[];
   financingRequests?: FinancingRequest[];
+  financingNeeds?: FinancingNeed[];
+  financingApplications?: FinancingApplication[];
   financeReadinessSnapshots?: FinanceReadinessSnapshot[];
   financialPartnerMatches?: FinancialPartnerMatch[];
   financingSubmissions?: FinancingSubmission[];
   financeInformationRequests?: FinanceInformationRequest[];
   financingOffers?: FinancingOffer[];
   projectFinancingRecords?: ProjectFinancingRecord[];
+  financingAgreements?: FinancingAgreementRecord[];
   financeReviewNotes?: FinanceReviewNote[];
   financeDueDiligenceChecklists?: FinanceDueDiligenceChecklist[];
   energyAssets?: EnergyAsset[];
@@ -640,6 +644,17 @@ export const db: any = {
     return newProject as EnergyProject;
   },
   updateEnergyProject: (id: string, updates: Partial<EnergyProject>) => {
+    const data = readDB();
+    if (!data.energyProjects) data.energyProjects = [];
+    const index = data.energyProjects.findIndex(p => p.id === id);
+    if (index !== -1) {
+      data.energyProjects[index] = { ...data.energyProjects[index], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(data);
+      return data.energyProjects[index];
+    }
+    return null;
+  },
+  updateProject: (id: string, updates: any) => {
     const data = readDB();
     if (!data.energyProjects) data.energyProjects = [];
     const index = data.energyProjects.findIndex(p => p.id === id);
@@ -1598,6 +1613,227 @@ export const db: any = {
     d.financeReviewNotes.push(n);
     writeDB(d);
     return n;
+  },
+
+  // --- Phase 8: Financing Needs, Applications, Partners, Agreements ---
+  getFinancingNeeds: (projectId?: string): FinancingNeed[] => {
+    const all = readDB().financingNeeds || [];
+    return projectId ? all.filter((n: any) => n.projectId === projectId) : all;
+  },
+  getFinancingNeedById: (id: string): FinancingNeed | undefined => {
+    return readDB().financingNeeds?.find((n: any) => n.id === id);
+  },
+  createFinancingNeed: (need: Partial<FinancingNeed>): FinancingNeed => {
+    const d = readDB();
+    if (!d.financingNeeds) d.financingNeeds = [];
+    const n: FinancingNeed = {
+      id: need.id || uuidv4(),
+      projectId: need.projectId!,
+      totalProjectCost: need.totalProjectCost!,
+      ownerEquity: need.ownerEquity!,
+      financingRequested: need.financingRequested!,
+      currency: need.currency || 'IRR',
+      preferredFinancingType: need.preferredFinancingType || 'PROJECT_LOAN',
+      preferredTenorMonths: need.preferredTenorMonths || 48,
+      purpose: need.purpose || 'تأمین مالی ساخت و احداث نیروگاه خورشیدی',
+      notes: need.notes,
+      source: need.source || 'USER_ENTERED',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    d.financingNeeds.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateFinancingNeed: (id: string, updates: Partial<FinancingNeed>): FinancingNeed | null => {
+    const d = readDB();
+    if (!d.financingNeeds) d.financingNeeds = [];
+    const idx = d.financingNeeds.findIndex((n: any) => n.id === id);
+    if (idx > -1) {
+      d.financingNeeds[idx] = { ...d.financingNeeds[idx], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(d);
+      return d.financingNeeds[idx];
+    }
+    return null;
+  },
+
+  getFinancingApplications: (projectId?: string): FinancingApplication[] => {
+    const all = readDB().financingApplications || [];
+    return projectId ? all.filter((a: any) => a.projectId === projectId) : all;
+  },
+  getFinancingApplicationById: (id: string): FinancingApplication | undefined => {
+    return readDB().financingApplications?.find((a: any) => a.id === id);
+  },
+  createFinancingApplication: (app: Partial<FinancingApplication>): FinancingApplication => {
+    const d = readDB();
+    if (!d.financingApplications) d.financingApplications = [];
+    const codeNum = String(d.financingApplications.length + 1).padStart(6, '0');
+    const n: FinancingApplication = {
+      id: app.id || uuidv4(),
+      applicationCode: app.applicationCode || `APP-HSE-${codeNum}`,
+      projectId: app.projectId!,
+      financingNeedId: app.financingNeedId,
+      applicantUserId: app.applicantUserId!,
+      applicantOrganizationId: app.applicantOrganizationId,
+      financialModelId: app.financialModelId,
+      totalProjectCost: app.totalProjectCost!,
+      ownerEquity: app.ownerEquity!,
+      financingRequested: app.financingRequested!,
+      currency: app.currency || 'IRR',
+      financingType: app.financingType || 'PROJECT_LOAN',
+      requestedTenorMonths: app.requestedTenorMonths || 48,
+      preferredGracePeriodMonths: app.preferredGracePeriodMonths,
+      status: app.status || 'DRAFT',
+      repaymentPreference: app.repaymentPreference,
+      collateralSummary: app.collateralSummary,
+      projectRevenueModel: app.projectRevenueModel,
+      purpose: app.purpose,
+      notes: app.notes,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    d.financingApplications.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateFinancingApplication: (id: string, updates: Partial<FinancingApplication>): FinancingApplication | null => {
+    const d = readDB();
+    if (!d.financingApplications) d.financingApplications = [];
+    const idx = d.financingApplications.findIndex((a: any) => a.id === id);
+    if (idx > -1) {
+      d.financingApplications[idx] = { ...d.financingApplications[idx], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(d);
+      return d.financingApplications[idx];
+    }
+    return null;
+  },
+
+  getFinancingPartners: (): FinancingPartner[] => {
+    const modern = readDB().financingPartners || [];
+    if (modern.length > 0) return modern;
+    // Map existing profiles if present
+    const profiles = readDB().financialPartnerProfiles || [];
+    return profiles.map((p: any) => ({
+      id: p.id,
+      name: p.displayName || p.name,
+      organizationId: p.organizationId,
+      category: (p.partnerType === 'LEASING_COMPANY' ? 'LEASING' : p.partnerType) as any,
+      financingTypes: p.supportedFinancingProducts || ['PROJECT_LOAN'],
+      minimumAmount: p.minimumFinancingAmount || 0,
+      maximumAmount: p.maximumFinancingAmount || 0,
+      supportedProjectStages: p.supportedProjectTypes || ['ALL'],
+      supportedLocations: p.supportedProvinces || ['ALL'],
+      minimumEquityPercent: p.minimumEquityContributionPercent || 20,
+      minimumProjectCapacityKw: 0,
+      maximumProjectCapacityKw: 100000,
+      requiredDocuments: p.requiredDocuments || [],
+      activeStatus: p.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
+      createdAt: p.createdAt || new Date().toISOString(),
+      updatedAt: p.updatedAt || new Date().toISOString()
+    }));
+  },
+  getFinancingPartnerById: (id: string): FinancingPartner | undefined => {
+    const modern = readDB().financingPartners?.find((p: any) => p.id === id);
+    if (modern) return modern;
+    const profile = readDB().financialPartnerProfiles?.find((p: any) => p.id === id);
+    if (!profile) return undefined;
+    return {
+      id: profile.id,
+      name: profile.displayName,
+      organizationId: profile.organizationId,
+      category: (profile.partnerType === 'LEASING_COMPANY' ? 'LEASING' : profile.partnerType) as any,
+      financingTypes: profile.supportedFinancingProducts || ['PROJECT_LOAN'],
+      minimumAmount: profile.minimumFinancingAmount || 0,
+      maximumAmount: profile.maximumFinancingAmount || 0,
+      supportedProjectStages: profile.supportedProjectTypes || ['ALL'],
+      supportedLocations: profile.supportedProvinces || ['ALL'],
+      minimumEquityPercent: profile.minimumEquityContributionPercent || 20,
+      requiredDocuments: profile.requiredDocuments || [],
+      activeStatus: profile.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
+      createdAt: profile.createdAt || new Date().toISOString(),
+      updatedAt: profile.updatedAt || new Date().toISOString()
+    };
+  },
+  createFinancingPartner: (partner: Partial<FinancingPartner>): FinancingPartner => {
+    const d = readDB();
+    if (!d.financingPartners) d.financingPartners = [];
+    const n: FinancingPartner = {
+      id: partner.id || uuidv4(),
+      name: partner.name!,
+      organizationId: partner.organizationId,
+      category: partner.category || 'BANK',
+      financingTypes: partner.financingTypes || ['PROJECT_LOAN'],
+      minimumAmount: partner.minimumAmount || 0,
+      maximumAmount: partner.maximumAmount || 0,
+      supportedProjectStages: partner.supportedProjectStages || ['ALL'],
+      supportedLocations: partner.supportedLocations || ['ALL'],
+      minimumEquityPercent: partner.minimumEquityPercent !== undefined ? partner.minimumEquityPercent : 20,
+      minimumProjectCapacityKw: partner.minimumProjectCapacityKw,
+      maximumProjectCapacityKw: partner.maximumProjectCapacityKw,
+      requiredDocuments: partner.requiredDocuments || [],
+      activeStatus: partner.activeStatus || 'ACTIVE',
+      contactWorkflow: partner.contactWorkflow,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    d.financingPartners.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateFinancingPartner: (id: string, updates: Partial<FinancingPartner>): FinancingPartner | null => {
+    const d = readDB();
+    if (!d.financingPartners) d.financingPartners = [];
+    const idx = d.financingPartners.findIndex((p: any) => p.id === id);
+    if (idx > -1) {
+      d.financingPartners[idx] = { ...d.financingPartners[idx], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(d);
+      return d.financingPartners[idx];
+    }
+    return null;
+  },
+
+  getFinancingAgreements: (projectId?: string): FinancingAgreementRecord[] => {
+    const all = readDB().financingAgreements || [];
+    return projectId ? all.filter((a: any) => a.projectId === projectId) : all;
+  },
+  getFinancingAgreementById: (id: string): FinancingAgreementRecord | undefined => {
+    return readDB().financingAgreements?.find((a: any) => a.id === id);
+  },
+  createFinancingAgreement: (agr: Partial<FinancingAgreementRecord>): FinancingAgreementRecord => {
+    const d = readDB();
+    if (!d.financingAgreements) d.financingAgreements = [];
+    const codeNum = String(d.financingAgreements.length + 1).padStart(6, '0');
+    const n: FinancingAgreementRecord = {
+      id: agr.id || uuidv4(),
+      agreementCode: agr.agreementCode || `AGR-HSE-${codeNum}`,
+      selectedOfferId: agr.selectedOfferId!,
+      partnerId: agr.partnerId!,
+      projectId: agr.projectId!,
+      applicationId: agr.applicationId,
+      signedDocumentId: agr.signedDocumentId,
+      agreementDate: agr.agreementDate || new Date().toISOString(),
+      financedAmount: agr.financedAmount!,
+      currency: agr.currency || 'IRR',
+      status: agr.status || 'PENDING_SIGNATURE',
+      notes: agr.notes,
+      disbursementConfirmed: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    d.financingAgreements.push(n);
+    writeDB(d);
+    return n;
+  },
+  updateFinancingAgreement: (id: string, updates: Partial<FinancingAgreementRecord>): FinancingAgreementRecord | null => {
+    const d = readDB();
+    if (!d.financingAgreements) d.financingAgreements = [];
+    const idx = d.financingAgreements.findIndex((a: any) => a.id === id);
+    if (idx > -1) {
+      d.financingAgreements[idx] = { ...d.financingAgreements[idx], ...updates, updatedAt: new Date().toISOString() };
+      writeDB(d);
+      return d.financingAgreements[idx];
+    }
+    return null;
   },
 
   // --- Phase 7-B Alert Engine & Maintenance Methods ---

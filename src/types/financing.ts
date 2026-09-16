@@ -1,5 +1,209 @@
 import { MoneyAmount } from './finance.js';
 
+// ==========================================================
+// PHASE 8: FINANCING NEED
+// ==========================================================
+export interface FinancingNeed {
+  id: string;
+  projectId: string;
+  totalProjectCost: number;
+  ownerEquity: number;
+  financingRequested: number;
+  currency: string;
+  preferredFinancingType: string;
+  preferredTenorMonths: number;
+  purpose: string;
+  notes?: string;
+  source: 'USER_ENTERED' | 'FINANCIAL_MODEL' | 'DERIVED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================================
+// PHASE 8: FINANCING APPLICATION
+// ==========================================================
+export type FinancingApplicationStatus =
+  | 'DRAFT'
+  | 'READY_FOR_REVIEW'
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'ADDITIONAL_INFORMATION_REQUIRED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'WITHDRAWN'
+  | 'OFFER_RECEIVED'
+  | 'AGREEMENT_PENDING'
+  | 'FINANCED'
+  | 'CLOSED';
+
+export interface FinancingApplication {
+  id: string;
+  applicationCode: string; // e.g. APP-HSE-000001
+  projectId: string;
+  financingNeedId?: string;
+  applicantUserId: string;
+  applicantOrganizationId?: string;
+  financialModelId?: string;
+  totalProjectCost: number;
+  ownerEquity: number;
+  financingRequested: number;
+  currency: string;
+  financingType: string;
+  requestedTenorMonths: number;
+  preferredGracePeriodMonths?: number;
+  status: FinancingApplicationStatus;
+  repaymentPreference?: string;
+  collateralSummary?: string;
+  projectRevenueModel?: string;
+  purpose?: string;
+  notes?: string;
+  rejectionReason?: string;
+  withdrawnReason?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
+  withdrawnAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================================
+// PHASE 8: FINANCING READINESS ENGINE
+// ==========================================================
+export type FinancingReadinessStatus = 'READY' | 'PARTIALLY_READY' | 'NOT_READY';
+
+export interface FinancingReadinessResult {
+  status: FinancingReadinessStatus;
+  missingItems: string[];
+  availableItems: string[];
+  warnings: string[];
+  checkedItems: {
+    projectIdentity: boolean;
+    projectOwner: boolean;
+    location: boolean;
+    capacity: boolean;
+    projectStage: boolean;
+    engineeringAnalysis: boolean;
+    financialModel: boolean;
+    projectCost: boolean;
+    ownerEquity: boolean;
+    financingRequested: boolean;
+    landSiteInformation: boolean;
+    permits: boolean;
+    epcInformation: boolean;
+    contractInformation: boolean;
+    boqProcurementInformation: boolean;
+  };
+  details: Record<string, string>;
+  evaluatedAt: string;
+}
+
+// ==========================================================
+// PHASE 8: FINANCING PARTNER
+// ==========================================================
+export type FinancingPartnerCategory = 
+  | 'BANK'
+  | 'LEASING'
+  | 'INVESTMENT_FUND'
+  | 'ENERGY_FINANCE_COMPANY'
+  | 'CORPORATE_FINANCIER'
+  | 'OTHER';
+
+export interface FinancingPartner {
+  id: string;
+  name: string;
+  organizationId?: string;
+  category: FinancingPartnerCategory;
+  financingTypes: string[];
+  minimumAmount: number;
+  maximumAmount: number;
+  supportedProjectStages: string[];
+  supportedLocations: string[];
+  minimumEquityPercent: number;
+  minimumProjectCapacityKw?: number;
+  maximumProjectCapacityKw?: number;
+  requiredDocuments: string[];
+  activeStatus: 'ACTIVE' | 'INACTIVE';
+  contactWorkflow?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================================
+// PHASE 8: PARTNER MATCHING
+// ==========================================================
+export type PartnerMatchEligibility = 
+  | 'ELIGIBLE'
+  | 'POTENTIALLY_ELIGIBLE'
+  | 'NOT_ELIGIBLE'
+  | 'REQUIRES_REVIEW';
+
+export interface PartnerMatchingResult {
+  partnerId: string;
+  partnerName: string;
+  category: FinancingPartnerCategory;
+  eligibilityStatus: 'ELIGIBLE' | 'POTENTIALLY_ELIGIBLE' | 'NOT_ELIGIBLE';
+  reasons: string[];
+  details: {
+    amountFit: { eligible: boolean; message: string };
+    capacityFit: { eligible: boolean; message: string };
+    locationFit: { eligible: boolean; message: string };
+    stageFit: { eligible: boolean; message: string };
+    financingTypeFit: { eligible: boolean; message: string };
+    equityFit: { eligible: boolean; message: string };
+  };
+}
+
+// ==========================================================
+// PHASE 8: FINANCING AGREEMENT
+// ==========================================================
+export type FinancingAgreementStatus =
+  | 'PENDING_SIGNATURE'
+  | 'SIGNED'
+  | 'ACTIVE'
+  | 'COMPLETED'
+  | 'DEFAULTED'
+  | 'CANCELLED';
+
+export interface FinancingAgreementRecord {
+  id: string;
+  agreementCode: string;
+  selectedOfferId: string;
+  partnerId: string;
+  projectId: string;
+  applicationId?: string;
+  signedDocumentId?: string;
+  agreementDate: string;
+  financedAmount: number;
+  currency: string;
+  status: FinancingAgreementStatus;
+  notes?: string;
+  disbursementConfirmed?: boolean;
+  fundingConfirmedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================================
+// PHASE 8: FINANCING TRACKING MILESTONES
+// ==========================================================
+export type FinancingMilestoneType =
+  | 'APPLICATION_SUBMITTED'
+  | 'PARTNER_REVIEW'
+  | 'INFORMATION_REQUESTED'
+  | 'OFFER_RECEIVED'
+  | 'OFFER_SELECTED'
+  | 'AGREEMENT_SIGNED'
+  | 'FINANCING_APPROVED'
+  | 'FUNDING_CONFIRMED';
+
+export interface FinancingMilestone {
+  type: FinancingMilestoneType;
+  title: string;
+  status: 'COMPLETED' | 'IN_PROGRESS' | 'PENDING';
+  date?: string;
+  notes?: string;
+}
+
 export type FinancialPartnerType = 
   | 'BANK'
   | 'CREDIT_INSTITUTION'
@@ -160,12 +364,6 @@ export interface FinanceReadinessSnapshot {
   evaluatedAt: string;
 }
 
-export type PartnerMatchEligibility = 
-  | 'ELIGIBLE'
-  | 'POTENTIALLY_ELIGIBLE'
-  | 'NOT_ELIGIBLE'
-  | 'REQUIRES_REVIEW';
-
 export interface FinancialPartnerMatch {
   id: string;
   financingRequestId: string;
@@ -249,29 +447,37 @@ export type FinancingOfferStatus =
 export interface FinancingOffer {
   id: string;
   offerCode: string; // e.g. FO-HSE-000001
+  applicationId: string;
   financingRequestId: string;
+  partnerId: string;
   financialPartnerProfileId: string;
   financingProductId?: string;
   status: FinancingOfferStatus;
-  currency: 'IRR';
+  currency: string;
+  financingType?: string;
   offeredAmount: number; // in Rials
-  interestRateType: 'FIXED' | 'VARIABLE' | 'PARTNER_DECLARED';
-  interestRate?: number; // annual percentage e.g. 23%
+  annualRate?: number;
+  interestRate?: number; // annual percentage
+  rateType?: 'FIXED' | 'VARIABLE' | 'PARTNER_DECLARED';
+  interestRateType?: 'FIXED' | 'VARIABLE' | 'PARTNER_DECLARED';
   tenorMonths: number;
   gracePeriodMonths: number;
-  repaymentType: 'EQUAL_INSTALLMENT' | 'EQUAL_PRINCIPAL' | 'BULLET' | 'CUSTOM';
+  repaymentStructure?: 'EQUAL_INSTALLMENT' | 'EQUAL_PRINCIPAL' | 'BULLET' | 'CUSTOM';
+  repaymentType?: 'EQUAL_INSTALLMENT' | 'EQUAL_PRINCIPAL' | 'BULLET' | 'CUSTOM';
   fees: FinancingFee[];
   collateralRequirements: string[];
   conditionsPrecedent: string[];
   securityRequirements?: string;
+  offerValidUntil?: string;
   validUntil?: string;
   notes?: string;
   // Deterministic computed fields
   estimatedPeriodicPayment?: number;
   estimatedTotalFinancingCost?: number;
   estimatedTotalRepayment?: number;
-  comparisonScore?: number; // 0-100
+  comparisonScore?: number;
   createdAt: string;
+  updatedAt?: string;
   submittedAt?: string;
 }
 
