@@ -380,12 +380,48 @@ async function runPhase9Tests() {
     assert(overview!.operationalCapacity.knownCapacityKw === 5000, 'Operational capacity equals 5000 kW');
     assert(overview!.operationalCapacity.assetsWithKnownCapacity === 1, '1 asset with known capacity');
 
-    // Test 4: Lifecycle Intelligence
-    console.log('\n--- SECTION 5: LIFECYCLE INTELLIGENCE ---');
-    const lifecycle = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioAlpha.id);
-    assert(lifecycle !== null, 'Lifecycle intelligence generated');
-    assert(lifecycle!.stalledProjects.length === 1, 'Detected 1 stalled project (PRJ-ALP-004 > 30 days)');
-    assert(lifecycle!.stalledProjects[0].projectId === prj4.id, 'Identified stalled project ID correctly');
+    // Test 4: Lifecycle Intelligence & Explicit Stalled Threshold Enforcement
+    console.log('\n--- SECTION 5: LIFECYCLE INTELLIGENCE & STALLED THRESHOLD INTEGRITY ---');
+    // Regression Test 1: No configured threshold anywhere => project is NOT classified as stalled!
+    const lifecycleNoThreshold = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioAlpha.id);
+    assert(lifecycleNoThreshold !== null, 'Lifecycle intelligence generated');
+    assert(lifecycleNoThreshold!.stalledProjects.length === 0, 'No configured threshold => project is NOT classified as stalled (0 stalled)');
+    
+    // Regression Test 2: Verify no stalled insight is generated when no threshold is configured
+    const insightsNoThreshold = platformIntelligenceEngine.generatePortfolioInsights(portfolioAlpha.id);
+    const stalledInsightNoThreshold = insightsNoThreshold.find(i => i.type === 'LIFECYCLE_STALLED');
+    assert(stalledInsightNoThreshold === undefined, 'No configured threshold => NO stalled insight generated');
+
+    // Regression Test 3: Explicit 30-day threshold via option works
+    const lifecycleOpt30 = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioAlpha.id, { stalledThresholdDays: 30 });
+    assert(lifecycleOpt30!.stalledProjects.length === 1, 'Explicit 30-day threshold via option works (detected 1 stalled project)');
+    assert(lifecycleOpt30!.stalledProjects[0].projectId === prj4.id, 'Stalled project matches PRJ-ALP-004');
+    assert(lifecycleOpt30!.stalledProjects[0].thresholdDays === 30, 'Stalled item exposes explicit 30 threshold');
+
+    // Regression Test 4: Explicit 45-day threshold works (diffDays is ~45, >= 45 passes)
+    const lifecycleOpt45 = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioAlpha.id, { stalledThresholdDays: 45 });
+    assert(lifecycleOpt45!.stalledProjects.length === 1, 'Explicit 45-day threshold works (diffDays >= 45)');
+    
+    // Explicit higher threshold (e.g. 60 days) does NOT falsely classify a 45-day project as stalled
+    const lifecycleOpt60 = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioAlpha.id, { stalledThresholdDays: 60 });
+    assert(lifecycleOpt60!.stalledProjects.length === 0, 'Explicit 60-day threshold correctly excludes 45-day inactive project');
+
+    // Regression Test 5: Project-level configuration works
+    db.updateEnergyProject(prj4.id, { stalledThresholdDays: 40 });
+    const lifecyclePrjConfig = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioAlpha.id);
+    assert(lifecyclePrjConfig!.stalledProjects.length === 1, 'Project-level stalledThresholdDays=40 configuration works');
+    assert(lifecyclePrjConfig!.stalledProjects[0].thresholdDays === 40, 'Project-level threshold recorded as 40');
+    // Reset project-level threshold
+    db.updateEnergyProject(prj4.id, { stalledThresholdDays: undefined });
+
+    // Regression Test 6: Portfolio-level configuration works
+    db.updatePortfolio(portfolioAlpha.id, { settings: { stalledThresholdDays: 35 } });
+    const lifecyclePortfolioConfig = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioAlpha.id);
+    assert(lifecyclePortfolioConfig!.stalledProjects.length === 1, 'Portfolio-level settings.stalledThresholdDays=35 configuration works');
+    assert(lifecyclePortfolioConfig!.stalledProjects[0].thresholdDays === 35, 'Portfolio-level threshold recorded as 35');
+
+    // Regression Test 7: Confirm no arbitrary time threshold remains (leave portfolio configured with 35 days for downstream tests)
+    const lifecycle = lifecyclePortfolioConfig;
 
     assert(lifecycle!.overdueMilestones.length === 1, 'Detected 1 overdue milestone with explicit date');
     assert(lifecycle!.overdueMilestones[0].projectId === prj2.id, 'Overdue milestone belongs to Project 2');

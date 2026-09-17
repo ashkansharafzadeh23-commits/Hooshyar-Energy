@@ -58,6 +58,7 @@ export interface EnergyProject {
   };
 
   targetCapacityKw?: number;
+  stalledThresholdDays?: number;
   estimatedBudgetIRR?: number;
   estimatedBudget?: {
     amount: number;

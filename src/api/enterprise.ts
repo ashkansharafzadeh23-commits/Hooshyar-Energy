@@ -228,7 +228,10 @@ router.get('/portfolios/:id/lifecycle', (req, res) => {
     return res.status(access.status).json({ error: access.error });
   }
 
-  const lifecycle = lifecycleIntelligenceService.getLifecycleIntelligence(req.params.id);
+  const thresholdQuery = req.query.stalledThresholdDays;
+  const stalledThresholdDays = thresholdQuery && !isNaN(Number(thresholdQuery)) ? Number(thresholdQuery) : undefined;
+
+  const lifecycle = lifecycleIntelligenceService.getLifecycleIntelligence(req.params.id, { stalledThresholdDays });
   if (!lifecycle) {
     return res.status(404).json({ error: 'Portfolio not found' });
   }
@@ -308,7 +311,10 @@ router.get('/portfolios/:id/insights', (req, res) => {
     return res.status(access.status).json({ error: access.error });
   }
 
-  const insights = platformIntelligenceEngine.generatePortfolioInsights(req.params.id);
+  const thresholdQuery = req.query.stalledThresholdDays;
+  const stalledThresholdDays = thresholdQuery && !isNaN(Number(thresholdQuery)) ? Number(thresholdQuery) : undefined;
+
+  const insights = platformIntelligenceEngine.generatePortfolioInsights(req.params.id, { stalledThresholdDays });
   res.json(insights);
 });
 

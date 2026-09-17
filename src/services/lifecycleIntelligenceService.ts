@@ -29,21 +29,28 @@ export const lifecycleIntelligenceService = {
       stageDistribution[status] = (stageDistribution[status] || 0) + 1;
 
       // 1. Detect Stalled Projects (> threshold days without update and not terminal)
-      // Checks explicit project-level threshold, portfolio settings, or options threshold, defaulting to 30 days
+      // A project must NOT be classified as STALLED unless a threshold is explicitly configured:
+      // 1. project.stalledThresholdDays
+      // 2. portfolio settings (settings.stalledThresholdDays or portfolio.stalledThresholdDays)
+      // 3. explicit service/query option (options.stalledThresholdDays)
+      // If no explicit threshold exists, stalled status remains NOT_EVALUATED and no stalled item or insight is created.
       if (status !== 'MAINTENANCE' && (status as string) !== 'OPERATIONAL' && (status as string) !== 'CANCELLED' && (status as string) !== 'ON_HOLD') {
-        const thresholdDays = (project as any).stalledThresholdDays ?? (portfolio as any).settings?.stalledThresholdDays ?? (portfolio as any).stalledThresholdDays ?? options?.stalledThresholdDays ?? 30;
-        const lastUpdated = project.updatedAt ? new Date(project.updatedAt) : new Date(project.createdAt);
-        const diffDays = Math.floor((now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays >= thresholdDays) {
-          stalledProjects.push({
-            projectId: project.id,
-            projectCode: project.projectCode,
-            title: project.title,
-            status,
-            daysSinceLastUpdate: diffDays,
-            thresholdDays,
-            reason: `پروژه بیش از ${diffDays} روز در وضعیت ${status} بدون تغییر یا به‌روزرسانی باقی مانده است.`
-          });
+        const thresholdDays = (project as any).stalledThresholdDays ?? (portfolio as any).settings?.stalledThresholdDays ?? (portfolio as any).stalledThresholdDays ?? options?.stalledThresholdDays;
+        
+        if (typeof thresholdDays === 'number' && thresholdDays > 0) {
+          const lastUpdated = project.updatedAt ? new Date(project.updatedAt) : new Date(project.createdAt);
+          const diffDays = Math.floor((now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays >= thresholdDays) {
+            stalledProjects.push({
+              projectId: project.id,
+              projectCode: project.projectCode,
+              title: project.title,
+              status,
+              daysSinceLastUpdate: diffDays,
+              thresholdDays,
+              reason: `پروژه بیش از ${diffDays} روز در وضعیت ${status} بدون تغییر یا به‌روزرسانی باقی مانده است (حد آستانه تعیین‌شده: ${thresholdDays} روز).`
+            });
+          }
         }
       }
 

@@ -9,7 +9,7 @@ export const platformIntelligenceEngine = {
    * Generates deterministic, verified insights strictly from stored data facts.
    * Never hallucinates or invents non-existent conditions.
    */
-  generatePortfolioInsights(portfolioId: string): PlatformInsight[] {
+  generatePortfolioInsights(portfolioId: string, options?: { stalledThresholdDays?: number }): PlatformInsight[] {
     const portfolio = portfolioRepository.getPortfolioById(portfolioId);
     if (!portfolio) return [];
 
@@ -17,7 +17,7 @@ export const platformIntelligenceEngine = {
     const now = new Date();
 
     const overview = portfolioAggregationService.getPortfolioOverview(portfolioId);
-    const lifecycle = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioId);
+    const lifecycle = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioId, options);
     const assetIntel = portfolioAggregationService.getAssetPortfolioIntelligence(portfolioId);
     const procIntel = portfolioAggregationService.getProcurementIntelligence(portfolioId);
     const finIntel = portfolioAggregationService.getFinancialPortfolioView(portfolioId);

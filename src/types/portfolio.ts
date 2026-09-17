@@ -26,6 +26,11 @@ export interface Portfolio {
   description?: string;
   projectIds: string[]; // References to existing EnergyProject IDs
   assetIds: string[];   // References to existing EnergyAsset IDs
+  stalledThresholdDays?: number;
+  settings?: {
+    stalledThresholdDays?: number;
+    [key: string]: any;
+  };
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
