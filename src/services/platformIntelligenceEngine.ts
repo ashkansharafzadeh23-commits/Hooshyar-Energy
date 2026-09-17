@@ -59,6 +59,7 @@ export const platformIntelligenceEngine = {
           message: sp.reason,
           evidence: {
             daysSinceLastUpdate: sp.daysSinceLastUpdate,
+            thresholdDays: sp.thresholdDays,
             currentStatus: sp.status
           },
           generatedAt: now.toISOString()

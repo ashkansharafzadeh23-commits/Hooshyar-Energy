@@ -11,7 +11,7 @@ import {
 } from '../types/portfolio.js';
 
 export const lifecycleIntelligenceService = {
-  getLifecycleIntelligence(portfolioId: string): LifecycleIntelligenceSummary | null {
+  getLifecycleIntelligence(portfolioId: string, options?: { stalledThresholdDays?: number }): LifecycleIntelligenceSummary | null {
     const portfolio = portfolioRepository.getPortfolioById(portfolioId);
     if (!portfolio) return null;
 
@@ -28,17 +28,20 @@ export const lifecycleIntelligenceService = {
       const status = project.status || 'DRAFT';
       stageDistribution[status] = (stageDistribution[status] || 0) + 1;
 
-      // 1. Detect Stalled Projects (> 30 days without update and not terminal)
+      // 1. Detect Stalled Projects (> threshold days without update and not terminal)
+      // Checks explicit project-level threshold, portfolio settings, or options threshold, defaulting to 30 days
       if (status !== 'MAINTENANCE' && (status as string) !== 'OPERATIONAL' && (status as string) !== 'CANCELLED' && (status as string) !== 'ON_HOLD') {
+        const thresholdDays = (project as any).stalledThresholdDays ?? (portfolio as any).settings?.stalledThresholdDays ?? (portfolio as any).stalledThresholdDays ?? options?.stalledThresholdDays ?? 30;
         const lastUpdated = project.updatedAt ? new Date(project.updatedAt) : new Date(project.createdAt);
         const diffDays = Math.floor((now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays >= 30) {
+        if (diffDays >= thresholdDays) {
           stalledProjects.push({
             projectId: project.id,
             projectCode: project.projectCode,
             title: project.title,
             status,
             daysSinceLastUpdate: diffDays,
+            thresholdDays,
             reason: `پروژه بیش از ${diffDays} روز در وضعیت ${status} بدون تغییر یا به‌روزرسانی باقی مانده است.`
           });
         }

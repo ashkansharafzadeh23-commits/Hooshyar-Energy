@@ -66,6 +66,7 @@ export interface StalledProjectItem {
   title: string;
   status: ProjectStatus;
   daysSinceLastUpdate: number;
+  thresholdDays?: number;
   reason: string;
 }
 

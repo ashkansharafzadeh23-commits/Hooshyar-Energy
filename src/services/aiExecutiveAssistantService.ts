@@ -68,7 +68,7 @@ export const aiExecutiveAssistantService = {
       attentionItems.push(`${lifecycle.overdueMilestones.length} مایلستون اجرایی تاریخ‌گذشته شناسایی شد.`);
     }
     if (lifecycle && lifecycle.stalledProjects.length > 0) {
-      attentionItems.push(`${lifecycle.stalledProjects.length} پروژه بیش از ۳۰ روز بدون فعالیت به‌روز باقی مانده‌اند.`);
+      attentionItems.push(`${lifecycle.stalledProjects.length} پروژه دچار توقف پیشرفت و فاقد به‌روزرسانی در بازه مجاز شناسایی شد.`);
     }
     if (offlineAssetsCount > 0) {
       attentionItems.push(`${offlineAssetsCount} دارایی عملیاتی داده تله‌متری زنده ارسال نمی‌کنند.`);
