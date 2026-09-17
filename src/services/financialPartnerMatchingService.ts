@@ -32,15 +32,27 @@ export const financialPartnerMatchingService = {
       const partnerCategory = (partner as any).category || (partner as any).partnerType || 'OTHER';
       const minAmount = (partner as any).minimumAmount || (partner as any).minimumFinancingAmount || 0;
       const maxAmount = (partner as any).maximumAmount || (partner as any).maximumFinancingAmount || 0;
-      const supportedLocations = (partner as any).supportedLocations || (partner as any).supportedProvinces || ['ALL'];
-      const supportedStages = (partner as any).supportedProjectStages || (partner as any).supportedProjectTypes || ['ALL'];
-      const supportedTypes = (partner as any).financingTypes || (partner as any).supportedFinancingProducts || ['PROJECT_LOAN'];
+      const supportedLocations = Array.isArray((partner as any).supportedLocations)
+        ? (partner as any).supportedLocations
+        : (Array.isArray((partner as any).supportedProvinces) ? (partner as any).supportedProvinces : ['ALL']);
+      const supportedStages = Array.isArray((partner as any).supportedProjectStages)
+        ? (partner as any).supportedProjectStages
+        : (Array.isArray((partner as any).supportedProjectTypes) ? (partner as any).supportedProjectTypes : ['ALL']);
+      const supportedTypes = Array.isArray((partner as any).financingTypes)
+        ? (partner as any).financingTypes
+        : (Array.isArray((partner as any).supportedFinancingProducts)
+            ? (partner as any).supportedFinancingProducts
+            : (Array.isArray((partner as any).supportedFinancingTypes)
+                ? (partner as any).supportedFinancingTypes
+                : ['PROJECT_LOAN']));
       const minEquity = (partner as any).minimumEquityPercent !== undefined 
         ? (partner as any).minimumEquityPercent 
-        : ((partner as any).minimumEquityContributionPercent || 20);
+        : ((partner as any).minimumEquityContributionPercent !== undefined
+            ? (partner as any).minimumEquityContributionPercent
+            : ((partner as any).minimumEquityRatioPercent !== undefined ? (partner as any).minimumEquityRatioPercent : 20));
       const minCapacity = (partner as any).minimumProjectCapacityKw || 0;
       const maxCapacity = (partner as any).maximumProjectCapacityKw || 0;
-      const isActive = (partner as any).activeStatus === 'ACTIVE' || (partner as any).status === 'ACTIVE';
+      const isActive = (partner as any).activeStatus === 'ACTIVE' || (partner as any).status === 'ACTIVE' || (partner as any).isActive === true;
 
       const reasons: string[] = [];
       let isEligible = true;
@@ -218,6 +230,7 @@ export const financialPartnerMatchingService = {
           collateralFit: 5
         },
         eligibilityStatus: res.eligibilityStatus,
+        eligibility: res.eligibilityStatus,
         reasons: res.reasons,
         algorithmVersion: '2.0-deterministic',
         status: 'PROPOSED',

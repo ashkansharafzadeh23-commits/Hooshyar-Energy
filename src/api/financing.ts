@@ -282,9 +282,10 @@ router.get('/financial-partners/requests/:submissionId', (req: Request, res: Res
   const request = db.getFinancingRequestById(submission.financingRequestId);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
+  let currentSubmission = submission;
   // Mark viewed if not already
   if (!submission.viewedAt) {
-    db.updateFinancingSubmission(submission.id, { viewedAt: new Date().toISOString(), status: 'UNDER_REVIEW' });
+    currentSubmission = db.updateFinancingSubmission(submission.id, { viewedAt: new Date().toISOString(), status: 'UNDER_REVIEW' }) || submission;
   }
 
   const project = db.getProjectById(request.projectId);
@@ -300,7 +301,7 @@ router.get('/financial-partners/requests/:submissionId', (req: Request, res: Res
   const offers = db.getFinancingOffers(request.id).filter((o: any) => o.financialPartnerProfileId === submission.financialPartnerProfileId);
 
   return res.json({
-    submission,
+    submission: currentSubmission,
     request,
     project,
     readiness,

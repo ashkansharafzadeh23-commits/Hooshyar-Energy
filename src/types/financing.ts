@@ -382,6 +382,7 @@ export interface FinancialPartnerMatch {
     collateralFit: number; // max 5
   };
   eligibilityStatus: PartnerMatchEligibility;
+  eligibility?: PartnerMatchEligibility;
   reasons: string[];
   algorithmVersion: string;
   status: 'PROPOSED' | 'SUBMITTED' | 'DISMISSED';
