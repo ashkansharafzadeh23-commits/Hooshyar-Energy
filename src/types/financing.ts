@@ -144,12 +144,14 @@ export interface PartnerMatchingResult {
   eligibilityStatus: 'ELIGIBLE' | 'POTENTIALLY_ELIGIBLE' | 'NOT_ELIGIBLE';
   reasons: string[];
   details: {
-    amountFit: { eligible: boolean; message: string };
-    capacityFit: { eligible: boolean; message: string };
-    locationFit: { eligible: boolean; message: string };
-    stageFit: { eligible: boolean; message: string };
-    financingTypeFit: { eligible: boolean; message: string };
-    equityFit: { eligible: boolean; message: string };
+    amountFit: { eligible: boolean; message: string; specified?: boolean };
+    capacityFit: { eligible: boolean; message: string; specified?: boolean };
+    locationFit: { eligible: boolean; message: string; specified?: boolean };
+    stageFit: { eligible: boolean; message: string; specified?: boolean };
+    financingTypeFit: { eligible: boolean; message: string; specified?: boolean };
+    equityFit: { eligible: boolean; message: string; specified?: boolean };
+    tenorFit?: { eligible: boolean; message: string; specified?: boolean };
+    collateralFit?: { eligible: boolean; message: string; specified?: boolean };
   };
 }
 

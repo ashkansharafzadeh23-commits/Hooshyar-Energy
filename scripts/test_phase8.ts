@@ -314,6 +314,102 @@ async function runPhase8Tests() {
     assert(resApiMatches.status === 200, 'Fetches matches via API (HTTP 200)');
     assert(Array.isArray(resApiMatches.body) && resApiMatches.body.length === 3, 'API returns matches array');
 
+    // 3.3 REGRESSION: DATA INTEGRITY & NO INVENTED FINANCING CRITERIA
+    console.log('\n--- TEST 3.3: REGRESSION — NO INVENTED FINANCING CRITERIA ---');
+    // Partner with completely missing / unspecified criteria
+    const partnerWithUnspecifiedCriteria: any = {
+      id: 'partner-unspecified-criteria',
+      displayName: 'صندوق سرمایه‌گذاری عمومی بدون ضوابط پیش‌فرض',
+      partnerType: 'INVESTMENT_FUND',
+      status: 'ACTIVE',
+      // Explicitly NO minimumEquityPercent, minimumEquityContributionPercent, or minimumEquityRatioPercent
+      // Explicitly NO minimumFinancingAmount or maximumFinancingAmount
+      // Explicitly NO supportedProvinces or supportedLocations
+      // Explicitly NO supportedProjectStages
+      // Explicitly NO supportedFinancingProducts or financingTypes
+      // Explicitly NO capacity limits
+      // Explicitly NO maximumTenorMonths
+      // Explicitly NO collateralRequired
+    };
+
+    // Applicant with 12% equity (which would fail if a 20% fallback was invented)
+    const lowEquityApp: any = {
+      financingRequested: 10000000000,
+      totalProjectCost: 100000000000,
+      ownerEquity: 12000000000, // 12% equity
+      financingType: 'PROJECT_LOAN'
+    };
+
+    const unspecifiedMatch = financialPartnerMatchingService.matchApplicationWithPartners(
+      lowEquityApp,
+      project1,
+      [partnerWithUnspecifiedCriteria]
+    )[0];
+
+    // Assertion 1: missing minimum equity does NOT become 20%
+    assert(unspecifiedMatch.details.equityFit.specified === false, 'missing minimum equity is marked as unspecified (specified === false)');
+    assert(!unspecifiedMatch.details.equityFit.message.includes('20٪') && !unspecifiedMatch.details.equityFit.message.includes('20%'), 'missing minimum equity does NOT become 20%');
+    assert(unspecifiedMatch.details.equityFit.message.includes('نامشخص'), 'missing minimum equity explicitly states not specified / unknown');
+    assert(unspecifiedMatch.details.equityFit.eligible === true, 'missing equity criterion does not falsely reject the applicant');
+
+    // Assertion 2: missing partner criteria are not fabricated
+    assert(unspecifiedMatch.details.amountFit.specified === false, 'missing amount limit is not fabricated (specified === false)');
+    assert(unspecifiedMatch.details.amountFit.message.includes('نامشخص'), 'missing amount declares unknown in message');
+    assert(unspecifiedMatch.details.capacityFit.specified === false, 'missing capacity limit is not fabricated (specified === false)');
+    assert(unspecifiedMatch.details.capacityFit.message.includes('نامشخص'), 'missing capacity declares unknown in message');
+    assert(unspecifiedMatch.details.locationFit.specified === false, 'missing locations are not fabricated into [ALL] (specified === false)');
+    assert(unspecifiedMatch.details.locationFit.message.includes('نامشخص'), 'missing locations declare unknown in message');
+    assert(unspecifiedMatch.details.stageFit.specified === false, 'missing stages are not fabricated into [ALL] (specified === false)');
+    assert(unspecifiedMatch.details.stageFit.message.includes('نامشخص'), 'missing stage declares unknown in message');
+    assert(unspecifiedMatch.details.financingTypeFit.specified === false, 'missing financingTypes are not fabricated into [PROJECT_LOAN] (specified === false)');
+    assert(unspecifiedMatch.details.financingTypeFit.message.includes('نامشخص'), 'missing financingTypes declare unknown in message');
+    assert(unspecifiedMatch.details.tenorFit?.specified === false, 'missing tenor limit is not fabricated (specified === false)');
+    assert(unspecifiedMatch.details.collateralFit?.specified === false, 'missing collateral requirement is not fabricated (specified === false)');
+
+    // Assertion 3: unknown criteria do not incorrectly make a project eligible or ineligible
+    assert(unspecifiedMatch.eligibilityStatus === 'ELIGIBLE', 'active partner with unknown criteria remains ELIGIBLE without artificial disqualification');
+    const partnerInactiveUnspecified: any = {
+      ...partnerWithUnspecifiedCriteria,
+      id: 'partner-inactive-unspecified',
+      status: 'INACTIVE'
+    };
+    const inactiveUnspecifiedMatch = financialPartnerMatchingService.matchApplicationWithPartners(
+      lowEquityApp,
+      project1,
+      [partnerInactiveUnspecified]
+    )[0];
+    assert(inactiveUnspecifiedMatch.eligibilityStatus === 'NOT_ELIGIBLE', 'inactive partner correctly marked NOT_ELIGIBLE due to active status, not fabricated criteria');
+
+    // Assertion 4: explicitly supplied partner criteria still work correctly
+    const strictPartner: any = {
+      id: 'partner-strict-explicit',
+      displayName: 'نهاد با شروط صریح و واقعی',
+      partnerType: 'BANK',
+      status: 'ACTIVE',
+      minimumEquityPercent: 25, // Explicitly 25%
+      minimumAmount: 20000000000, // Explicitly 20B
+      supportedLocations: ['تهران'], // Explicitly only Tehran
+      supportedProjectStages: ['DRAFT', 'FEASIBILITY'],
+      financingTypes: ['GREEN_BOND']
+    };
+
+    const strictMatch = financialPartnerMatchingService.matchApplicationWithPartners(
+      lowEquityApp, // 12% equity, requesting 10B, PROJECT_LOAN
+      project1, // located in Yazd
+      [strictPartner]
+    )[0];
+
+    assert(strictMatch.details.equityFit.specified === true, 'explicit equity criterion is flagged as specified === true');
+    assert(strictMatch.details.equityFit.eligible === false, 'explicit equity requirement (25%) correctly fails 12% equity applicant');
+    assert(strictMatch.details.equityFit.message.includes('25٪'), 'explicit equity message correctly cites declared 25% threshold');
+    assert(strictMatch.details.amountFit.specified === true, 'explicit minimum amount is flagged as specified');
+    assert(strictMatch.details.amountFit.eligible === false, 'explicit minimum amount (20B) correctly rejects 10B request');
+    assert(strictMatch.details.locationFit.specified === true, 'explicit location is flagged as specified');
+    assert(strictMatch.details.locationFit.eligible === false, 'explicit location (Tehran) correctly rejects Yazd project');
+    assert(strictMatch.details.financingTypeFit.specified === true, 'explicit financing type is flagged as specified');
+    assert(strictMatch.details.financingTypeFit.eligible === false, 'explicit financing type (GREEN_BOND) correctly rejects PROJECT_LOAN');
+    assert(strictMatch.eligibilityStatus === 'NOT_ELIGIBLE', 'explicit criteria violations correctly make project NOT_ELIGIBLE');
+
     console.log('\n--- TEST 4: SUBMISSION & DATA ROOM PRIVACY ---');
     // 4.1 Submit request to Bank Partner
     const resSubmit = await request(serverUrl, 'POST', `/api/financing-requests/${createdReq.id}/submit-to-partner`, {
