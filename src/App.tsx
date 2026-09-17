@@ -42,6 +42,7 @@ import OpportunitiesList from './pages/investment/OpportunitiesList';
 import OpportunityDetail from './pages/investment/OpportunityDetail';
 import InvestorProfileSetup from './pages/investment/InvestorProfileSetup';
 import MyMatches from './pages/investment/MyMatches';
+import PortfolioDashboard from './pages/enterprise/PortfolioDashboard';
 
 export default function App() {
   return (
@@ -61,6 +62,8 @@ export default function App() {
             <Route path="/investment-hub/opportunities/:id" element={<OpportunityDetail />} />
             <Route path="/investment-hub/investor-profile" element={<InvestorProfileSetup />} />
             <Route path="/investment-hub/matches" element={<MyMatches />} />
+            <Route path="/enterprise/portfolio" element={<PortfolioDashboard />} />
+            <Route path="/portfolio" element={<PortfolioDashboard />} />
 
             <Route path="/powerplant-setup" element={<PowerPlantSetup />} />
             <Route path="/solar-assets" element={<SolarAssetsList />} />

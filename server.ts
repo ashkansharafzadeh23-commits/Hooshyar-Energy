@@ -20,6 +20,7 @@ import financingRouter from "./src/api/financing.js";
 import monitoringRouter from "./src/api/monitoring.js";
 import { maintenanceRouter } from "./src/api/maintenance.js";
 import rfqRouter from "./src/api/rfq.js";
+import enterpriseRouter from "./src/api/enterprise.js";
 
 // Vercel handlers
 import analyzeHandler from "./api/analyze.js";
@@ -54,6 +55,7 @@ app.use("/api", financingRouter);
 app.use("/api", monitoringRouter);
 app.use("/api", maintenanceRouter);
 app.use("/api/rfq", rfqRouter);
+app.use("/api/enterprise", enterpriseRouter);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });

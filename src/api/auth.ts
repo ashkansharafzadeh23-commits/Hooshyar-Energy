@@ -25,8 +25,9 @@ export const verifyAuthToken = (req: Request, res: Response, next: NextFunction)
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    req.user = db.getUserById(decoded.userId);
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const uid = decoded.userId || decoded.id;
+    req.user = db.getUserById(uid) || (uid ? { id: uid, ...decoded } : undefined);
   } catch (error) {
     req.user = undefined;
   }

@@ -112,6 +112,7 @@ export default function MainLayout() {
           
           <div className="hidden lg:flex items-center gap-6">
             <Link to="/user-dashboard" className="flex items-center gap-1 text-sm font-medium hover:text-blue-600 transition-colors"><LayoutDashboard size={16}/> داشبورد من</Link>
+            <Link to="/portfolio" className="text-sm font-medium hover:text-blue-600 transition-colors">پرتفوی سازمانی</Link>
             <Link to="/user-dashboard?tab=history" className="flex items-center gap-1 text-sm font-medium hover:text-blue-600 transition-colors"><FileText size={16}/> تاریخچه تحلیل‌ها</Link>
             <Link to="/solar-assets" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های خورشیدی</Link>
             <Link to="/solar-assets/my-projects" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های من</Link>

@@ -13,6 +13,7 @@ import { FinancialPartnerProfile, FinancingProduct, FinancingRequest, FinanceRea
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { ProjectContract, ContractParty, ContractRevision, ProjectMilestone, MilestoneDependency, ApprovalRequest, ChangeRequest, ProjectBaseline } from '../types/execution.js';
+import { Portfolio, OrganizationMember } from '../types/portfolio.js';
 
 let currentDbPath = process.env.TEST_DB_PATH || path.join(process.cwd(), "db.json");
 
@@ -254,6 +255,8 @@ interface DB {
   projectDocuments?: ProjectDocument[];
   projectActivities?: ProjectActivity[];
   organizations?: Organization[];
+  portfolios?: Portfolio[];
+  organizationMembers?: OrganizationMember[];
   financialModels?: ProjectFinancialModel[];
   financialAssumptionSets?: FinancialAssumptionSet[];
   financialScenarios?: FinancialScenario[];
@@ -648,7 +651,7 @@ export const db: any = {
     if (!data.energyProjects) data.energyProjects = [];
     const index = data.energyProjects.findIndex(p => p.id === id);
     if (index !== -1) {
-      data.energyProjects[index] = { ...data.energyProjects[index], ...updates, updatedAt: new Date().toISOString() };
+      data.energyProjects[index] = { ...data.energyProjects[index], ...updates, updatedAt: updates.updatedAt || new Date().toISOString() };
       writeDB(data);
       return data.energyProjects[index];
     }
@@ -720,6 +723,164 @@ export const db: any = {
     data.organizations.push(newOrg as Organization);
     writeDB(data);
     return newOrg as Organization;
+  },
+
+  // Portfolios (Phase 9)
+  getPortfolios: (orgId?: string) => {
+    const list = readDB().portfolios || [];
+    if (orgId) return list.filter(p => p.organizationId === orgId);
+    return list;
+  },
+  getPortfolioById: (id: string) => (readDB().portfolios || []).find(p => p.id === id),
+  createPortfolio: (portfolio: Omit<Portfolio, "id" | "createdAt" | "updatedAt">) => {
+    const data = readDB();
+    if (!data.portfolios) data.portfolios = [];
+    const newPortfolio: Portfolio = {
+      ...portfolio,
+      id: uuidv4(),
+      projectIds: portfolio.projectIds || [],
+      assetIds: portfolio.assetIds || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    data.portfolios.push(newPortfolio);
+    writeDB(data);
+    return newPortfolio;
+  },
+  updatePortfolio: (id: string, updates: Partial<Portfolio>) => {
+    const data = readDB();
+    if (!data.portfolios) data.portfolios = [];
+    const index = data.portfolios.findIndex(p => p.id === id);
+    if (index !== -1) {
+      data.portfolios[index] = {
+        ...data.portfolios[index],
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      writeDB(data);
+      return data.portfolios[index];
+    }
+    return null;
+  },
+  deletePortfolio: (id: string) => {
+    const data = readDB();
+    if (!data.portfolios) return false;
+    const initialLen = data.portfolios.length;
+    data.portfolios = data.portfolios.filter(p => p.id !== id);
+    if (data.portfolios.length !== initialLen) {
+      writeDB(data);
+      return true;
+    }
+    return false;
+  },
+
+  // Organization Members (Phase 9)
+  getOrganizationMembers: (orgId: string) => {
+    return (readDB().organizationMembers || []).filter(m => m.organizationId === orgId);
+  },
+  getOrganizationMember: (orgId: string, userId: string) => {
+    return (readDB().organizationMembers || []).find(m => m.organizationId === orgId && m.userId === userId);
+  },
+  getOrganizationMembersByUserId: (userId: string) => {
+    return (readDB().organizationMembers || []).filter(m => m.userId === userId);
+  },
+  createOrganizationMember: (member: Omit<OrganizationMember, "id" | "createdAt">) => {
+    const data = readDB();
+    if (!data.organizationMembers) data.organizationMembers = [];
+    const newMember: OrganizationMember = {
+      ...member,
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    data.organizationMembers.push(newMember);
+    writeDB(data);
+    return newMember;
+  },
+  updateOrganizationMember: (id: string, updates: Partial<OrganizationMember>) => {
+    const data = readDB();
+    if (!data.organizationMembers) data.organizationMembers = [];
+    const index = data.organizationMembers.findIndex(m => m.id === id);
+    if (index !== -1) {
+      data.organizationMembers[index] = {
+        ...data.organizationMembers[index],
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      writeDB(data);
+      return data.organizationMembers[index];
+    }
+    return null;
+  },
+  deleteOrganizationMember: (id: string) => {
+    const data = readDB();
+    if (!data.organizationMembers) return false;
+    const initialLen = data.organizationMembers.length;
+    data.organizationMembers = data.organizationMembers.filter(m => m.id !== id);
+    if (data.organizationMembers.length !== initialLen) {
+      writeDB(data);
+      return true;
+    }
+    return false;
+  },
+
+  getProcurementPackages: (projectId?: string) => {
+    const pkgs = readDB().procurementPackages || [];
+    if (projectId) return pkgs.filter((p: any) => p.projectId === projectId);
+    return pkgs;
+  },
+  createProcurementPackage: (pkg: any) => {
+    const data = readDB();
+    if (!data.procurementPackages) data.procurementPackages = [];
+    const newPkg = {
+      ...pkg,
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    data.procurementPackages.push(newPkg);
+    writeDB(data);
+    return newPkg;
+  },
+
+  getProcurementPackagesByProjectId: (projectId: string) => {
+    return (readDB().procurementPackages || []).filter((p: any) => p.projectId === projectId);
+  },
+  getProcurementRFQsByProjectId: (projectId: string) => {
+    return (readDB().procurementRfqs || []).filter((r: any) => r.projectId === projectId);
+  },
+  getFinancingRequestsByProjectId: (projectId: string) => {
+    return (readDB().financingRequests || []).filter((r: any) => r.projectId === projectId);
+  },
+  getProjectFinancingRecordsByProjectId: (projectId: string) => {
+    return (readDB().projectFinancingRecords || []).filter((r: any) => r.projectId === projectId);
+  },
+  getAssetAlertsByAssetId: (assetId: string) => {
+    return (readDB().assetAlerts || []).filter((a: any) => a.assetId === assetId);
+  },
+  getMaintenanceCasesByAssetId: (assetId: string) => {
+    return (readDB().maintenanceCases || []).filter((m: any) => m.assetId === assetId);
+  },
+  getMaintenanceCasesByProjectId: (projectId: string) => {
+    return (readDB().maintenanceCases || []).filter((m: any) => m.projectId === projectId);
+  },
+  getTelemetrySourcesByAssetId: (assetId: string) => {
+    return (readDB().telemetrySources || []).filter((s: any) => s.assetId === assetId);
+  },
+  getTelemetryReadingsByAssetId: (assetId: string) => {
+    return (readDB().telemetryReadings || []).filter((r: any) => r.assetId === assetId);
+  },
+  getDeliveryInspectionsByProjectId: (projectId: string) => {
+    return (readDB().deliveryInspections || []).filter((i: any) => i.projectId === projectId);
+  },
+  getBOQsByProjectId: (projectId: string) => {
+    return (readDB().boqs || []).filter((b: any) => b.projectId === projectId);
+  },
+  getPurchaseOrdersByProjectId: (projectId: string) => {
+    return (readDB().purchaseOrders || []).filter((p: any) => p.projectId === projectId);
+  },
+  getAlerts: () => {
+    return readDB().assetAlerts || [];
   },
 
   // Project RFQs (Phase 1)
@@ -1254,7 +1415,7 @@ export const db: any = {
   getCommissioningRecordById: (id: string) => readDB().commissioningRecords?.find((r: any) => r.id === id),
   createCommissioningRecord: (record: any) => { const d = readDB(); if(!d.commissioningRecords) d.commissioningRecords = []; const n = { ...record, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.commissioningRecords.push(n); writeDB(d); return n; },
   updateCommissioningRecord: (id: string, updates: any) => { const d = readDB(); if(!d.commissioningRecords) d.commissioningRecords = []; const idx = d.commissioningRecords.findIndex((r: any) => r.id === id); if(idx > -1) { d.commissioningRecords[idx] = { ...d.commissioningRecords[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.commissioningRecords[idx]; } return null; },
-  getCommissioningTests: (recordId: string) => readDB().commissioningTests?.filter((t: any) => t.commissioningRecordId === recordId) || [],
+  getCommissioningTests: (recordId?: string) => readDB().commissioningTests?.filter((t: any) => !recordId || t.commissioningRecordId === recordId || t.projectId === recordId) || [],
   getCommissioningTestById: (id: string) => readDB().commissioningTests?.find((t: any) => t.id === id),
   createCommissioningTest: (test: any) => { const d = readDB(); if(!d.commissioningTests) d.commissioningTests = []; const n = { ...test, id: uuidv4() }; d.commissioningTests.push(n); writeDB(d); return n; },
   updateCommissioningTest: (id: string, updates: any) => { const d = readDB(); if(!d.commissioningTests) d.commissioningTests = []; const idx = d.commissioningTests.findIndex((t: any) => t.id === id); if(idx > -1) { d.commissioningTests[idx] = { ...d.commissioningTests[idx], ...updates }; writeDB(d); return d.commissioningTests[idx]; } return null; },
@@ -1330,8 +1491,11 @@ export const db: any = {
     return false;
   },
 
-  getTelemetryReadings: (assetId: string, filters?: { from?: string; to?: string; metricType?: string; sourceId?: string; quality?: string }) => {
-    let list = (readDB().telemetryReadings || []).filter((r: any) => r.assetId === assetId);
+  getTelemetryReadings: (assetId?: string, filters?: { from?: string; to?: string; metricType?: string; sourceId?: string; quality?: string }) => {
+    let list = readDB().telemetryReadings || [];
+    if (assetId) {
+      list = list.filter((r: any) => r.assetId === assetId);
+    }
     if (filters?.from) {
       const fromMs = new Date(filters.from).getTime();
       list = list.filter((r: any) => new Date(r.timestamp).getTime() >= fromMs);
