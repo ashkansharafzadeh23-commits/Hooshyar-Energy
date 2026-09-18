@@ -4,7 +4,6 @@ import { checkProjectAccess } from './projects.js';
 import { projectRepository } from '../repositories/projectRepository.js';
 import { procurementRepository } from '../repositories/procurementRepository.js';
 import { procurementService } from '../services/procurementService.js';
-import { db } from '../db/index.js';
 
 const procurementRouter = express.Router();
 
@@ -18,7 +17,7 @@ procurementRouter.use(requireAuth);
 function getVendorIdForUser(user: any): string | null {
   if (!user) return null;
   if (user.vendorId) return user.vendorId;
-  const vendors = db.getVendors?.() || [];
+  const vendors = (procurementRepository as any).getVendors?.() || [];
   const matched = vendors.find((v: any) => v.id === user.id || v.userId === user.id || v.ownerId === user.id);
   if (matched) return matched.id;
   if (user.role === 'vendor' || (Array.isArray(user.roles) && user.roles.includes('vendor'))) {

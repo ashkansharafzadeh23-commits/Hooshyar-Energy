@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db } from "../db/index.js";
+import { investmentRepository } from '../repositories/investmentRepository.js';
 import { verifyAuthToken } from "./auth.js";
 import { checkProjectAccess } from "./projects.js";
 import { projectReadinessService } from "../services/projectReadinessService.js";
@@ -11,7 +11,7 @@ const router = Router();
 // Get opportunity for a specific project
 router.get("/projects/:projectId/opportunity", (req, res) => {
   const { projectId } = req.params;
-  const opp = db.getInvestmentOpportunityByProjectId(projectId);
+  const opp = investmentRepository.getInvestmentOpportunityByProjectId(projectId);
   if (!opp) return res.status(404).json({ error: "Opportunity not found for this project" });
   res.json(opp);
 });
@@ -30,13 +30,13 @@ router.post("/projects/:projectId/opportunity", verifyAuthToken, (req: any, res)
     return res.status(403).json({ error: "تنها مالک پروژه یا مدیر مجاز به ثبت و ویرایش فرصت سرمایه‌گذاری هستند" });
   }
 
-  const existing = db.getInvestmentOpportunityByProjectId(projectId);
+  const existing = investmentRepository.getInvestmentOpportunityByProjectId(projectId);
   if (existing) {
-    const updated = db.updateInvestmentOpportunity(existing.id, req.body);
+    const updated = investmentRepository.updateInvestmentOpportunity(existing.id, req.body);
     return res.json(updated);
   }
 
-  const newOpp = db.createInvestmentOpportunity({
+  const newOpp = investmentRepository.createInvestmentOpportunity({
     ...req.body,
     projectId,
     createdByUserId: user.id || access.project?.ownerId || 'unknown',
@@ -65,7 +65,7 @@ router.get("/projects/:projectId/readiness", verifyAuthToken, (req: any, res) =>
   }
 
   const project = access.project;
-  const opp = db.getInvestmentOpportunityByProjectId(projectId);
+  const opp = investmentRepository.getInvestmentOpportunityByProjectId(projectId);
   
   if (!opp && !project) return res.status(404).json({ error: "Project not found" });
 
@@ -96,7 +96,7 @@ router.get("/projects/:projectId/readiness", verifyAuthToken, (req: any, res) =>
 
 // Get all public/verified opportunities
 router.get("/opportunities", (req, res) => {
-  const allOpps = db.getInvestmentOpportunities();
+  const allOpps = investmentRepository.getInvestmentOpportunities();
   // Filter for PUBLIC_SUMMARY or VERIFIED_USERS (simplified)
   const publicOpps = allOpps.filter(o => o.visibility !== 'PRIVATE_MATCHING' && o.status === 'PUBLISHED');
   res.json(publicOpps);
@@ -104,7 +104,7 @@ router.get("/opportunities", (req, res) => {
 
 // Get opportunity by id
 router.get("/opportunities/:id", (req, res) => {
-  const opp = db.getInvestmentOpportunityById(req.params.id);
+  const opp = investmentRepository.getInvestmentOpportunityById(req.params.id as string);
   if (!opp) return res.status(404).json({ error: "Opportunity not found" });
   res.json(opp);
 });
@@ -113,7 +113,7 @@ router.get("/opportunities/:id", (req, res) => {
 router.post("/opportunities", verifyAuthToken, (req, res) => {
   try {
     const userId = (req as any).user?.id || 'unknown';
-    const newOpp = db.createInvestmentOpportunity({
+    const newOpp = investmentRepository.createInvestmentOpportunity({
       ...req.body,
       createdByUserId: userId,
       status: 'DRAFT',
@@ -127,12 +127,12 @@ router.post("/opportunities", verifyAuthToken, (req, res) => {
 
 // Calculate Readiness Score for an Opportunity
 router.get("/opportunities/:id/readiness", (req, res) => {
-  const opp = db.getInvestmentOpportunityById(req.params.id);
+  const opp = investmentRepository.getInvestmentOpportunityById(req.params.id as string);
   if (!opp) return res.status(404).json({ error: "Opportunity not found" });
 
   let project = null;
   if (opp.projectId) {
-    project = (db as any).getProjectById ? (db as any).getProjectById(opp.projectId) : null;
+    project = investmentRepository.getProjectById ? investmentRepository.getProjectById(opp.projectId) : null;
   }
 
   const score = projectReadinessService.calculateReadiness(project, opp);
@@ -144,7 +144,7 @@ router.get("/investor-profile/me", verifyAuthToken, (req, res) => {
   const userId = (req as any).user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   
-  const profile = db.getInvestorProfileByUserId(userId);
+  const profile = investmentRepository.getInvestorProfileByUserId(userId);
   if (!profile) return res.status(404).json({ error: "Profile not found" });
   res.json(profile);
 });
@@ -153,13 +153,13 @@ router.post("/investor-profile", verifyAuthToken, (req, res) => {
   const userId = (req as any).user?.id;
   if (!userId) return res.status(401).json({ error: "Unauthorized" });
   
-  const existing = db.getInvestorProfileByUserId(userId);
+  const existing = investmentRepository.getInvestorProfileByUserId(userId);
   if (existing) {
     // just return it or you could update it
     return res.json(existing);
   }
 
-  const newProfile = db.createInvestorProfile({
+  const newProfile = investmentRepository.createInvestorProfile({
     ...req.body,
     userId
   });
@@ -169,16 +169,16 @@ router.post("/investor-profile", verifyAuthToken, (req, res) => {
 // Generate Matches for Investor
 router.post("/matches/generate", verifyAuthToken, (req, res) => {
   const userId = (req as any).user?.id;
-  const profile = db.getInvestorProfileByUserId(userId);
+  const profile = investmentRepository.getInvestorProfileByUserId(userId);
   if (!profile) return res.status(400).json({ error: "Investor profile required" });
 
-  const allOpps = db.getInvestmentOpportunities().filter(o => o.status === 'PUBLISHED');
+  const allOpps = investmentRepository.getInvestmentOpportunities().filter(o => o.status === 'PUBLISHED');
   
   // Very simplistic match generation for demo
   allOpps.forEach(opp => {
     let project = null;
-    if (opp.projectId && (db as any).getProjectById) {
-      project = (db as any).getProjectById(opp.projectId);
+    if (opp.projectId && investmentRepository.getProjectById) {
+      project = investmentRepository.getProjectById(opp.projectId);
     }
     const readiness = projectReadinessService.calculateReadiness(project, opp);
     const scoreResult = projectMatchingService.calculateMatchScore(profile, opp, readiness);
@@ -186,9 +186,9 @@ router.post("/matches/generate", verifyAuthToken, (req, res) => {
     // Only create a match if score > 50
     if (scoreResult.score > 50) {
       // Check if already matched
-      const existingMatches = db.getProjectMatchesForInvestor(profile.id);
+      const existingMatches = investmentRepository.getProjectMatchesForInvestor(profile.id);
       if (!existingMatches.find(m => m.opportunityId === opp.id)) {
-        db.createProjectMatch({
+        investmentRepository.createProjectMatch({
           opportunityId: opp.id,
           investorProfileId: profile.id,
           score: scoreResult.score,
@@ -200,26 +200,26 @@ router.post("/matches/generate", verifyAuthToken, (req, res) => {
     }
   });
 
-  const matches = db.getProjectMatchesForInvestor(profile.id);
+  const matches = investmentRepository.getProjectMatchesForInvestor(profile.id);
   res.json(matches);
 });
 
 router.get("/matches/me", verifyAuthToken, (req, res) => {
   const userId = (req as any).user?.id;
-  const profile = db.getInvestorProfileByUserId(userId);
+  const profile = investmentRepository.getInvestorProfileByUserId(userId);
   if (!profile) return res.json([]);
   
-  const matches = db.getProjectMatchesForInvestor(profile.id);
+  const matches = investmentRepository.getProjectMatchesForInvestor(profile.id);
   res.json(matches);
 });
 
 router.post("/matches/:id/interest", verifyAuthToken, (req, res) => {
-  const match = db.updateProjectMatch(req.params.id, { status: 'INTERESTED', initiatedBy: 'INVESTOR' });
+  const match = investmentRepository.updateProjectMatch(req.params.id as string, { status: 'INTERESTED', initiatedBy: 'INVESTOR' });
   res.json(match);
 });
 
 router.post("/matches/:id/request-intro", verifyAuthToken, (req, res) => {
-  const match = db.updateProjectMatch(req.params.id, { status: 'INTRO_REQUESTED', initiatedBy: 'INVESTOR' });
+  const match = investmentRepository.updateProjectMatch(req.params.id as string, { status: 'INTRO_REQUESTED', initiatedBy: 'INVESTOR' });
   res.json(match);
 });
 

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { db } from '../db/index.js';
+import { financingRepository } from '../repositories/financingRepository.js';
 import { financeReadinessService } from '../services/financeReadinessService.js';
 import { debtServiceCalculator } from '../services/debtServiceCalculator.js';
 import { financialPartnerMatchingService } from '../services/financialPartnerMatchingService.js';
@@ -27,7 +27,7 @@ router.get('/projects/:projectId/financing-requests', (req: Request, res: Respon
     return res.status(access.status || 403).json({ error: access.error });
   }
 
-  const requests = db.getFinancingRequests(projectId);
+  const requests = financingRepository.getFinancingRequests(projectId);
   return res.json(requests);
 });
 
@@ -39,11 +39,11 @@ router.post('/projects/:projectId/financing-requests', (req: Request, res: Respo
     return res.status(access.status || 403).json({ error: access.error });
   }
 
-  const project = access.project || db.getProjectById(projectId);
+  const project = access.project || financingRepository.getProjectById(projectId);
   if (!project) return res.status(404).json({ error: 'Project not found' });
 
   // Get project financial model if available
-  const models = db.getFinancialModelsByProjectId(projectId);
+  const models = financingRepository.getFinancialModelsByProjectId(projectId);
   const activeModel = models.find((m: any) => m.status !== 'SUPERSEDED') || models[0];
 
   // STRICT VALIDATION: No invented project cost
@@ -81,7 +81,7 @@ router.post('/projects/:projectId/financing-requests', (req: Request, res: Respo
   const existingDebt = Number(req.body.existingDebt) || 0;
   const fundingGap = Math.max(0, totalProjectCost - (ownerEquity + securedCapital));
 
-  const newRequest = db.createFinancingRequest({
+  const newRequest = financingRepository.createFinancingRequest({
     projectId,
     requesterUserId: req.user.id,
     requesterOrganizationId: req.body.requesterOrganizationId || project.organizationId,
@@ -106,11 +106,11 @@ router.post('/projects/:projectId/financing-requests', (req: Request, res: Respo
   });
 
   // Automatically calculate initial readiness
-  const contracts = db.getProjectContracts ? db.getProjectContracts(projectId) : [];
-  const docs = db.getProjectDocuments ? db.getProjectDocuments(projectId) : [];
+  const contracts = financingRepository.getProjectContracts ? financingRepository.getProjectContracts(projectId) : [];
+  const docs = financingRepository.getProjectDocuments ? financingRepository.getProjectDocuments(projectId) : [];
   const readiness = financeReadinessService.evaluateReadiness(newRequest, project, activeModel, contracts.length, docs.length);
-  db.createFinanceReadinessSnapshot(readiness);
-  db.updateFinancingRequest(newRequest.id, { readinessScore: readiness.totalScore });
+  financingRepository.createFinanceReadinessSnapshot(readiness);
+  financingRepository.updateFinancingRequest(newRequest.id, { readinessScore: readiness.totalScore });
 
   return res.json({ request: newRequest, readiness });
 });
@@ -118,7 +118,7 @@ router.post('/projects/:projectId/financing-requests', (req: Request, res: Respo
 // 3. Get single financing request
 router.get('/financing-requests/:id', (req: Request, res: Response) => {
   const id = getParam(req.params.id);
-  const request = db.getFinancingRequestById(id);
+  const request = financingRepository.getFinancingRequestById(id);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
@@ -126,7 +126,7 @@ router.get('/financing-requests/:id', (req: Request, res: Response) => {
     return res.status(access.status || 403).json({ error: access.error });
   }
 
-  const snapshots = db.getFinanceReadinessSnapshots(request.id);
+  const snapshots = financingRepository.getFinanceReadinessSnapshots(request.id);
   const latestReadiness = snapshots[snapshots.length - 1];
   return res.json({ request, latestReadiness });
 });
@@ -134,7 +134,7 @@ router.get('/financing-requests/:id', (req: Request, res: Response) => {
 // 4. Update financing request
 router.patch('/financing-requests/:id', (req: Request, res: Response) => {
   const id = getParam(req.params.id);
-  const request = db.getFinancingRequestById(id);
+  const request = financingRepository.getFinancingRequestById(id);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
@@ -142,14 +142,14 @@ router.patch('/financing-requests/:id', (req: Request, res: Response) => {
     return res.status(access.status || 403).json({ error: access.error });
   }
 
-  const updated = db.updateFinancingRequest(id, req.body);
+  const updated = financingRepository.updateFinancingRequest(id, req.body);
   return res.json(updated);
 });
 
 // 5. Evaluate/Refresh Finance Readiness Score
 router.post('/financing-requests/:id/readiness', (req: Request, res: Response) => {
   const id = getParam(req.params.id);
-  const request = db.getFinancingRequestById(id);
+  const request = financingRepository.getFinancingRequestById(id);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
@@ -157,15 +157,15 @@ router.post('/financing-requests/:id/readiness', (req: Request, res: Response) =
     return res.status(access.status || 403).json({ error: access.error });
   }
 
-  const project = db.getProjectById(request.projectId);
-  const models = db.getFinancialModelsByProjectId(request.projectId);
+  const project = financingRepository.getProjectById(request.projectId);
+  const models = financingRepository.getFinancialModelsByProjectId(request.projectId);
   const activeModel = models.find((m: any) => m.status !== 'SUPERSEDED') || models[0];
-  const contracts = db.getProjectContracts ? db.getProjectContracts(request.projectId) : [];
-  const docs = db.getProjectDocuments ? db.getProjectDocuments(request.projectId) : [];
+  const contracts = financingRepository.getProjectContracts ? financingRepository.getProjectContracts(request.projectId) : [];
+  const docs = financingRepository.getProjectDocuments ? financingRepository.getProjectDocuments(request.projectId) : [];
 
   const snapshot = financeReadinessService.evaluateReadiness(request, project, activeModel, contracts.length, docs.length);
-  db.createFinanceReadinessSnapshot(snapshot);
-  db.updateFinancingRequest(request.id, { readinessScore: snapshot.totalScore, status: 'READY' });
+  financingRepository.createFinanceReadinessSnapshot(snapshot);
+  financingRepository.updateFinancingRequest(request.id, { readinessScore: snapshot.totalScore, status: 'READY' });
 
   return res.json(snapshot);
 });
@@ -173,7 +173,7 @@ router.post('/financing-requests/:id/readiness', (req: Request, res: Response) =
 // 6. Get/Run Financial Partner Matching
 router.get('/financing-requests/:id/matches', (req: Request, res: Response) => {
   const id = getParam(req.params.id);
-  const request = db.getFinancingRequestById(id);
+  const request = financingRepository.getFinancingRequestById(id);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
@@ -181,12 +181,12 @@ router.get('/financing-requests/:id/matches', (req: Request, res: Response) => {
     return res.status(access.status || 403).json({ error: access.error });
   }
 
-  const project = db.getProjectById(request.projectId);
-  const partners = db.getFinancialPartnerProfiles();
-  const products = db.getFinancingProducts();
+  const project = financingRepository.getProjectById(request.projectId);
+  const partners = financingRepository.getFinancialPartnerProfiles();
+  const products = financingRepository.getFinancingProducts();
 
   const matches = financialPartnerMatchingService.matchRequestWithPartners(request, project, partners, products);
-  db.saveFinancialPartnerMatches(request.id, matches);
+  financingRepository.saveFinancialPartnerMatches(request.id, matches);
 
   // Return matches joined with partner profile
   const enrichedMatches = matches.map(m => {
@@ -201,7 +201,7 @@ router.get('/financing-requests/:id/matches', (req: Request, res: Response) => {
 // 7. Submit Financing Request to a selected Partner
 router.post('/financing-requests/:id/submit-to-partner', (req: Request, res: Response) => {
   const id = getParam(req.params.id);
-  const request = db.getFinancingRequestById(id);
+  const request = financingRepository.getFinancingRequestById(id);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
@@ -214,10 +214,10 @@ router.post('/financing-requests/:id/submit-to-partner', (req: Request, res: Res
     return res.status(400).json({ error: 'financialPartnerProfileId is required' });
   }
 
-  const partner = db.getFinancialPartnerProfileById(financialPartnerProfileId);
+  const partner = financingRepository.getFinancialPartnerProfileById(financialPartnerProfileId);
   if (!partner) return res.status(404).json({ error: 'Financial partner not found' });
 
-  const submission = db.createFinancingSubmission({
+  const submission = financingRepository.createFinancingSubmission({
     financingRequestId: request.id,
     financialPartnerProfileId,
     status: 'SUBMITTED',
@@ -226,13 +226,13 @@ router.post('/financing-requests/:id/submit-to-partner', (req: Request, res: Res
   });
 
   // Update request status to SUBMITTED
-  db.updateFinancingRequest(request.id, { status: 'SUBMITTED', submittedAt: new Date().toISOString() });
+  financingRepository.updateFinancingRequest(request.id, { status: 'SUBMITTED', submittedAt: new Date().toISOString() });
 
   // Update project status if transition is valid
-  const project = db.getProjectById(request.projectId);
+  const project = financingRepository.getProjectById(request.projectId);
   if (project && (project.status === 'CONTRACTING' || project.status === 'EPC_SELECTED')) {
     if (canTransition(project.status, 'FINANCING')) {
-      db.updateProject(project.id, { status: 'FINANCING' });
+      financingRepository.updateProject(project.id, { status: 'FINANCING' });
     }
   }
 
@@ -241,8 +241,8 @@ router.post('/financing-requests/:id/submit-to-partner', (req: Request, res: Res
 
 // 8. Financial Partners Directory (all active profiles)
 router.get('/financial-partners', (req: Request, res: Response) => {
-  const partners = db.getFinancialPartnerProfiles();
-  const products = db.getFinancingProducts();
+  const partners = financingRepository.getFinancialPartnerProfiles();
+  const products = financingRepository.getFinancingProducts();
   const enriched = partners.map(p => ({
     ...p,
     products: products.filter(prod => prod.financialPartnerProfileId === p.id)
@@ -253,14 +253,14 @@ router.get('/financial-partners', (req: Request, res: Response) => {
 // 9. Partner Dashboard: list submissions for partner
 router.get('/financial-partners/requests', (req: Request, res: Response) => {
   const partnerId = req.query.partnerId as string;
-  const allSubmissions = db.getFinancingSubmissions();
+  const allSubmissions = financingRepository.getFinancingSubmissions();
   const submissions = partnerId ? allSubmissions.filter((s: any) => s.financialPartnerProfileId === partnerId) : allSubmissions;
 
   const enriched = submissions.map((sub: any) => {
-    const request = db.getFinancingRequestById(sub.financingRequestId);
-    const project = request ? db.getProjectById(request.projectId) : null;
-    const infoRequests = db.getFinanceInformationRequests(sub.id);
-    const offers = request ? db.getFinancingOffers(request.id).filter((o: any) => o.financialPartnerProfileId === sub.financialPartnerProfileId) : [];
+    const request = financingRepository.getFinancingRequestById(sub.financingRequestId);
+    const project = request ? financingRepository.getProjectById(request.projectId) : null;
+    const infoRequests = financingRepository.getFinanceInformationRequests(sub.id);
+    const offers = request ? financingRepository.getFinancingOffers(request.id).filter((o: any) => o.financialPartnerProfileId === sub.financialPartnerProfileId) : [];
     return {
       submission: sub,
       request,
@@ -276,29 +276,29 @@ router.get('/financial-partners/requests', (req: Request, res: Response) => {
 // 10. Partner Request Details with authorized data room
 router.get('/financial-partners/requests/:submissionId', (req: Request, res: Response) => {
   const submissionId = getParam(req.params.submissionId);
-  const submission = db.getFinancingSubmissionById(submissionId);
+  const submission = financingRepository.getFinancingSubmissionById(submissionId);
   if (!submission) return res.status(404).json({ error: 'Submission not found' });
 
-  const request = db.getFinancingRequestById(submission.financingRequestId);
+  const request = financingRepository.getFinancingRequestById(submission.financingRequestId);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
   let currentSubmission = submission;
   // Mark viewed if not already
   if (!submission.viewedAt) {
-    currentSubmission = db.updateFinancingSubmission(submission.id, { viewedAt: new Date().toISOString(), status: 'UNDER_REVIEW' }) || submission;
+    currentSubmission = financingRepository.updateFinancingSubmission(submission.id, { viewedAt: new Date().toISOString(), status: 'UNDER_REVIEW' }) || submission;
   }
 
-  const project = db.getProjectById(request.projectId);
-  const snapshots = db.getFinanceReadinessSnapshots(request.id);
+  const project = financingRepository.getProjectById(request.projectId);
+  const snapshots = financingRepository.getFinanceReadinessSnapshots(request.id);
   const readiness = snapshots[snapshots.length - 1];
   
   // Authorized documents only
-  const allDocs = (project && db.getProjectDocuments) ? db.getProjectDocuments(project.id) : [];
+  const allDocs = (project && financingRepository.getProjectDocuments) ? financingRepository.getProjectDocuments(project.id) : [];
   const authorizedDocs = allDocs.filter((d: any) => submission.authorizedDocumentIds.includes(d.id));
 
-  const infoRequests = db.getFinanceInformationRequests(submission.id);
-  const notes = db.getFinanceReviewNotes(submission.id);
-  const offers = db.getFinancingOffers(request.id).filter((o: any) => o.financialPartnerProfileId === submission.financialPartnerProfileId);
+  const infoRequests = financingRepository.getFinanceInformationRequests(submission.id);
+  const notes = financingRepository.getFinanceReviewNotes(submission.id);
+  const offers = financingRepository.getFinancingOffers(request.id).filter((o: any) => o.financialPartnerProfileId === submission.financialPartnerProfileId);
 
   return res.json({
     submission: currentSubmission,
@@ -315,10 +315,10 @@ router.get('/financial-partners/requests/:submissionId', (req: Request, res: Res
 // 11. Partner requests more information
 router.post('/financial-partners/requests/:submissionId/request-info', (req: Request, res: Response) => {
   const submissionId = getParam(req.params.submissionId);
-  const submission = db.getFinancingSubmissionById(submissionId);
+  const submission = financingRepository.getFinancingSubmissionById(submissionId);
   if (!submission) return res.status(404).json({ error: 'Submission not found' });
 
-  const infoReq = db.createFinanceInformationRequest({
+  const infoReq = financingRepository.createFinanceInformationRequest({
     financingSubmissionId: submission.id,
     requestedByUserId: req.user.id,
     title: req.body.title || 'درخواست مستندات تکمیلی پرونده اعتباری',
@@ -327,10 +327,10 @@ router.post('/financial-partners/requests/:submissionId/request-info', (req: Req
     dueDate: req.body.dueDate
   });
 
-  db.updateFinancingSubmission(submission.id, { status: 'MORE_INFO_REQUESTED' });
-  const request = db.getFinancingRequestById(submission.financingRequestId);
+  financingRepository.updateFinancingSubmission(submission.id, { status: 'MORE_INFO_REQUESTED' });
+  const request = financingRepository.getFinancingRequestById(submission.financingRequestId);
   if (request) {
-    db.updateFinancingRequest(request.id, { status: 'ADDITIONAL_INFO_REQUIRED' });
+    financingRepository.updateFinancingRequest(request.id, { status: 'ADDITIONAL_INFO_REQUIRED' });
   }
 
   return res.json(infoReq);
@@ -339,10 +339,10 @@ router.post('/financial-partners/requests/:submissionId/request-info', (req: Req
 // 12. Partner submits a Financing Offer
 router.post('/financial-partners/requests/:submissionId/offers', (req: Request, res: Response) => {
   const submissionId = getParam(req.params.submissionId);
-  const submission = db.getFinancingSubmissionById(submissionId);
+  const submission = financingRepository.getFinancingSubmissionById(submissionId);
   if (!submission) return res.status(404).json({ error: 'Submission not found' });
 
-  const request = db.getFinancingRequestById(submission.financingRequestId);
+  const request = financingRepository.getFinancingRequestById(submission.financingRequestId);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
   // STRICT VALIDATION: No invented interest rate
@@ -370,7 +370,7 @@ router.post('/financial-partners/requests/:submissionId/offers', (req: Request, 
   const gracePeriodMonths = Number(req.body.gracePeriodMonths) || 0;
   const repaymentType = req.body.repaymentType || request.repaymentPreference || 'EQUAL_INSTALLMENT';
 
-  const offer = db.createFinancingOffer({
+  const offer = financingRepository.createFinancingOffer({
     financingRequestId: request.id,
     financialPartnerProfileId: submission.financialPartnerProfileId,
     financingProductId: req.body.financingProductId,
@@ -387,8 +387,8 @@ router.post('/financial-partners/requests/:submissionId/offers', (req: Request, 
     notes: req.body.notes || 'پیشنهاد تسهیلات نهاد مالی'
   });
 
-  db.updateFinancingSubmission(submission.id, { status: 'OFFER_RECEIVED' });
-  db.updateFinancingRequest(request.id, { status: 'OFFERS_RECEIVED' });
+  financingRepository.updateFinancingSubmission(submission.id, { status: 'OFFER_RECEIVED' });
+  financingRepository.updateFinancingRequest(request.id, { status: 'OFFERS_RECEIVED' });
 
   return res.json(offer);
 });
@@ -396,7 +396,7 @@ router.post('/financial-partners/requests/:submissionId/offers', (req: Request, 
 // 13. Get all offers for a financing request
 router.get('/financing-requests/:id/offers', (req: Request, res: Response) => {
   const id = getParam(req.params.id);
-  const request = db.getFinancingRequestById(id);
+  const request = financingRepository.getFinancingRequestById(id);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
@@ -404,8 +404,8 @@ router.get('/financing-requests/:id/offers', (req: Request, res: Response) => {
     return res.status(access.status || 403).json({ error: access.error });
   }
 
-  const offers = db.getFinancingOffers(id);
-  const partners = db.getFinancialPartnerProfiles();
+  const offers = financingRepository.getFinancingOffers(id);
+  const partners = financingRepository.getFinancialPartnerProfiles();
   const enriched = offers.map((o: any) => ({
     ...o,
     partner: partners.find(p => p.id === o.financialPartnerProfileId)
@@ -416,7 +416,7 @@ router.get('/financing-requests/:id/offers', (req: Request, res: Response) => {
 // 14. Compare all offers for a financing request
 router.get('/financing-requests/:id/compare-offers', (req: Request, res: Response) => {
   const id = getParam(req.params.id);
-  const request = db.getFinancingRequestById(id);
+  const request = financingRepository.getFinancingRequestById(id);
   if (!request) return res.status(404).json({ error: 'Request not found' });
 
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
@@ -424,8 +424,8 @@ router.get('/financing-requests/:id/compare-offers', (req: Request, res: Respons
     return res.status(access.status || 403).json({ error: access.error });
   }
 
-  const offers = db.getFinancingOffers(request.id);
-  const partners = db.getFinancialPartnerProfiles();
+  const offers = financingRepository.getFinancingOffers(request.id);
+  const partners = financingRepository.getFinancialPartnerProfiles();
 
   const comparisons = offers.map((offer: any) => {
     const summary = financingOfferComparisonService.enrichAndScoreOffer(offer, request);
@@ -439,10 +439,10 @@ router.get('/financing-requests/:id/compare-offers', (req: Request, res: Respons
 // 15. Owner selects preferred offer
 router.post('/financing-offers/:id/select', (req: Request, res: Response) => {
   const id = getParam(req.params.id);
-  const offer = db.getFinancingOfferById(id);
+  const offer = financingRepository.getFinancingOfferById(id);
   if (!offer) return res.status(404).json({ error: 'Offer not found' });
 
-  const request = db.getFinancingRequestById(offer.financingRequestId);
+  const request = financingRepository.getFinancingRequestById(offer.financingRequestId);
   if (!request) return res.status(404).json({ error: 'Financing request not found' });
 
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
@@ -451,15 +451,15 @@ router.post('/financing-offers/:id/select', (req: Request, res: Response) => {
   }
 
   // Update this offer to SELECTED
-  db.updateFinancingOffer(offer.id, { status: 'SELECTED' });
+  financingRepository.updateFinancingOffer(offer.id, { status: 'SELECTED' });
 
   // Update request to OFFER_SELECTED
-  db.updateFinancingRequest(request.id, { status: 'OFFER_SELECTED' });
+  financingRepository.updateFinancingRequest(request.id, { status: 'OFFER_SELECTED' });
 
   // Mark other offers as DECLINED
-  const otherOffers = db.getFinancingOffers(request.id).filter((o: any) => o.id !== offer.id);
+  const otherOffers = financingRepository.getFinancingOffers(request.id).filter((o: any) => o.id !== offer.id);
   otherOffers.forEach((o: any) => {
-    db.updateFinancingOffer(o.id, { status: 'DECLINED' });
+    financingRepository.updateFinancingOffer(o.id, { status: 'DECLINED' });
   });
 
   return res.json({ success: true, selectedOfferId: offer.id, status: 'OFFER_SELECTED' });
@@ -468,10 +468,10 @@ router.post('/financing-offers/:id/select', (req: Request, res: Response) => {
 // 16. Record partner final approval and create Project Financing Record
 router.post('/financing-offers/:id/record-partner-approval', (req: Request, res: Response) => {
   const id = getParam(req.params.id);
-  const offer = db.getFinancingOfferById(id);
+  const offer = financingRepository.getFinancingOfferById(id);
   if (!offer) return res.status(404).json({ error: 'Offer not found' });
 
-  const request = db.getFinancingRequestById(offer.financingRequestId);
+  const request = financingRepository.getFinancingRequestById(offer.financingRequestId);
   if (!request) return res.status(404).json({ error: 'Financing request not found' });
 
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
@@ -480,11 +480,11 @@ router.post('/financing-offers/:id/record-partner-approval', (req: Request, res:
   }
 
   // Update offer and request status
-  db.updateFinancingOffer(offer.id, { status: 'FINAL' });
-  db.updateFinancingRequest(request.id, { status: 'APPROVED_BY_PARTNER' });
+  financingRepository.updateFinancingOffer(offer.id, { status: 'FINAL' });
+  financingRepository.updateFinancingRequest(request.id, { status: 'APPROVED_BY_PARTNER' });
 
   // Create Project Financing Record
-  const financingRecord = db.createProjectFinancingRecord({
+  const financingRecord = financingRepository.createProjectFinancingRecord({
     projectId: request.projectId,
     financingRequestId: request.id,
     financingOfferId: offer.id,
@@ -500,10 +500,10 @@ router.post('/financing-offers/:id/record-partner-approval', (req: Request, res:
   });
 
   // Transition project from FINANCING to PROCUREMENT if permissible
-  const project = db.getProjectById(request.projectId);
+  const project = financingRepository.getProjectById(request.projectId);
   if (project && project.status === 'FINANCING') {
     if (canTransition(project.status, 'PROCUREMENT')) {
-      db.updateProject(project.id, { status: 'PROCUREMENT' });
+      financingRepository.updateProject(project.id, { status: 'PROCUREMENT' });
     }
   }
 
@@ -518,14 +518,14 @@ router.get('/projects/:projectId/financing', (req: Request, res: Response) => {
     return res.status(access.status || 403).json({ error: access.error });
   }
 
-  const records = db.getProjectFinancingRecords(projectId);
-  const requests = db.getFinancingRequests(projectId);
+  const records = financingRepository.getProjectFinancingRecords(projectId);
+  const requests = financingRepository.getFinancingRequests(projectId);
   const activeRecord = records[records.length - 1];
   const activeRequest = requests[requests.length - 1];
 
   let partner = null;
   if (activeRecord) {
-    partner = db.getFinancialPartnerProfileById(activeRecord.financialPartnerProfileId);
+    partner = financingRepository.getFinancialPartnerProfileById(activeRecord.financialPartnerProfileId);
   }
 
   return res.json({

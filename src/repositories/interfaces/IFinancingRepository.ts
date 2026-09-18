@@ -1,0 +1,30 @@
+export interface IFinancingRepository {
+  getFinancingRequests(projectId: string): any[];
+  getProjectById(projectId: string): any;
+  getFinancialModelsByProjectId(projectId: string): any[];
+  createFinancingRequest(request: any): any;
+  getProjectContracts(projectId: string): any[];
+  getProjectDocuments(projectId: string): any[];
+  createFinanceReadinessSnapshot(snapshot: any): any;
+  updateFinancingRequest(id: string, updates: any): any;
+  getFinancingRequestById(id: string): any;
+  getFinanceReadinessSnapshots(requestId: string): any[];
+  getFinancialPartnerProfiles(): any[];
+  getFinancingProducts(): any[];
+  saveFinancialPartnerMatches(requestId: string, matches: any[]): any;
+  getFinancialPartnerProfileById(id: string): any;
+  createFinancingSubmission(submission: any): any;
+  updateProject(projectId: string, updates: any): any;
+  getFinancingSubmissions(): any[];
+  getFinanceInformationRequests(submissionId: string): any[];
+  getFinancingOffers(requestId: string): any[];
+  getFinancingSubmissionById(id: string): any;
+  updateFinancingSubmission(id: string, updates: any): any;
+  getFinanceReviewNotes(submissionId: string): any[];
+  createFinanceInformationRequest(req: any): any;
+  createFinancingOffer(offer: any): any;
+  getFinancingOfferById(id: string): any;
+  updateFinancingOffer(id: string, updates: any): any;
+  createProjectFinancingRecord(record: any): any;
+  getProjectFinancingRecords(projectId: string): any[];
+}
