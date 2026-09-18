@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import { db } from "../db/index.js";
+import { assetRepository } from '../repositories/assetRepository.js';
 import { verifyAuthToken, requireAuth } from "./auth.js";
 
 const assetsRouter = express.Router();
@@ -10,7 +10,7 @@ const authMW = [verifyAuthToken, requireAuth];
 // GET /api/assets -> public list (only APPROVED for non-owners, all for owners)
 assetsRouter.get("/", verifyAuthToken, (req: Request, res: Response) => {
   const user = req.user;
-  const allAssets = db.getSolarAssets();
+  const allAssets = assetRepository.getSolarAssets();
   
   if (user?.roles?.includes("ADMIN")) {
     return res.json(allAssets);
@@ -34,7 +34,7 @@ assetsRouter.post("/", authMW, (req: Request, res: Response) => {
 
   const { projectName, location, capacityKw, technology, commissionDate, projectLifetimeYears } = req.body;
   
-  const newAsset = db.createSolarAsset({
+  const newAsset = assetRepository.createSolarAsset({
     projectName: projectName || "پروژه جدید",
     ownerId: user.id,
     epcCompanyId: null,
@@ -49,7 +49,7 @@ assetsRouter.post("/", authMW, (req: Request, res: Response) => {
     verificationStatus: "not_verified",
   });
 
-  db.createAssetAuditLog({
+  assetRepository.createAssetAuditLog({
     assetId: newAsset.id,
     userId: user.id,
     action: "asset_created",
@@ -62,7 +62,7 @@ assetsRouter.post("/", authMW, (req: Request, res: Response) => {
 
 // GET /api/assets/:id
 assetsRouter.get("/:id", verifyAuthToken, (req: Request, res: Response) => {
-  const asset = db.getSolarAssetById((req.params.id as string));
+  const asset = assetRepository.getSolarAssetById((req.params.id as string));
   if (!asset) return res.status(404).json({ error: "Not found" });
 
   const user = req.user;
@@ -73,13 +73,13 @@ assetsRouter.get("/:id", verifyAuthToken, (req: Request, res: Response) => {
     return res.status(403).json({ error: "Access denied" });
   }
 
-  const documents = db.getAssetDocuments(asset.id);
+  const documents = assetRepository.getAssetDocuments(asset.id);
   res.json({ ...asset, documents: isOwner || isAdmin ? documents : documents.filter(d => d.verificationStatus === 'verified') });
 });
 
 // PUT /api/assets/:id
 assetsRouter.put("/:id", authMW, (req: Request, res: Response) => {
-  const asset = db.getSolarAssetById((req.params.id as string));
+  const asset = assetRepository.getSolarAssetById((req.params.id as string));
   if (!asset) return res.status(404).json({ error: "Not found" });
 
   const user = req.user;
@@ -104,16 +104,16 @@ assetsRouter.put("/:id", authMW, (req: Request, res: Response) => {
   // Only allow owner to transition DRAFT -> SUBMITTED
   if (projectStatus === "SUBMITTED" && asset.projectStatus === "DRAFT" && isOwner) {
       // Check documents logic
-      const docs = db.getAssetDocuments(asset.id);
+      const docs = assetRepository.getAssetDocuments(asset.id);
       if (docs.length === 0) {
           return res.status(400).json({ error: "Cannot submit without documents" });
       }
       updates.projectStatus = "SUBMITTED";
   }
 
-  const updatedAsset = db.updateSolarAsset(asset.id, updates);
+  const updatedAsset = assetRepository.updateSolarAsset(asset.id, updates);
 
-  db.createAssetAuditLog({
+  assetRepository.createAssetAuditLog({
     assetId: asset.id,
     userId: user.id,
     action: "asset_updated",
@@ -126,7 +126,7 @@ assetsRouter.put("/:id", authMW, (req: Request, res: Response) => {
 
 // PUT /api/assets/:id/status (ADMIN ONLY)
 assetsRouter.put("/:id/status", authMW, (req: Request, res: Response) => {
-  const asset = db.getSolarAssetById((req.params.id as string));
+  const asset = assetRepository.getSolarAssetById((req.params.id as string));
   if (!asset) return res.status(404).json({ error: "Not found" });
 
   const user = req.user;
@@ -137,9 +137,9 @@ assetsRouter.put("/:id/status", authMW, (req: Request, res: Response) => {
   const { projectStatus, verificationNotes } = req.body;
   if (!projectStatus) return res.status(400).json({ error: "projectStatus required" });
 
-  const updatedAsset = db.updateSolarAsset(asset.id, { projectStatus });
+  const updatedAsset = assetRepository.updateSolarAsset(asset.id, { projectStatus });
 
-  db.createAssetAuditLog({
+  assetRepository.createAssetAuditLog({
     assetId: asset.id,
     userId: user.id,
     action: "status_changed",
@@ -152,7 +152,7 @@ assetsRouter.put("/:id/status", authMW, (req: Request, res: Response) => {
 
 // POST /api/assets/:id/documents
 assetsRouter.post("/:id/documents", authMW, (req: Request, res: Response) => {
-  const asset = db.getSolarAssetById((req.params.id as string));
+  const asset = assetRepository.getSolarAssetById((req.params.id as string));
   if (!asset) return res.status(404).json({ error: "Not found" });
 
   const user = req.user;
@@ -163,7 +163,7 @@ assetsRouter.post("/:id/documents", authMW, (req: Request, res: Response) => {
   const { documentType, fileUrl } = req.body;
   if (!documentType || !fileUrl) return res.status(400).json({ error: "documentType and fileUrl required" });
 
-  const newDoc = db.createAssetDocument({
+  const newDoc = assetRepository.createAssetDocument({
     assetId: asset.id,
     documentType,
     fileUrl,
@@ -172,7 +172,7 @@ assetsRouter.post("/:id/documents", authMW, (req: Request, res: Response) => {
     verificationNotes: "",
   });
 
-  db.createAssetAuditLog({
+  assetRepository.createAssetAuditLog({
     assetId: asset.id,
     userId: user.id,
     action: "document_uploaded",

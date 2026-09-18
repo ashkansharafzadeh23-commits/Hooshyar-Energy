@@ -64,5 +64,13 @@ export const assetRepository = {
   createAssetPerformanceBaseline: (baseline: Omit<AssetPerformanceBaseline, 'id' | 'calculatedAt'>): AssetPerformanceBaseline => db.createAssetPerformanceBaseline(baseline),
 
   getFinalProjectCostSummaries: (projectId: string): FinalProjectCostSummary[] => db.getFinalProjectCostSummaries(projectId),
-  createFinalProjectCostSummary: (summary: Omit<FinalProjectCostSummary, 'id' | 'calculatedAt'>): FinalProjectCostSummary => db.createFinalProjectCostSummary(summary)
+  createFinalProjectCostSummary: (summary: Omit<FinalProjectCostSummary, 'id' | 'calculatedAt'>): FinalProjectCostSummary => db.createFinalProjectCostSummary(summary),
+  // Old Solar Asset methods
+  getSolarAssets: (): any[] => (db as any).getSolarAssets(),
+  getSolarAssetById: (id: string): any => (db as any).getSolarAssetById(id),
+  createSolarAsset: (asset: any): any => (db as any).createSolarAsset(asset),
+  updateSolarAsset: (id: string, updates: any): any => (db as any).updateSolarAsset(id, updates),
+  getAssetDocuments: (assetId: string): any[] => (db as any).getAssetDocuments(assetId),
+  createAssetDocument: (doc: any): any => (db as any).createAssetDocument(doc),
+  createAssetAuditLog: (log: any): any => (db as any).createAssetAuditLog(log),
 };

@@ -27,4 +27,14 @@ export interface IFinancingRepository {
   updateFinancingOffer(id: string, updates: any): any;
   createProjectFinancingRecord(record: any): any;
   getProjectFinancingRecords(projectId: string): any[];
+  getFinancialModelById(id: string): any;
+  getFinancialAssumptionSetById(id: string): any;
+  getRFQsByProjectId(projectId: string): any[];
+  getBidById(id: string): any;
+  getBidsByRfqId(rfqId: string): any[];
+  createFinancialAssumptionSet(data: any): any;
+  createFinancialModel(data: any): any;
+  updateFinancialModel(id: string, data: any): any;
+  createFinancialScenario(data: any): any;
+  getFinancialScenariosByModelId(modelId: string): any[];
 }

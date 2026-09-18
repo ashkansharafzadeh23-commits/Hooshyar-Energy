@@ -5,7 +5,8 @@ import { projectRepository } from '../repositories/projectRepository.js';
 import { generateRFQCode, generateBidCode } from '../services/rfqCodeService.js';
 import { compareBids, scoreBid } from '../services/rfqScoringService.js';
 import { validateTransition } from '../services/projectLifecycleService.js';
-import { db } from '../db/index.js';
+import { userRepository } from '../repositories/userRepository.js';
+import { organizationRepository } from '../repositories/organizationRepository.js';
 import { EPCBid, ProjectRFQ } from '../types/rfq.js';
 
 const router = express.Router();
@@ -13,9 +14,9 @@ router.use(verifyAuthToken);
 
 // Helper to check EPC organization for current user
 function getUserOrganization(userId: string) {
-  const orgs = db.getOrganizations?.() || [];
+  const orgs = organizationRepository.findAll?.() || [];
   // Find organization where user is owner or member, or check if user has company profile
-  const user = db.getUserById?.(userId);
+  const user = userRepository.getUserById?.(userId);
   return orgs.find((o: any) => o.createdById === userId || o.adminUserIds?.includes(userId));
 }
 
@@ -338,7 +339,7 @@ router.get('/:rfqId/bids', (req, res) => {
   const isOwner = project && (project.ownerId === user.id || user.role === 'admin');
 
   const allBids = rfqRepository.getBidsByRfqId(rfq.id);
-  const orgs = db.getOrganizations?.() || [];
+  const orgs = organizationRepository.findAll?.() || [];
   const orgMap = new Map<string, any>(orgs.map((o: any) => [o.id, o]));
 
   if (isOwner) {
@@ -383,7 +384,7 @@ router.get('/:rfqId/compare', (req, res) => {
   }
 
   const bids = rfqRepository.getBidsByRfqId(rfq.id);
-  const orgs = db.getOrganizations?.() || [];
+  const orgs = organizationRepository.findAll?.() || [];
 
   const comparison = compareBids(rfq, bids, orgs);
   res.json(comparison);
@@ -410,7 +411,7 @@ router.post('/:rfqId/bids', (req, res) => {
 
   if (!epcOrgId) {
     // Auto-create/register an EPC organization profile for this user if needed
-    const newOrg = db.createOrganization?.({
+    const newOrg = organizationRepository.create?.({
       legalName: req.body.companyName || user.name || 'شرکت مهندسی و پیمانکاری',
       tradeName: req.body.companyName || user.name || 'پیمانکار EPC',
       type: 'EPC_CONTRACTOR',
@@ -482,7 +483,7 @@ router.post('/:rfqId/bids', (req, res) => {
 
   // Calculate score & risk flags
   const allBidsWithNew = [...existingBids, newBid];
-  const org = db.getOrganizationById?.(epcOrgId);
+  const org = organizationRepository.findById?.(epcOrgId);
   const scoreResult = scoreBid(newBid, rfq, allBidsWithNew, org);
   newBid.scoreBreakdown = scoreResult.breakdown;
   newBid.riskFlags = scoreResult.risks;
@@ -598,7 +599,7 @@ router.put('/bids/:bidId', (req, res) => {
 
   // Recalculate score & risks
   const allBids = rfqRepository.getBidsByRfqId(rfq.id);
-  const epcOrg = db.getOrganizationById?.(updatedBid.epcOrganizationId);
+  const epcOrg = organizationRepository.findById?.(updatedBid.epcOrganizationId);
   const scoreResult = scoreBid(updatedBid, rfq, allBids, epcOrg);
   updatedBid.scoreBreakdown = scoreResult.breakdown;
   updatedBid.riskFlags = scoreResult.risks;
@@ -693,7 +694,7 @@ router.post('/bids/:bidId/select', (req, res) => {
   projectRepository.update(project.id, { status: 'EPC_SELECTED' });
 
   // 5. Add EPC organization to ProjectMember as 'EPC'
-  const org = db.getOrganizationById?.(winningBid.epcOrganizationId);
+  const org = organizationRepository.findById?.(winningBid.epcOrganizationId);
   const epcUserId = org?.createdById || winningBid.epcOrganizationId;
 
   const existingMembers = projectRepository.getMembers(project.id);
@@ -810,7 +811,7 @@ router.post('/:rfqId/select-epc', (req, res) => {
 
   // 5. Add EPC organization to ProjectMember as 'EPC'
   // Find a user associated with this EPC organization, or use a placeholder/org reference
-  const org = db.getOrganizationById?.(winningBid.epcOrganizationId);
+  const org = organizationRepository.findById?.(winningBid.epcOrganizationId);
   const epcUserId = org?.createdById || winningBid.epcOrganizationId;
 
   const existingMembers = projectRepository.getMembers(project.id);

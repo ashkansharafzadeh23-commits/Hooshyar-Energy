@@ -1,5 +1,5 @@
 import express from "express";
-import { db } from "../db/index.js";
+import { adsRepository } from '../repositories/adsRepository.js';
 
 const adsRouter = express.Router();
 
@@ -10,7 +10,7 @@ adsRouter.post("/create", (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  const newAd = db.createAd({
+  const newAd = adsRepository.createAd({
     ownerType,
     ownerId,
     title,
@@ -30,7 +30,7 @@ adsRouter.post("/create", (req, res) => {
 
 adsRouter.get("/list", (req, res) => {
   const placement = req.query.placement as string | undefined;
-  let ads = db.getAds(placement);
+  let ads = adsRepository.getAds(placement);
   
   // Filter by date
   const now = new Date();

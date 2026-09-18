@@ -37,7 +37,7 @@ export const monitoringRepository = {
 
   // Telemetry Readings
   getReadings: (
-    assetId: string,
+    assetId?: string,
     filters?: {
       from?: string;
       to?: string;
@@ -48,7 +48,7 @@ export const monitoringRepository = {
   ): TelemetryReading[] => {
     return db.getTelemetryReadings(assetId, filters);
   },
-  getTelemetryReadings: (assetId: string, filters?: any): TelemetryReading[] => {
+  getTelemetryReadings: (assetId?: string, filters?: any): TelemetryReading[] => {
     return db.getTelemetryReadings(assetId, filters);
   },
 
@@ -65,11 +65,11 @@ export const monitoringRepository = {
   },
 
   // Performance Snapshots
-  getPerformanceSnapshots: (assetId: string): AssetPerformanceSnapshot[] => {
+  getPerformanceSnapshots: (assetId?: string): AssetPerformanceSnapshot[] => {
     return db.getAssetPerformanceSnapshots(assetId);
   },
 
-  getLatestPerformanceSnapshot: (assetId: string): AssetPerformanceSnapshot | null => {
+  getLatestPerformanceSnapshot: (assetId?: string): AssetPerformanceSnapshot | null => {
     return db.getLatestAssetPerformanceSnapshot(assetId);
   },
 
@@ -80,11 +80,11 @@ export const monitoringRepository = {
   },
 
   // Health Assessments
-  getHealthAssessments: (assetId: string): AssetHealthAssessment[] => {
+  getHealthAssessments: (assetId?: string): AssetHealthAssessment[] => {
     return db.getAssetHealthAssessments(assetId);
   },
 
-  getLatestHealthAssessment: (assetId: string): AssetHealthAssessment | null => {
+  getLatestHealthAssessment: (assetId?: string): AssetHealthAssessment | null => {
     return db.getLatestAssetHealthAssessment(assetId);
   },
 
@@ -92,5 +92,10 @@ export const monitoringRepository = {
     assessment: Omit<AssetHealthAssessment, 'id' | 'calculatedAt'>
   ): AssetHealthAssessment => {
     return db.createAssetHealthAssessment(assessment);
+  },
+  
+  // Alerts
+  getAllAlerts: (): any[] => {
+    return (db as any).getAlerts ? (db as any).getAlerts() : [];
   }
 };

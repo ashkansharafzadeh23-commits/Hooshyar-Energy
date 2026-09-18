@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db } from '../db/index.js';
+import { financingRepository } from '../repositories/financingRepository.js';
 import { financeService } from '../services/financeService.js';
 import { ProjectFinancialModel, FinancialAssumptionSet, FinancialScenario } from '../types/finance.js';
 import { verifyAuthToken } from './auth.js';
@@ -41,19 +41,19 @@ function requireFinanceAccess(allowedMemberRoles?: ProjectMemberRole[], requireO
 
 // Get financial models by project ID
 router.get('/projects/:projectId/financial-models', requireFinanceAccess(), (req, res) => {
-  const models = db.getFinancialModelsByProjectId(req.params.projectId);
+  const models = financingRepository.getFinancialModelsByProjectId(req.params.projectId);
   res.json(models);
 });
 
 // Get financial model by ID with assumptions
 router.get('/projects/:projectId/financial-models/:modelId', requireFinanceAccess(), (req, res) => {
   const { projectId, modelId } = req.params;
-  const model = db.getFinancialModelById(modelId);
+  const model = financingRepository.getFinancialModelById(modelId);
   if (!model || model.projectId !== projectId) {
     return res.status(404).json({ error: 'مدل مالی متعلق به این پروژه یافت نشد' });
   }
 
-  const assumptions = db.getFinancialAssumptionSetById(model.assumptionSetId);
+  const assumptions = financingRepository.getFinancialAssumptionSetById(model.assumptionSetId);
   res.json({ model, assumptions });
 });
 
@@ -65,12 +65,12 @@ router.post('/projects/:projectId/financial-models/from-bid', requireFinanceAcce
   const project = req.project;
 
   // Look for bid either by bidId or find selected bid for project's RFQ
-  const rfqs = db.getRFQsByProjectId ? db.getRFQsByProjectId(projectId) : [];
+  const rfqs = financingRepository.getRFQsByProjectId ? financingRepository.getRFQsByProjectId(projectId) : [];
   let bid = null;
-  if (bidId && db.getBidById) {
-    bid = db.getBidById(bidId);
-  } else if (rfqs.length > 0 && db.getBidsByRfqId) {
-    const bids = db.getBidsByRfqId(rfqs[0].id);
+  if (bidId && financingRepository.getBidById) {
+    bid = financingRepository.getBidById(bidId);
+  } else if (rfqs.length > 0 && financingRepository.getBidsByRfqId) {
+    const bids = financingRepository.getBidsByRfqId(rfqs[0].id);
     bid = bids.find((b: any) => b.status === 'SELECTED') || bids[0];
   }
 
@@ -191,14 +191,14 @@ router.post('/projects/:projectId/financial-models/from-bid', requireFinanceAcce
     residualValuePercent: 5
   };
 
-  const savedAssumptions = db.createFinancialAssumptionSet(newAssumptions);
+  const savedAssumptions = financingRepository.createFinancialAssumptionSet(newAssumptions);
   (newModel as any).assumptionSetId = savedAssumptions.id;
 
-  const savedModel = db.createFinancialModel(newModel);
+  const savedModel = financingRepository.createFinancialModel(newModel);
 
   // Calculate results immediately
   const results = financeService.calculateModel(savedModel, savedAssumptions);
-  const updatedModel = db.updateFinancialModel(savedModel.id, {
+  const updatedModel = financingRepository.updateFinancialModel(savedModel.id, {
     results,
     status: 'CALCULATED',
     calculatedAt: new Date().toISOString()
@@ -212,7 +212,7 @@ router.post('/projects/:projectId/financial-models', requireFinanceAccess(['OWNE
   const { model, assumptions } = req.body;
   if (!model) return res.status(400).json({ error: 'داده‌های مدل مالی ارسال نشده است' });
   
-  const newAssumptions = db.createFinancialAssumptionSet({
+  const newAssumptions = financingRepository.createFinancialAssumptionSet({
     ...assumptions,
     projectId: req.params.projectId
   });
@@ -220,12 +220,12 @@ router.post('/projects/:projectId/financial-models', requireFinanceAccess(['OWNE
   model.projectId = req.params.projectId;
   model.createdByUserId = req.user?.id || model.createdByUserId;
   
-  const newModel = db.createFinancialModel(model);
+  const newModel = financingRepository.createFinancialModel(model);
   
   // Auto-calculate if inputs permit
   try {
     const results = financeService.calculateModel(newModel, newAssumptions);
-    const updatedModel = db.updateFinancialModel(newModel.id, {
+    const updatedModel = financingRepository.updateFinancialModel(newModel.id, {
       results,
       status: 'CALCULATED',
       calculatedAt: new Date().toISOString()
@@ -239,17 +239,17 @@ router.post('/projects/:projectId/financial-models', requireFinanceAccess(['OWNE
 // Calculate financial model
 router.post('/projects/:projectId/financial-models/:modelId/calculate', requireFinanceAccess(), (req, res) => {
   const { projectId, modelId } = req.params;
-  const model = db.getFinancialModelById(modelId);
+  const model = financingRepository.getFinancialModelById(modelId);
   if (!model || model.projectId !== projectId) {
     return res.status(404).json({ error: 'مدل مالی متعلق به این پروژه یافت نشد' });
   }
   
-  const assumptions = db.getFinancialAssumptionSetById(model.assumptionSetId);
+  const assumptions = financingRepository.getFinancialAssumptionSetById(model.assumptionSetId);
   if (!assumptions) return res.status(404).json({ error: 'مفروضات مالی مدل یافت نشد' });
   
   const results = financeService.calculateModel(model, assumptions);
   
-  const updatedModel = db.updateFinancialModel(model.id, { 
+  const updatedModel = financingRepository.updateFinancialModel(model.id, { 
     results, 
     status: 'CALCULATED',
     calculatedAt: new Date().toISOString() 
@@ -260,12 +260,12 @@ router.post('/projects/:projectId/financial-models/:modelId/calculate', requireF
 // Create scenario
 router.post('/projects/:projectId/financial-models/:modelId/scenarios', requireFinanceAccess(['OWNER', 'EPC', 'CONSULTANT', 'INVESTOR'], false), (req, res) => {
   const { projectId, modelId } = req.params;
-  const model = db.getFinancialModelById(modelId);
+  const model = financingRepository.getFinancialModelById(modelId);
   if (!model || model.projectId !== projectId) {
     return res.status(404).json({ error: 'مدل مالی متعلق به این پروژه یافت نشد' });
   }
   
-  const assumptions = db.getFinancialAssumptionSetById(model.assumptionSetId);
+  const assumptions = financingRepository.getFinancialAssumptionSetById(model.assumptionSetId);
   if (!assumptions) return res.status(404).json({ error: 'مفروضات مالی مدل یافت نشد' });
   
   const scenarioData = req.body;
@@ -276,19 +276,19 @@ router.post('/projects/:projectId/financial-models/:modelId/scenarios', requireF
   const results = financeService.calculateScenario(scenarioData, model, assumptions);
   scenarioData.results = results;
   
-  const newScenario = db.createFinancialScenario(scenarioData);
+  const newScenario = financingRepository.createFinancialScenario(scenarioData);
   res.json(newScenario);
 });
 
 // Get scenarios
 router.get('/projects/:projectId/financial-models/:modelId/scenarios', requireFinanceAccess(), (req, res) => {
   const { projectId, modelId } = req.params;
-  const model = db.getFinancialModelById(modelId);
+  const model = financingRepository.getFinancialModelById(modelId);
   if (!model || model.projectId !== projectId) {
     return res.status(404).json({ error: 'مدل مالی متعلق به این پروژه یافت نشد' });
   }
 
-  const scenarios = db.getFinancialScenariosByModelId(modelId);
+  const scenarios = financingRepository.getFinancialScenariosByModelId(modelId);
   res.json(scenarios);
 });
 

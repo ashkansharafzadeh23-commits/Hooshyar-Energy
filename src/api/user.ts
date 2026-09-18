@@ -1,5 +1,5 @@
 import express from "express";
-import { db } from "../db/index.js";
+import { userRepository } from '../repositories/userRepository.js';
 import { verifyAuthToken, requireAuth } from "./auth.js";
 
 const userRouter = express.Router();
@@ -12,7 +12,7 @@ userRouter.get("/history", (req, res) => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
   
-  const history = db.getHistoryByUserId(userId);
+  const history = userRepository.getHistoryByUserId(userId);
   
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
@@ -35,7 +35,7 @@ userRouter.post("/request-role", (req, res) => {
   // Since User interface has roles?: string[], we could do:
   const currentRoles = user.roles || ["customer"];
   if (!currentRoles.includes("PROJECT_OWNER_PENDING")) {
-    db.updateUser(user.id, { roles: [...currentRoles, "PROJECT_OWNER_PENDING"] });
+    userRepository.updateUser(user.id, { roles: [...currentRoles, "PROJECT_OWNER_PENDING"] });
   }
   res.json({ message: "Request submitted" });
 });
@@ -45,14 +45,14 @@ userRouter.put("/:id/approve-role", (req, res) => {
   if (!admin.roles?.includes("ADMIN")) {
     return res.status(403).json({ error: "Require ADMIN role" });
   }
-  const targetUser = db.getUserById(req.params.id);
+  const targetUser = userRepository.getUserById(req.params.id);
   if (!targetUser) return res.status(404).json({ error: "User not found" });
 
   const currentRoles = targetUser.roles || ["customer"];
   const newRoles = currentRoles.filter(r => r !== "PROJECT_OWNER_PENDING");
   if (!newRoles.includes("PROJECT_OWNER")) newRoles.push("PROJECT_OWNER");
 
-  db.updateUser(targetUser.id, { roles: newRoles });
+  userRepository.updateUser(targetUser.id, { roles: newRoles });
   res.json({ message: "Role approved" });
 });
 
@@ -62,7 +62,7 @@ userRouter.get("/pending-roles", (req, res) => {
   if (!admin.roles?.includes("ADMIN")) {
     return res.status(403).json({ error: "Require ADMIN role" });
   }
-  const allUsers = db.getUsers();
+  const allUsers = userRepository.getUsers();
   const pending = allUsers.filter(u => u.roles?.includes("PROJECT_OWNER_PENDING"));
   res.json(pending);
 });
@@ -72,7 +72,7 @@ userRouter.post("/dev-make-admin", (req, res) => {
   const user = req.user!;
   const currentRoles = user.roles || ["customer"];
   if (!currentRoles.includes("ADMIN")) {
-    db.updateUser(user.id, { roles: [...currentRoles, "ADMIN", "PROJECT_OWNER"] });
+    userRepository.updateUser(user.id, { roles: [...currentRoles, "ADMIN", "PROJECT_OWNER"] });
   }
   res.json({ message: "Admin granted" });
 });

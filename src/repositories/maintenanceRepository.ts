@@ -89,6 +89,9 @@ export const maintenanceRepository = {
     return db.getMaintenanceCases(projectId, assetId);
   },
 
+  getAllCases: (): MaintenanceCase[] => {
+    return db.getMaintenanceCases();
+  },
   getCaseById: (id: string): MaintenanceCase | undefined => {
     return db.getMaintenanceCaseById(id);
   },

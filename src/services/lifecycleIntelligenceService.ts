@@ -1,4 +1,9 @@
-import { db } from '../db/index.js';
+import { projectRepository } from '../repositories/projectRepository.js';
+import { executionRepository } from '../repositories/executionRepository.js';
+import { financingRepository } from '../repositories/financingRepository.js';
+import { rfqRepository } from '../repositories/rfqRepository.js';
+import { procurementRepository } from '../repositories/procurementRepository.js';
+import { assetRepository } from '../repositories/assetRepository.js';
 import { portfolioRepository } from '../repositories/portfolioRepository.js';
 import { portfolioAggregationService } from './portfolioAggregationService.js';
 import { EnergyProject, ProjectStatus } from '../types/project.js';
@@ -65,51 +70,51 @@ export const lifecycleIntelligenceService = {
           recommendedAction = 'تکمیل مشخصات فنی اولیه و موقعیت مکانی برای ورود به ارزیابی فنی و اقتصادی';
         }
       } else if (status === 'FEASIBILITY') {
-        const finModels = db.getFinancialModelsByProjectId ? db.getFinancialModelsByProjectId(project.id) : [];
+        const finModels = financingRepository.getFinancialModelsByProjectId ? financingRepository.getFinancialModelsByProjectId(project.id) : [];
         if (!finModels || finModels.length === 0) {
           missingFields.push('مدل مالی و امکان‌سنجی اولیه');
           recommendedAction = 'ثبت مدل ارزیابی مالی اولیه و بازده سرمایه قبل از ورود به فاز مناقصه';
         }
       } else if (status === 'READY_FOR_RFQ' || status === 'RFQ_OPEN') {
-        const rfqs = db.getProjectRFQsByProjectId(project.id) || [];
+        const rfqs = rfqRepository.findRFQsByProjectId(project.id) || [];
         if (rfqs.length === 0) {
           missingFields.push('اسناد مناقصه (RFQ)');
           recommendedAction = 'ایجاد و انتشار بسته مناقصه جهت استعلام پیمانکاران EPC';
         }
       } else if (status === 'EPC_SELECTED') {
-        const contracts = db.getProjectContracts(project.id) || [];
+        const contracts = executionRepository.getProjectContracts(project.id) || [];
         if (contracts.length === 0) {
           missingFields.push('پیش‌نویس قرارداد EPC');
           recommendedAction = 'تنظیم و ارسال پیش‌نویس قرارداد برای پیمانکار منتخب';
         }
       } else if (status === 'CONTRACTING') {
-        const contracts = db.getProjectContracts(project.id) || [];
+        const contracts = executionRepository.getProjectContracts(project.id) || [];
         const hasActive = contracts.some(c => c.status === 'ACTIVE' || c.status === 'SIGNED' || c.status === 'EXECUTED');
         if (!hasActive) {
           missingFields.push('امضای قرارداد و تبادل تضامین');
           recommendedAction = 'نهایی‌سازی امضای طرفین و مبادله قرارداد رسمی';
         }
       } else if (status === 'FINANCING') {
-        const finReqs = db.getFinancingRequestsByProjectId(project.id) || [];
+        const finReqs = financingRepository.getFinancingRequests(project.id) || [];
         if (finReqs.length === 0) {
           missingFields.push('درخواست تأمین مالی');
           recommendedAction = 'تکمیل و ارسال بسته تسهیلات به نهادهای مالی همکار';
         }
       } else if (status === 'PROCUREMENT') {
-        const boqs = db.getBOQsByProjectId(project.id) || [];
+        const boqs = procurementRepository.getBOQs(project.id) || [];
         if (boqs.length === 0) {
           missingFields.push('فهرست مقادیر و تجهیزات (BOQ)');
           recommendedAction = 'ثبت و تصویب فهرست تجهیزات نیروگاه برای صدور سفارش‌های خرید';
         }
       } else if (status === 'CONSTRUCTION') {
-        const baselines = db.getProjectBaselines ? db.getProjectBaselines(project.id) : [];
-        const milestones = db.getProjectMilestones(project.id) || [];
+        const baselines = executionRepository.getProjectBaselines ? executionRepository.getProjectBaselines(project.id) : [];
+        const milestones = executionRepository.getProjectMilestones(project.id) || [];
         if (milestones.length === 0) {
           missingFields.push('برنامه زمان‌بندی و مایلستون‌های اجرایی');
           recommendedAction = 'تعریف ساختار مایلستون‌های فاز ساخت و نصب تجهیزات';
         }
       } else if (status === 'COMMISSIONING') {
-        const tests = db.getCommissioningTests ? db.getCommissioningTests(project.id) : [];
+        const tests = assetRepository.getCommissioningTests ? assetRepository.getCommissioningTests(project.id) : [];
         if (!tests || tests.length === 0) {
           missingFields.push('تست‌های پیش‌راه‌اندازی و اتصال به شبکه');
           recommendedAction = 'انجام و ثبت آزمون‌های ایمنی، عایقی و تست ترانس و اینورترها';
@@ -128,7 +133,7 @@ export const lifecycleIntelligenceService = {
       }
 
       // 3. Detect Overdue Milestones (ONLY where explicit dates exist!)
-      const milestones = db.getProjectMilestones(project.id) || [];
+      const milestones = executionRepository.getProjectMilestones(project.id) || [];
       for (const m of milestones) {
         const isNotCompleted = m.status !== 'COMPLETED' && m.status !== 'APPROVED';
         const targetDateStr = m.dueDate || (m as any).targetDate;
@@ -153,7 +158,7 @@ export const lifecycleIntelligenceService = {
 
       // 4. Detect Blocked Workflow States
       // A: Pending or Rejected Change Requests
-      const changeRequests = db.getChangeRequestsByProjectId(project.id) || [];
+      const changeRequests = executionRepository.getChangeRequestsByProjectId(project.id) || [];
       for (const cr of changeRequests) {
         if (cr.status === 'PENDING' || cr.status === 'UNDER_REVIEW') {
           blockedWorkflows.push({
@@ -168,7 +173,7 @@ export const lifecycleIntelligenceService = {
       }
 
       // B: Failed Commissioning Tests
-      const commTests = db.getCommissioningTests ? db.getCommissioningTests(project.id) : [];
+      const commTests = assetRepository.getCommissioningTests ? assetRepository.getCommissioningTests(project.id) : [];
       for (const ct of (commTests || [])) {
         if (ct.status === 'FAILED' || ct.status === 'RETEST_REQUIRED') {
           blockedWorkflows.push({

@@ -64,6 +64,9 @@ export const rfqRepository = {
     return db.getEPCBidById(id);
   },
 
+  getAllBids(): EPCBid[] {
+    return db.getEPCBids();
+  },
   createBid(data: Omit<EPCBid, 'id' | 'createdAt' | 'currentRevisionNumber'>): EPCBid {
     return db.createEPCBid(data);
   },

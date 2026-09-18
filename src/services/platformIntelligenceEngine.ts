@@ -1,7 +1,7 @@
 import { portfolioRepository } from '../repositories/portfolioRepository.js';
 import { portfolioAggregationService } from './portfolioAggregationService.js';
 import { lifecycleIntelligenceService } from './lifecycleIntelligenceService.js';
-import { db } from '../db/index.js';
+import { maintenanceRepository } from '../repositories/maintenanceRepository.js';
 import { PlatformInsight, InsightType, InsightSeverity } from '../types/portfolio.js';
 
 export const platformIntelligenceEngine = {
@@ -109,7 +109,7 @@ export const platformIntelligenceEngine = {
     }
 
     // Rule 5: Critical Maintenance Cases (CRITICAL severity)
-    const allCases = db.getMaintenanceCases() || [];
+    const allCases = maintenanceRepository.getAllCases() || [];
     const projects = portfolioAggregationService.getPortfolioProjects(portfolio);
     const pids = new Set(projects.map(p => p.id));
     const criticalCases = allCases.filter(c => {

@@ -16,6 +16,15 @@ import {
 
 export const procurementRepository = {
   // BOQ
+  getPackages: (projectId?: string): any[] => {
+    return (db as any).getProcurementPackages ? (db as any).getProcurementPackages(projectId) : [];
+  },
+  getRFQs: (projectId?: string): any[] => {
+    return (db as any).getProcurementRFQsByProjectId ? (db as any).getProcurementRFQsByProjectId(projectId) : [];
+  },
+  getDeliveryInspectionsByProjectId: (projectId?: string): any[] => {
+    return (db as any).getDeliveryInspectionsByProjectId ? (db as any).getDeliveryInspectionsByProjectId(projectId) : [];
+  },
   getBOQs: (projectId: string): BillOfQuantities[] => db.getBOQs(projectId),
   getBOQById: (id: string): BillOfQuantities | undefined => db.getBOQById(id),
   createBOQ: (boq: Omit<BillOfQuantities, 'id' | 'createdAt' | 'updatedAt' | 'boqCode'> & Partial<Pick<BillOfQuantities, 'boqCode'>>): BillOfQuantities => db.createBOQ(boq),

@@ -1,34 +1,35 @@
 import express from "express";
-import { db } from "../db/index.js";
+import { subscriptionRepository } from '../repositories/subscriptionRepository.js';
+import { userRepository } from '../repositories/userRepository.js';
 import { verifyAuthToken, requireAuth } from "./auth.js";
 
 const subscriptionRouter = express.Router();
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:3000";
 
 subscriptionRouter.get("/plans", (req, res) => {
-  res.json({ plans: db.getSubscriptionPlans() });
+  res.json({ plans: subscriptionRepository.getSubscriptionPlans() });
 });
 
 subscriptionRouter.post("/purchase", verifyAuthToken, requireAuth, async (req, res) => {
   const { planId } = req.body;
   const user = req.user!;
 
-  const plan = db.getSubscriptionPlanById(planId);
+  const plan = subscriptionRepository.getSubscriptionPlanById(planId);
   if (!plan) return res.status(404).json({ error: "Plan not found" });
 
   if (plan.priceIRR === 0) {
      // Handle free plan activation immediately
-     const newSub = db.createSubscription({
+     const newSub = subscriptionRepository.createSubscription({
         userId: user.id,
         planId: plan.id,
         startDate: new Date().toISOString(),
         endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // default 30 days for free if not specified
      });
-     db.updateUser(user.id, { activeSubscriptionId: newSub.id });
+     userRepository.updateUser(user.id, { activeSubscriptionId: newSub.id });
      return res.json({ message: "Free plan activated successfully", subscription: newSub });
   }
 
-  const tx = db.createTransaction({
+  const tx = subscriptionRepository.createTransaction({
     userId: user.id,
     planId: plan.id,
     amount: plan.priceIRR,
@@ -39,7 +40,7 @@ subscriptionRouter.post("/purchase", verifyAuthToken, requireAuth, async (req, r
     // const zpResponse = await fetch('https://api.zarinpal.com/pg/v4/payment/request.json', { ... });
     const mockAuthority = "A" + Math.random().toString(36).substring(2, 12).toUpperCase();
     
-    db.updateTransactionAuthority(tx.id, mockAuthority);
+    subscriptionRepository.updateTransactionAuthority(tx.id, mockAuthority);
 
     // In a real app we'd redirect to zarinpal:
     // const paymentUrl = `https://www.zarinpal.com/pg/StartPay/${mockAuthority}`;
@@ -47,7 +48,7 @@ subscriptionRouter.post("/purchase", verifyAuthToken, requireAuth, async (req, r
 
     res.json({ paymentUrl });
   } catch (error) {
-    db.updateTransactionStatus(tx.id, "failed");
+    subscriptionRepository.updateTransactionStatus(tx.id, "failed");
     res.status(500).json({ error: "Payment request failed" });
   }
 });
@@ -59,13 +60,13 @@ subscriptionRouter.get("/verify", async (req, res) => {
     return res.redirect("/user-dashboard?error=invalid_request");
   }
 
-  const tx = db.getTransactionByAuthority(Authority);
+  const tx = subscriptionRepository.getTransactionByAuthority(Authority);
   if (!tx) {
     return res.redirect("/user-dashboard?error=transaction_not_found");
   }
 
   if (Status !== "OK") {
-    db.updateTransactionStatus(tx.id, "failed");
+    subscriptionRepository.updateTransactionStatus(tx.id, "failed");
     return res.redirect("/user-dashboard?error=payment_failed");
   }
 
@@ -76,23 +77,23 @@ subscriptionRouter.get("/verify", async (req, res) => {
     const isSuccess = true;
 
     if (isSuccess) {
-      db.updateTransactionStatus(tx.id, "success");
-      const plan = db.getSubscriptionPlanById(tx.planId);
+      subscriptionRepository.updateTransactionStatus(tx.id, "success");
+      const plan = subscriptionRepository.getSubscriptionPlanById(tx.planId);
       
       const startDate = new Date();
       const endDate = new Date(startDate.getTime() + (plan?.durationDays || 30) * 24 * 60 * 60 * 1000);
 
-      const newSub = db.createSubscription({
+      const newSub = subscriptionRepository.createSubscription({
         userId: tx.userId,
         planId: tx.planId,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
       });
 
-      db.updateUser(tx.userId, { activeSubscriptionId: newSub.id });
+      userRepository.updateUser(tx.userId, { activeSubscriptionId: newSub.id });
       return res.redirect("/user-dashboard?success=payment_successful");
     } else {
-      db.updateTransactionStatus(tx.id, "failed");
+      subscriptionRepository.updateTransactionStatus(tx.id, "failed");
       return res.redirect("/user-dashboard?error=verification_failed");
     }
   } catch (error) {
@@ -107,14 +108,14 @@ subscriptionRouter.get("/status", verifyAuthToken, requireAuth, (req, res) => {
     return res.json({ active: false });
   }
 
-  const sub = db.getSubscriptionById(user.activeSubscriptionId);
+  const sub = subscriptionRepository.getSubscriptionById(user.activeSubscriptionId);
   if (!sub) {
     return res.json({ active: false });
   }
 
   const isExpired = new Date(sub.endDate) < new Date();
   if (isExpired) {
-    db.updateUser(user.id, { activeSubscriptionId: null });
+    userRepository.updateUser(user.id, { activeSubscriptionId: null });
     return res.json({ active: false, expired: true });
   }
 

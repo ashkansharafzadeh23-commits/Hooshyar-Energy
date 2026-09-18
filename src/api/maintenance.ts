@@ -8,7 +8,8 @@ import { alertService } from '../services/alertService.js';
 import { diagnosisService } from '../services/diagnosisService.js';
 import { maintenanceCaseService } from '../services/maintenanceCaseService.js';
 import { technicianMatchingService } from '../services/technicianMatchingService.js';
-import { db } from '../db/index.js';
+import { professionalRepository } from '../repositories/professionalRepository.js';
+import { projectRepository } from '../repositories/projectRepository.js';
 import {
   AssetAlert,
   AlertRule,
@@ -184,7 +185,7 @@ maintenanceRouter.post('/alerts/:alertId/acknowledge', (req: Request, res: Respo
     acknowledgedBy: req.user.id
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: alert.projectId,
     userId: req.user.id,
     type: 'ALERT_ACKNOWLEDGED',
@@ -218,7 +219,7 @@ maintenanceRouter.post('/alerts/:alertId/investigate', (req: Request, res: Respo
     investigationNotes
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: alert.projectId,
     userId: req.user.id,
     type: 'ALERT_INVESTIGATION_STARTED',
@@ -248,7 +249,7 @@ maintenanceRouter.post('/alerts/:alertId/maintenance-required', (req: Request, r
     status: 'MAINTENANCE_REQUIRED'
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: alert.projectId,
     userId: req.user.id,
     type: 'ALERT_MAINTENANCE_FLAGGED',
@@ -283,7 +284,7 @@ maintenanceRouter.post('/alerts/:alertId/resolve', (req: Request, res: Response)
     resolutionNote
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: alert.projectId,
     userId: req.user.id,
     type: 'ALERT_RESOLVED',
@@ -318,7 +319,7 @@ maintenanceRouter.post('/alerts/:alertId/dismiss', (req: Request, res: Response)
     resolvedBy: req.user.id
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: alert.projectId,
     userId: req.user.id,
     type: 'ALERT_DISMISSED',
@@ -380,7 +381,7 @@ maintenanceRouter.post('/alerts/:alertId/diagnose', async (req: Request, res: Re
       symptoms: [alert.title, alert.description, ...(req.body?.symptoms || [])]
     });
 
-    db.createProjectActivity({
+    projectRepository.addActivity({
       projectId: alert.projectId,
       userId: req.user.id,
       type: 'DIAGNOSIS_GENERATED',
@@ -585,7 +586,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/assign', (req: Request, 
   }
 
   // Lookup professional
-  const pro = db.getProfessionalById ? db.getProfessionalById(technicianId) : (db.getProfessionals() || []).find(p => p.id === technicianId);
+  const pro = professionalRepository.getProfessionalById ? professionalRepository.getProfessionalById(technicianId) : (professionalRepository.getProfessionals() || []).find(p => p.id === technicianId);
   const techName = pro?.fullName || req.body.technicianName || 'تکنسین تخصصی';
   const techPhone = pro?.phone || req.body.technicianPhone || '';
 
@@ -608,7 +609,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/assign', (req: Request, 
     notes: notes || 'تخصیص اولیه به تکنسین'
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: mCase.projectId,
     userId: req.user.id,
     type: 'MAINTENANCE_CASE_ASSIGNED',
@@ -646,7 +647,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/accept', (req: Request, 
     notes: req.body?.notes || 'پذیرش مسئولیت انجام تعمیرات توسط تکنسین'
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: mCase.projectId,
     userId: req.user.id,
     type: 'MAINTENANCE_CASE_ACCEPTED',
@@ -682,7 +683,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/schedule', (req: Request
     scheduledAt
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: mCase.projectId,
     userId: req.user.id,
     type: 'MAINTENANCE_CASE_SCHEDULED',
@@ -713,7 +714,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/start', (req: Request, r
     startedAt: new Date().toISOString()
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: mCase.projectId,
     userId: req.user.id,
     type: 'MAINTENANCE_CASE_STARTED',
@@ -818,7 +819,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/submit-verification', (r
     actionsTaken: actionsTaken || mCase.actionsTaken
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: mCase.projectId,
     userId: req.user.id,
     type: 'MAINTENANCE_CASE_AWAITING_VERIFICATION',
@@ -856,7 +857,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/verify', (req: Request, 
     verificationNotes: verificationNotes || (isPassed ? 'تایید صحت عملکرد' : 'عدم تایید؛ بازگشت جهت رفع نقص')
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: mCase.projectId,
     userId: req.user.id,
     type: 'MAINTENANCE_CASE_VERIFIED',
@@ -940,7 +941,7 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/close', (req: Request, r
     postMaintenanceCheck: postCheck
   });
 
-  db.createProjectActivity({
+  projectRepository.addActivity({
     projectId: mCase.projectId,
     userId: req.user.id,
     type: 'MAINTENANCE_CASE_CLOSED',
@@ -1145,7 +1146,7 @@ maintenanceRouter.post('/maintenance/technicians/:id/approve', (req: Request, re
   }
 
   try {
-    const updated = db.updateProfessionalStatus(techId, 'approved');
+    const updated = professionalRepository.updateProfessionalStatus(techId, 'approved');
     if (!updated) {
       return res.status(404).json({ error: 'تکنسین یافت نشد.' });
     }

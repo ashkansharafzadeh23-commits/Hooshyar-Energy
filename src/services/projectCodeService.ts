@@ -1,7 +1,7 @@
-import { db } from '../db/index.js';
+import { projectRepository } from '../repositories/projectRepository.js';
 
 export function generateProjectCode(): string {
-  const allProjects = db.getEnergyProjects() || [];
+  const allProjects = projectRepository.findAll() || [];
   let maxNum = 0;
   for (const p of allProjects) {
     if (p.projectCode && typeof p.projectCode === 'string') {

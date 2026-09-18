@@ -18,7 +18,6 @@ import {
   AssetPassportSnapshot,
   AssetPerformanceBaseline
 } from '../types/asset.js';
-import { db } from '../db/index.js';
 
 const assetRouter = express.Router();
 

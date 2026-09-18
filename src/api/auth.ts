@@ -9,7 +9,7 @@ declare global {
 
 import express, { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { db } from "../db/index.js";
+import { userRepository } from '../repositories/userRepository.js';
 
 const authRouter = express.Router();
 
@@ -27,7 +27,7 @@ export const verifyAuthToken = (req: Request, res: Response, next: NextFunction)
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     const uid = decoded.userId || decoded.id;
-    req.user = db.getUserById(uid) || (uid ? { id: uid, ...decoded } : undefined);
+    req.user = userRepository.getUserById(uid) || (uid ? { id: uid, ...decoded } : undefined);
   } catch (error) {
     req.user = undefined;
   }
@@ -47,7 +47,7 @@ authRouter.post("/send-otp", (req, res) => {
 
   const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit code
   
-  db.saveOTP(phone, code);
+  userRepository.saveOTP(phone, code);
 
   // TODO: Connect SMS Provider (Kavenegar, Ghasedak, etc.)
   console.log(`[SMS] Sending OTP ${code} to ${phone}`);
@@ -59,12 +59,12 @@ authRouter.post("/verify-otp", (req, res) => {
   const { phone, code } = req.body;
   if (!phone || !code) return res.status(400).json({ error: "Phone and code are required" });
 
-  const isValid = db.verifyOTP(phone, code);
+  const isValid = userRepository.verifyOTP(phone, code);
   if (!isValid) return res.status(400).json({ error: "Invalid or expired OTP" });
 
-  let user = db.getUserByPhone(phone);
+  let user = userRepository.getUserByPhone(phone);
   if (!user) {
-    user = db.createUser({ phone, name: "", activeSubscriptionId: null });
+    user = userRepository.createUser({ phone, name: "", activeSubscriptionId: null });
   }
 
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });

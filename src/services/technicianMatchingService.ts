@@ -1,4 +1,6 @@
-import { db } from '../db/index.js';
+import { projectRepository } from '../repositories/projectRepository.js';
+import { maintenanceRepository } from '../repositories/maintenanceRepository.js';
+import { professionalRepository } from '../repositories/professionalRepository.js';
 import { TechnicianMatch } from '../types/maintenance.js';
 
 export const technicianMatchingService = {
@@ -16,10 +18,10 @@ export const technicianMatchingService = {
     province?: string;
     equipmentType?: string;
   }): TechnicianMatch[] => {
-    const project = db.getEnergyProjectById(params.projectId);
+    const project = projectRepository.findById(params.projectId);
     const projectCity = (project?.location?.city || (params as any).location || '').toLowerCase();
     
-    const allPros = db.getProfessionals() || [];
+    const allPros = professionalRepository.getProfessionals() || [];
     // Prioritize approved professionals
     const candidates = allPros.length > 0 ? allPros : [];
 
@@ -118,7 +120,7 @@ export const technicianMatchingService = {
    * Matches verified technicians for a specific maintenance case ID
    */
   matchTechniciansForCase: (caseId: string): TechnicianMatch[] => {
-    const mCase = db.getMaintenanceCaseById(caseId);
+    const mCase = maintenanceRepository.getCaseById(caseId);
     if (!mCase) return [];
     return technicianMatchingService.matchTechnicians({
       projectId: mCase.projectId,

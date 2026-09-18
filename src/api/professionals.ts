@@ -1,5 +1,5 @@
 import express from "express";
-import { db } from "../db/index.js";
+import { professionalRepository } from '../repositories/professionalRepository.js';
 
 const professionalsRouter = express.Router();
 
@@ -19,7 +19,7 @@ professionalsRouter.post("/register", (req, res) => {
     return res.status(400).json({ error: "Name and phone are required" });
   }
 
-  const newPro = db.createProfessional({
+  const newPro = professionalRepository.createProfessional({
     fullName,
     phone,
     specialties: specialties || [],
@@ -35,13 +35,13 @@ professionalsRouter.post("/register", (req, res) => {
 });
 
 professionalsRouter.get("/:id", (req, res) => {
-  const pro = db.getProfessionalById(req.params.id);
+  const pro = professionalRepository.getProfessionalById(req.params.id);
   if (!pro) return res.status(404).json({ error: "Professional not found" });
   res.json({ professional: pro });
 });
 
 professionalsRouter.get("/", (req, res) => {
-  const pros = db.getProfessionals().filter(p => p.status === "approved");
+  const pros = professionalRepository.getProfessionals().filter(p => p.status === "approved");
   res.json({ professionals: pros });
 });
 

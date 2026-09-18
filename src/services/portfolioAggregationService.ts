@@ -1,7 +1,15 @@
-import { db } from '../db/index.js';
+import { projectRepository } from "../repositories/projectRepository.js";
+import { assetRepository } from "../repositories/assetRepository.js";
+
+
+import { procurementRepository } from '../repositories/procurementRepository.js';
+import { executionRepository } from '../repositories/executionRepository.js';
+import { financingRepository } from '../repositories/financingRepository.js';
+import { maintenanceRepository } from '../repositories/maintenanceRepository.js';
+import { monitoringRepository } from '../repositories/monitoringRepository.js';
 import { portfolioRepository } from '../repositories/portfolioRepository.js';
-import { projectRepository } from '../repositories/projectRepository.js';
-import { assetRepository } from '../repositories/assetRepository.js';
+
+
 import { EnergyProject, ProjectStatus } from '../types/project.js';
 import { EnergyAsset } from '../types/asset.js';
 import {
@@ -20,7 +28,7 @@ export const portfolioAggregationService = {
    * Resolves all unique EnergyProject entities belonging to a Portfolio.
    */
   getPortfolioProjects(portfolio: Portfolio): EnergyProject[] {
-    const allProjects = db.getEnergyProjects() || [];
+    const allProjects = projectRepository.findAll() || [];
     const directIds = new Set(portfolio.projectIds || []);
 
     const matchedProjects = allProjects.filter(p => {
@@ -45,7 +53,7 @@ export const portfolioAggregationService = {
     const projectIds = new Set(prjs.map(p => p.id));
     const directAssetIds = new Set(portfolio.assetIds || []);
 
-    const allAssets = db.getAssets() || [];
+    const allAssets = assetRepository.getAssets() || [];
     const matched = allAssets.filter(a => {
       if (directAssetIds.has(a.id)) return true;
       if (a.projectId && projectIds.has(a.projectId)) return true;
@@ -121,8 +129,8 @@ export const portfolioAggregationService = {
     // 5. Active procurement processes
     let activeProcurementCount = 0;
     for (const pid of projectIds) {
-      const pkgs = db.getProcurementPackagesByProjectId(pid) || [];
-      const rfqs = db.getProcurementRFQsByProjectId(pid) || [];
+      const pkgs = procurementRepository.getPackages(pid) || [];
+      const rfqs = procurementRepository.getRFQs(pid) || [];
       const activePkgs = pkgs.filter(pkg => pkg.status === 'OPEN' || pkg.status === 'IN_PROGRESS' || pkg.status === 'EVALUATION' || pkg.status === 'DRAFT');
       const activeRfqs = rfqs.filter(r => r.status === 'PUBLISHED' || r.status === 'EVALUATION' || r.status === 'OPEN');
       activeProcurementCount += (activePkgs.length + activeRfqs.length);
@@ -131,7 +139,7 @@ export const portfolioAggregationService = {
     // 6. Active contracts
     let activeContractsCount = 0;
     for (const pid of projectIds) {
-      const contracts = db.getProjectContracts(pid) || [];
+      const contracts = executionRepository.getProjectContracts(pid) || [];
       const active = contracts.filter(c => c.status === 'ACTIVE' || c.status === 'SIGNED' || c.status === 'EXECUTED');
       activeContractsCount += active.length;
     }
@@ -139,7 +147,7 @@ export const portfolioAggregationService = {
     // 7. Open financing applications
     let openFinancingApplicationsCount = 0;
     for (const pid of projectIds) {
-      const reqs = db.getFinancingRequestsByProjectId(pid) || [];
+      const reqs = financingRepository.getFinancingRequests(pid) || [];
       const openReqs = reqs.filter(r => r.status !== 'DECLINED' && r.status !== 'REJECTED' && r.status !== 'CANCELLED');
       openFinancingApplicationsCount += openReqs.length;
     }
@@ -147,14 +155,14 @@ export const portfolioAggregationService = {
     // 8. Active financing agreements
     let activeFinancingAgreementsCount = 0;
     for (const pid of projectIds) {
-      const finRecs = db.getProjectFinancingRecordsByProjectId(pid) || [];
+      const finRecs = financingRepository.getProjectFinancingRecords(pid) || [];
       const activeRecs = finRecs.filter(r => r.status === 'APPROVED' || r.status === 'ACTIVE');
       activeFinancingAgreementsCount += activeRecs.length;
     }
 
     // 9. Open maintenance cases
     let openMaintenanceCasesCount = 0;
-    const allCases = db.getMaintenanceCases() || [];
+    const allCases = maintenanceRepository.getAllCases() || [];
     const openCases = allCases.filter(c => {
       const inPortfolio = (c.projectId && projectIds.includes(c.projectId)) || (c.assetId && assetIds.includes(c.assetId));
       return inPortfolio && c.status !== 'CLOSED' && c.status !== 'RESOLVED' && c.status !== 'CANCELLED';
@@ -163,7 +171,7 @@ export const portfolioAggregationService = {
 
     // 10. Active alerts
     let activeAlertsCount = 0;
-    const allAlerts = db.getAlerts() || [];
+    const allAlerts = monitoringRepository.getAllAlerts() || [];
     const openAlerts = allAlerts.filter(alt => {
       const inPortfolio = (alt.projectId && projectIds.includes(alt.projectId)) || (alt.assetId && assetIds.includes(alt.assetId));
       return inPortfolio && alt.status !== 'RESOLVED' && alt.status !== 'DISMISSED';
@@ -212,11 +220,11 @@ export const portfolioAggregationService = {
     const assets = this.getPortfolioAssets(portfolio, projects);
     const projectMap = new Map<string, any>(projects.map(p => [p.id, p]));
 
-    const allTelemetrySources = db.getTelemetrySources() || [];
-    const allReadings = db.getTelemetryReadings() || [];
-    const allAlerts = db.getAlerts() || [];
-    const allCases = db.getMaintenanceCases() || [];
-    const allWarranties = db.getEquipmentWarranties ? db.getEquipmentWarranties() : [];
+    const allTelemetrySources = monitoringRepository.getTelemetrySources() || [];
+    const allReadings = monitoringRepository.getTelemetryReadings() || [];
+    const allAlerts = monitoringRepository.getAllAlerts() || [];
+    const allCases = maintenanceRepository.getAllCases() || [];
+    const allWarranties = assetRepository.getEquipmentWarranties ? assetRepository.getEquipmentWarranties() : [];
 
     let operationalAssetsCount = 0;
     let nonOperationalAssetsCount = 0;
@@ -279,7 +287,7 @@ export const portfolioAggregationService = {
       const openCases = allCases.filter(c => c.assetId === asset.id && c.status !== 'CLOSED' && c.status !== 'RESOLVED');
 
       // Warranties
-      const assetWarranties = (db.getEquipmentWarranties ? db.getEquipmentWarranties(asset.id) : []) || [];
+      const assetWarranties = (assetRepository.getEquipmentWarranties ? assetRepository.getEquipmentWarranties(asset.id) : []) || [];
       let warrantyStatus: 'ACTIVE' | 'EXPIRING' | 'EXPIRED' | 'DATA_UNAVAILABLE' = 'DATA_UNAVAILABLE';
       let warrantyDetails = null;
 
@@ -377,7 +385,7 @@ export const portfolioAggregationService = {
       }
 
       // 2. Financing Requested & Equity
-      const finReqs = db.getFinancingRequestsByProjectId(p.id) || [];
+      const finReqs = financingRepository.getFinancingRequests(p.id) || [];
       let financingRequested: number | null = null;
       let ownerEquity: number | null = null;
 
@@ -396,7 +404,7 @@ export const portfolioAggregationService = {
       }
 
       // 3. Financing Secured
-      const finRecords = db.getProjectFinancingRecordsByProjectId(p.id) || [];
+      const finRecords = financingRepository.getProjectFinancingRecords(p.id) || [];
       let financingSecured: number | null = null;
       const approvedRecords = finRecords.filter(r => r.status === 'APPROVED' || r.status === 'ACTIVE');
       if (approvedRecords.length > 0) {
@@ -408,7 +416,7 @@ export const portfolioAggregationService = {
       }
 
       // 4. Contract Values
-      const contracts = db.getProjectContracts(p.id) || [];
+      const contracts = executionRepository.getProjectContracts(p.id) || [];
       let contractValue: number | null = null;
       const activeContracts = contracts.filter(c => c.status === 'ACTIVE' || c.status === 'SIGNED' || c.status === 'EXECUTED');
       if (activeContracts.length > 0) {
@@ -504,25 +512,25 @@ export const portfolioAggregationService = {
 
     for (const pid of projectIds) {
       // BOQs
-      const boqs = db.getBOQsByProjectId(pid) || [];
+      const boqs = procurementRepository.getBOQs(pid) || [];
       totalBOQs += boqs.length;
 
       // Packages
-      const pkgs = db.getProcurementPackagesByProjectId(pid) || [];
+      const pkgs = procurementRepository.getPackages(pid) || [];
       totalProcurementPackages += pkgs.length;
       openProcurementPackages += pkgs.filter(p => p.status === 'OPEN' || p.status === 'IN_PROGRESS' || p.status === 'EVALUATION' || p.status === 'DRAFT').length;
 
       // Supplier RFQs
-      const rfqs = db.getProcurementRFQsByProjectId(pid) || [];
+      const rfqs = procurementRepository.getRFQs(pid) || [];
       totalSupplierRFQs += rfqs.length;
       activeSupplierRFQs += rfqs.filter(r => r.status === 'PUBLISHED' || r.status === 'EVALUATION' || r.status === 'OPEN').length;
 
       // Purchase Orders
-      const pos = db.getPurchaseOrdersByProjectId(pid) || [];
+      const pos = procurementRepository.getPurchaseOrders(pid) || [];
       totalPurchaseOrders += pos.length;
 
       // Deliveries
-      const deliveries = db.getDeliveryRecordsByProjectId(pid) || [];
+      const deliveries = procurementRepository.getDeliveryRecords(pid) || [];
       for (const d of deliveries) {
         if (d.status === 'DELIVERED' || d.status === 'ACCEPTED') {
           completedDeliveries++;
@@ -532,22 +540,22 @@ export const portfolioAggregationService = {
       }
 
       // Inspections
-      const inspections = db.getDeliveryInspectionsByProjectId(pid) || [];
+      const inspections = procurementRepository.getDeliveryInspectionsByProjectId(pid) || [];
       pendingInspections += inspections.filter(i => i.status === 'PENDING' || i.status === 'SCHEDULED' || i.status === 'IN_PROGRESS').length;
 
       // Contracts
-      const contracts = db.getProjectContracts(pid) || [];
+      const contracts = executionRepository.getProjectContracts(pid) || [];
       totalContracts += contracts.length;
       activeContracts += contracts.filter(c => c.status === 'ACTIVE' || c.status === 'SIGNED' || c.status === 'EXECUTED').length;
 
       // Contract Revisions
       for (const c of contracts) {
-        const revs = db.getContractRevisions(c.id) || [];
+        const revs = executionRepository.getContractRevisions(c.id) || [];
         totalContractRevisions += revs.length;
       }
 
       // Change Requests
-      const crs = db.getChangeRequestsByProjectId(pid) || [];
+      const crs = executionRepository.getChangeRequestsByProjectId(pid) || [];
       approvedChangeRequests += crs.filter(c => c.status === 'APPROVED').length;
       pendingChangeRequests += crs.filter(c => c.status === 'PENDING' || c.status === 'SUBMITTED').length;
     }
@@ -587,8 +595,8 @@ export const portfolioAggregationService = {
 
     const operationalAssets = assets.filter(a => a.status === 'OPERATIONAL' || a.operationalStatus === 'OPERATIONAL');
 
-    const allTelemetrySources = db.getTelemetrySources() || [];
-    const allReadings = db.getTelemetryReadings() || [];
+    const allTelemetrySources = monitoringRepository.getTelemetrySources() || [];
+    const allReadings = monitoringRepository.getTelemetryReadings() || [];
 
     let reportingCount = 0;
     let withoutTelemetryCount = 0;
@@ -604,7 +612,7 @@ export const portfolioAggregationService = {
     }
 
     // Alerts
-    const allAlerts = db.getAlerts() || [];
+    const allAlerts = monitoringRepository.getAllAlerts() || [];
     const activeAlerts = allAlerts.filter(alt => {
       const inScope = (alt.assetId && assetIds.includes(alt.assetId)) || (alt.projectId && projectIds.includes(alt.projectId));
       return inScope && alt.status !== 'RESOLVED' && alt.status !== 'DISMISSED';
@@ -618,7 +626,7 @@ export const portfolioAggregationService = {
     };
 
     // Maintenance Cases
-    const allCases = db.getMaintenanceCases() || [];
+    const allCases = maintenanceRepository.getAllCases() || [];
     const openCases = allCases.filter(c => {
       const inScope = (c.assetId && assetIds.includes(c.assetId)) || (c.projectId && projectIds.includes(c.projectId));
       return inScope && c.status !== 'CLOSED' && c.status !== 'RESOLVED' && c.status !== 'CANCELLED';
@@ -636,7 +644,7 @@ export const portfolioAggregationService = {
     let warrantyUnavailableOrMissing = 0;
 
     for (const a of operationalAssets) {
-      const warranties = (db.getEquipmentWarranties ? db.getEquipmentWarranties(a.id) : []) || [];
+      const warranties = (assetRepository.getEquipmentWarranties ? assetRepository.getEquipmentWarranties(a.id) : []) || [];
       const hasActive = warranties.some(w => w.status === 'ACTIVE');
       if (hasActive) {
         coveredWithActiveWarranty++;

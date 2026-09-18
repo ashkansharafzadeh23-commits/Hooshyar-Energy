@@ -1,7 +1,7 @@
-import { db } from '../db/index.js';
+import { rfqRepository } from '../repositories/rfqRepository.js';
 
 export function generateRFQCode(): string {
-  const allRFQs = db.getProjectRFQs?.() || [];
+  const allRFQs = rfqRepository.getAllRFQs?.() || [];
   let maxNum = 0;
   for (const r of allRFQs) {
     if (r.rfqCode && typeof r.rfqCode === 'string') {
@@ -18,7 +18,7 @@ export function generateRFQCode(): string {
 }
 
 export function generateBidCode(): string {
-  const allBids = db.getEPCBids?.() || [];
+  const allBids = rfqRepository.getAllBids?.() || [];
   let maxNum = 0;
   for (const b of allBids) {
     if (b.bidCode && typeof b.bidCode === 'string') {

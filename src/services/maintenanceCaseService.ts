@@ -1,7 +1,7 @@
 import { maintenanceRepository } from '../repositories/maintenanceRepository.js';
 import { assetRepository } from '../repositories/assetRepository.js';
 import { alertService } from './alertService.js';
-import { db } from '../db/index.js';
+import { projectRepository } from '../repositories/projectRepository.js';
 import {
   MaintenanceCase,
   MaintenanceCaseStatus,
@@ -77,7 +77,7 @@ export const maintenanceCaseService = {
     }
 
     // Log project activity
-    db.createProjectActivity({
+    projectRepository.addActivity({
       projectId,
       userId,
       type: 'MAINTENANCE_CASE_CREATED',
@@ -216,7 +216,7 @@ export const maintenanceCaseService = {
 
     const updated = maintenanceRepository.updateCase(caseId, updates);
 
-    db.createProjectActivity({
+    projectRepository.addActivity({
       projectId: mCase.projectId,
       userId: actorUserId,
       type: 'MAINTENANCE_STATUS_CHANGED',

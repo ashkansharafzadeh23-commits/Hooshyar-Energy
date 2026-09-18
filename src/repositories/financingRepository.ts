@@ -30,6 +30,16 @@ export class JSONFinancingRepository implements IFinancingRepository {
   updateFinancingOffer(id: string, updates: any) { return db.updateFinancingOffer(id, updates); }
   createProjectFinancingRecord(record: any) { return db.createProjectFinancingRecord(record); }
   getProjectFinancingRecords(projectId: string) { return db.getProjectFinancingRecords(projectId); }
+  getFinancialModelById(id: string) { return db.getFinancialModelById(id); }
+  getFinancialAssumptionSetById(id: string) { return db.getFinancialAssumptionSetById(id); }
+  getRFQsByProjectId(projectId: string) { return (db as any).getRFQsByProjectId ? (db as any).getRFQsByProjectId(projectId) : []; }
+  getBidById(id: string) { return (db as any).getBidById ? (db as any).getBidById(id) : null; }
+  getBidsByRfqId(rfqId: string) { return (db as any).getBidsByRfqId ? (db as any).getBidsByRfqId(rfqId) : []; }
+  createFinancialAssumptionSet(data: any) { return db.createFinancialAssumptionSet(data); }
+  createFinancialModel(data: any) { return db.createFinancialModel(data); }
+  updateFinancialModel(id: string, data: any) { return db.updateFinancialModel(id, data); }
+  createFinancialScenario(data: any) { return db.createFinancialScenario(data); }
+  getFinancialScenariosByModelId(modelId: string) { return db.getFinancialScenariosByModelId(modelId); }
 }
 
 export const financingRepository: IFinancingRepository = new JSONFinancingRepository();
