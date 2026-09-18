@@ -407,12 +407,13 @@ async function runPhase9Tests() {
     assert(lifecycleOpt60!.stalledProjects.length === 0, 'Explicit 60-day threshold correctly excludes 45-day inactive project');
 
     // Regression Test 5: Project-level configuration works
-    db.updateEnergyProject(prj4.id, { stalledThresholdDays: 40 });
+    const pastDateStr = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
+    db.updateEnergyProject(prj4.id, { stalledThresholdDays: 40, updatedAt: pastDateStr });
     const lifecyclePrjConfig = lifecycleIntelligenceService.getLifecycleIntelligence(portfolioAlpha.id);
     assert(lifecyclePrjConfig!.stalledProjects.length === 1, 'Project-level stalledThresholdDays=40 configuration works');
     assert(lifecyclePrjConfig!.stalledProjects[0].thresholdDays === 40, 'Project-level threshold recorded as 40');
     // Reset project-level threshold
-    db.updateEnergyProject(prj4.id, { stalledThresholdDays: undefined });
+    db.updateEnergyProject(prj4.id, { stalledThresholdDays: undefined, updatedAt: pastDateStr });
 
     // Regression Test 6: Portfolio-level configuration works
     db.updatePortfolio(portfolioAlpha.id, { settings: { stalledThresholdDays: 35 } });
