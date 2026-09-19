@@ -13,8 +13,9 @@ import { lifecycleIntelligenceService } from '../src/services/lifecycleIntellige
 import { platformIntelligenceEngine } from '../src/services/platformIntelligenceEngine.js';
 import { enterpriseAccessService } from '../src/services/enterpriseAccessService.js';
 import { aiExecutiveAssistantService } from '../src/services/aiExecutiveAssistantService.js';
+import { getSecurityConfig } from '../src/security/config.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_dev';
+const JWT_SECRET = getSecurityConfig().jwt.secret;
 
 let passed = 0;
 let failed = 0;

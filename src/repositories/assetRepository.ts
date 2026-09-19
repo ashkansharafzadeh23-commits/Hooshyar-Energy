@@ -26,7 +26,7 @@ export const assetRepository = {
   updateAssetComponent: (id: string, updates: Partial<AssetComponent>): AssetComponent | null => db.updateAssetComponent(id, updates),
 
   // Warranties
-  getEquipmentWarranties: (assetId: string): EquipmentWarranty[] => db.getEquipmentWarranties(assetId),
+  getEquipmentWarranties: (assetId?: string): EquipmentWarranty[] => db.getEquipmentWarranties(assetId),
   getEquipmentWarrantiesByProjectId: (projectId: string): EquipmentWarranty[] => db.getEquipmentWarrantiesByProjectId(projectId),
   createEquipmentWarranty: (warranty: Omit<EquipmentWarranty, 'id' | 'createdAt' | 'updatedAt'>): EquipmentWarranty => db.createEquipmentWarranty(warranty),
   updateEquipmentWarranty: (id: string, updates: Partial<EquipmentWarranty>): EquipmentWarranty | null => db.updateEquipmentWarranty(id, updates),

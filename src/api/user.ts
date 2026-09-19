@@ -67,8 +67,14 @@ userRouter.get("/pending-roles", (req, res) => {
   res.json(pending);
 });
 
-// Dev helper to self-grant ADMIN (for testing in preview environment)
+// Dev helper to self-grant ADMIN (strictly disabled in production)
 userRouter.post("/dev-make-admin", (req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(403).json({
+      code: "FORBIDDEN",
+      error: "Development privilege escalation is permanently disabled in production mode."
+    });
+  }
   const user = req.user!;
   const currentRoles = user.roles || ["customer"];
   if (!currentRoles.includes("ADMIN")) {

@@ -175,12 +175,12 @@ export const lifecycleIntelligenceService = {
       // B: Failed Commissioning Tests
       const commTests = assetRepository.getCommissioningTests ? assetRepository.getCommissioningTests(project.id) : [];
       for (const ct of (commTests || [])) {
-        if (ct.status === 'FAILED' || ct.status === 'RETEST_REQUIRED') {
+        if (ct.status === 'FAILED' || (ct.status as string) === 'REQUIRES_RETEST') {
           blockedWorkflows.push({
             projectId: project.id,
             projectCode: project.projectCode,
             title: project.title,
-            blockReason: `تست راه‌اندازی '${ct.name || ct.testType}' مردود شده و نیاز به تست مجدد قبل از برق‌داری دارد.`,
+            blockReason: `تست راه‌اندازی '${(ct as any).name || ct.testType}' مردود شده و نیاز به تست مجدد قبل از برق‌داری دارد.`,
             blockedEntity: 'COMMISSIONING',
             entityId: ct.id
           });

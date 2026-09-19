@@ -170,6 +170,7 @@ export type MaintenanceStatus =
   | 'PENDING_VERIFICATION'
   | 'VERIFIED'
   | 'COMPLETED'
+  | 'RESOLVED'
   | 'CLOSED'
   | 'CANCELLED';
 export type MaintenanceCaseStatus = MaintenanceStatus;

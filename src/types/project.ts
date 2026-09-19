@@ -113,9 +113,12 @@ export interface ProjectDocument {
 export interface ProjectActivity {
   id: string;
   projectId: string;
-  actorUserId: string;
+  actorUserId?: string;
+  userId?: string;
   actorOrganizationId?: string;
-  eventType: string; // PROJECT_CREATED, PROJECT_UPDATED, STATUS_CHANGED, MEMBER_ADDED, DOCUMENT_UPLOADED, ANALYSIS_ATTACHED
+  eventType?: string; // PROJECT_CREATED, PROJECT_UPDATED, STATUS_CHANGED, MEMBER_ADDED, DOCUMENT_UPLOADED, ANALYSIS_ATTACHED
+  type?: string;
+  description?: string;
   entityType?: string;
   entityId?: string;
   metadata?: any;

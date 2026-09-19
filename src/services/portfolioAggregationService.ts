@@ -532,9 +532,10 @@ export const portfolioAggregationService = {
       // Deliveries
       const deliveries = procurementRepository.getDeliveryRecords(pid) || [];
       for (const d of deliveries) {
-        if (d.status === 'DELIVERED' || d.status === 'ACCEPTED') {
+        const dStatus = d.status as string;
+        if (dStatus === 'DELIVERED' || dStatus === 'ACCEPTED' || dStatus === 'RECEIVED') {
           completedDeliveries++;
-        } else if (d.status === 'PLANNED' || d.status === 'SHIPPED' || d.status === 'IN_TRANSIT') {
+        } else if (dStatus === 'PLANNED' || dStatus === 'SHIPPED' || dStatus === 'IN_TRANSIT' || dStatus === 'EXPECTED') {
           pendingDeliveries++;
         }
       }

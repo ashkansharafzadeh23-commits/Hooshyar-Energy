@@ -110,6 +110,7 @@ export interface EquipmentWarranty {
   equipmentType?: string;
   warrantyProvider?: string;
   provider?: string;
+  vendorName?: string;
   warrantyType: WarrantyType;
   startDate: string;
   endDate: string;

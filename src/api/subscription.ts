@@ -2,6 +2,7 @@ import express from "express";
 import { subscriptionRepository } from '../repositories/subscriptionRepository.js';
 import { userRepository } from '../repositories/userRepository.js';
 import { verifyAuthToken, requireAuth } from "./auth.js";
+import { getSecurityConfig } from "../security/config.js";
 
 const subscriptionRouter = express.Router();
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:3000";
@@ -27,6 +28,15 @@ subscriptionRouter.post("/purchase", verifyAuthToken, requireAuth, async (req, r
      });
      userRepository.updateUser(user.id, { activeSubscriptionId: newSub.id });
      return res.json({ message: "Free plan activated successfully", subscription: newSub });
+  }
+
+  const config = getSecurityConfig();
+  if (config.isProduction && !config.mocks.paymentConfigured) {
+    return res.status(503).json({
+      code: 'SERVICE_NOT_CONFIGURED',
+      error: 'درگاه پرداخت در محیط عملیاتی پیکربندی نشده است. شبیه‌سازی پرداخت در محیط پروداکشن مجاز نیست.',
+      message: 'Payment gateway is not configured in production. Mock payment is prohibited.'
+    });
   }
 
   const tx = subscriptionRepository.createTransaction({

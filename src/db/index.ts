@@ -1059,12 +1059,14 @@ export const db: any = {
   },
   saveOTP: (phone: string, code: string) => {
     const data = readDB();
+    if (!data.otps) data.otps = [];
     data.otps = data.otps.filter(o => o.phone !== phone);
     data.otps.push({ phone, code, expiresAt: Date.now() + 2 * 60 * 1000 });
     writeDB(data);
   },
   verifyOTP: (phone: string, code: string) => {
     const data = readDB();
+    if (!data.otps) data.otps = [];
     const otp = data.otps.find(o => o.phone === phone && o.code === code);
     if (otp && otp.expiresAt > Date.now()) {
       data.otps = data.otps.filter(o => o.phone !== phone);
@@ -1407,7 +1409,7 @@ export const db: any = {
   getAssetComponents: (assetId: string) => readDB().assetComponents?.filter((c: any) => c.assetId === assetId) || [],
   createAssetComponent: (comp: any) => { const d = readDB(); if(!d.assetComponents) d.assetComponents = []; const n = { ...comp, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.assetComponents.push(n); writeDB(d); return n; },
   updateAssetComponent: (id: string, updates: any) => { const d = readDB(); if(!d.assetComponents) d.assetComponents = []; const idx = d.assetComponents.findIndex((c: any) => c.id === id); if(idx > -1) { d.assetComponents[idx] = { ...d.assetComponents[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.assetComponents[idx]; } return null; },
-  getEquipmentWarranties: (assetId: string) => readDB().equipmentWarranties?.filter((w: any) => w.assetId === assetId) || [],
+  getEquipmentWarranties: (assetId?: string) => assetId ? (readDB().equipmentWarranties?.filter((w: any) => w.assetId === assetId) || []) : (readDB().equipmentWarranties || []),
   getEquipmentWarrantiesByProjectId: (projectId: string) => readDB().equipmentWarranties?.filter((w: any) => w.projectId === projectId) || [],
   createEquipmentWarranty: (warranty: any) => { const d = readDB(); if(!d.equipmentWarranties) d.equipmentWarranties = []; const n = { ...warranty, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; d.equipmentWarranties.push(n); writeDB(d); return n; },
   updateEquipmentWarranty: (id: string, updates: any) => { const d = readDB(); if(!d.equipmentWarranties) d.equipmentWarranties = []; const idx = d.equipmentWarranties.findIndex((w: any) => w.id === id); if(idx > -1) { d.equipmentWarranties[idx] = { ...d.equipmentWarranties[idx], ...updates, updatedAt: new Date().toISOString() }; writeDB(d); return d.equipmentWarranties[idx]; } return null; },

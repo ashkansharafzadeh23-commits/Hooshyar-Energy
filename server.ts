@@ -1,9 +1,14 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { db } from "./src/db/index.js";
 import cookieParser from "cookie-parser";
+import { getSecurityConfig } from "./src/security/config.js";
+import { rateLimiters } from "./src/security/rateLimiter.js";
+import { requestIdMiddleware } from "./src/middleware/requestId.js";
+import { errorHandler } from "./src/middleware/errorHandler.js";
 import authRouter, { verifyAuthToken } from "./src/api/auth.js";
 import professionalsRouter from "./src/api/professionals.js";
 import adsRouter from "./src/api/ads.js";
@@ -34,10 +39,37 @@ import optimizeLayoutHandler from "./api/energy/optimize-layout.js";
 
 const app = express();
 const PORT = 3000;
+const securityConfig = getSecurityConfig();
 
-app.use(cors());
-app.use(express.json({ limit: "50mb" }));
+// 1. Security Headers via Helmet
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  frameguard: false // Required for AI Studio preview iframe
+}));
+
+// 2. Request Correlation ID
+app.use(requestIdMiddleware);
+
+// 3. Hardened CORS
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (!securityConfig.isProduction) return callback(null, true);
+    if (securityConfig.cors.allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Blocked by CORS policy'));
+  },
+  credentials: true
+}));
+
+// 4. Request size limit & cookie parsing
+app.use(express.json({ limit: securityConfig.bodyLimit || "1mb" }));
 app.use(cookieParser());
+
+// 5. Global API Rate Limiter
+app.use("/api", rateLimiters.generalApi.middleware());
 
 app.use("/api/auth", authRouter);
 app.use("/api/professionals", professionalsRouter);
@@ -160,6 +192,9 @@ app.post("/api/plan-powerplant", async (req, res) => {
     res.status(500).json({ error: "Analysis failed" });
   }
 });
+
+// Centralized error handling
+app.use(errorHandler);
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

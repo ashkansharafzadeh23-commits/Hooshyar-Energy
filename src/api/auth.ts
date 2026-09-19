@@ -1,4 +1,3 @@
-
 declare global {
   namespace Express {
     interface Request {
@@ -8,14 +7,30 @@ declare global {
 }
 
 import express, { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import { z } from "zod";
 import { userRepository } from '../repositories/userRepository.js';
+import { jwtService } from '../security/jwtService.js';
+import { otpService } from '../security/otpService.js';
+import { passwordService } from '../security/passwordService.js';
+import { rateLimiters } from '../security/rateLimiter.js';
+import { mockGuards } from '../security/mockGuard.js';
+import { getSecurityConfig } from '../security/config.js';
+import { validateRequest } from '../security/schemaValidator.js';
+import { securityLogger } from '../security/securityLogger.js';
 
 const authRouter = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_for_dev";
+// Validation Schemas
+const sendOtpSchema = z.object({
+  phone: z.string().min(10).max(15)
+});
 
-// Auth Middleware
+const verifyOtpSchema = z.object({
+  phone: z.string().min(10).max(15),
+  code: z.string().min(4).max(8)
+});
+
+// Auth Token Verification Middleware
 export const verifyAuthToken = (req: Request, res: Response, next: NextFunction) => {
   const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
   
@@ -25,10 +40,17 @@ export const verifyAuthToken = (req: Request, res: Response, next: NextFunction)
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwtService.verify(token);
     const uid = decoded.userId || decoded.id;
-    req.user = userRepository.getUserById(uid) || (uid ? { id: uid, ...decoded } : undefined);
-  } catch (error) {
+    const foundUser = userRepository.getUserById(uid);
+    req.user = foundUser ? passwordService.sanitizeUser(foundUser) : (uid ? { id: uid, ...decoded } : undefined);
+  } catch (error: any) {
+    securityLogger.logSecurityEvent({
+      type: 'INVALID_TOKEN',
+      requestId: (req as any).id,
+      path: req.originalUrl || req.path,
+      details: { error: error.message }
+    });
     req.user = undefined;
   }
   next();
@@ -36,50 +58,87 @@ export const verifyAuthToken = (req: Request, res: Response, next: NextFunction)
 
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (!req.user) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({
+      code: 'UNAUTHORIZED',
+      message: 'Unauthorized access',
+      requestId: (req as any).id
+    });
   }
   next();
 };
 
-authRouter.post("/send-otp", (req, res) => {
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: "Phone number is required" });
+authRouter.post(
+  "/send-otp",
+  rateLimiters.authStrict.middleware(),
+  mockGuards.requireServiceConfigured('SMS'),
+  validateRequest({ body: sendOtpSchema }),
+  (req: Request, res: Response) => {
+    const { phone } = req.body;
+    const config = getSecurityConfig();
 
-  const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit code
-  
-  userRepository.saveOTP(phone, code);
+    const { code } = otpService.generateOTP(phone);
 
-  // TODO: Connect SMS Provider (Kavenegar, Ghasedak, etc.)
-  console.log(`[SMS] Sending OTP ${code} to ${phone}`);
+    // Development/test behavior explicitly separated
+    if (!config.isProduction) {
+      console.log(`[DEV-SMS] OTP generated for ${phone}: [SECURE-DEV-TEST]`);
+      return res.json({
+        message: "کد تأیید با موفقیت ارسال شد.",
+        devCode: config.isTest ? code : undefined // only expose to test runner if in test mode
+      });
+    }
 
-  res.json({ message: "OTP sent successfully (check console)" });
-});
-
-authRouter.post("/verify-otp", (req, res) => {
-  const { phone, code } = req.body;
-  if (!phone || !code) return res.status(400).json({ error: "Phone and code are required" });
-
-  const isValid = userRepository.verifyOTP(phone, code);
-  if (!isValid) return res.status(400).json({ error: "Invalid or expired OTP" });
-
-  let user = userRepository.getUserByPhone(phone);
-  if (!user) {
-    user = userRepository.createUser({ phone, name: "", activeSubscriptionId: null });
+    // Production: Never return OTP or log it
+    return res.json({ message: "کد تأیید ارسال شد." });
   }
+);
 
-  const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
+authRouter.post(
+  "/verify-otp",
+  rateLimiters.authStrict.middleware(),
+  validateRequest({ body: verifyOtpSchema }),
+  (req: Request, res: Response) => {
+    const { phone, code } = req.body;
 
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-  });
+    const verification = otpService.verifyOTP(phone, code);
+    if (!verification.success) {
+      securityLogger.logSecurityEvent({
+        type: 'AUTH_FAILURE',
+        requestId: (req as any).id,
+        path: req.originalUrl || req.path,
+        details: { phone, reason: verification.error }
+      });
 
-  res.json({ userId: user.id, token, user });
-});
+      return res.status(400).json({
+        code: verification.error || 'INVALID_OTP',
+        error: "کد تأیید نامعتبر، منقضی شده یا تعداد تلاش بیش از حد مجاز است.",
+        requestId: (req as any).id
+      });
+    }
 
-authRouter.get("/me", verifyAuthToken, requireAuth, (req, res) => {
+    let user = userRepository.getUserByPhone(phone);
+    if (!user) {
+      user = userRepository.createUser({ phone, name: "", activeSubscriptionId: null });
+    }
+
+    const token = jwtService.sign({ userId: user.id, phone: user.phone, role: user.role });
+    const safeUser = passwordService.sanitizeUser(user);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    res.json({
+      userId: user.id,
+      token,
+      user: safeUser
+    });
+  }
+);
+
+authRouter.get("/me", verifyAuthToken, requireAuth, (req: Request, res: Response) => {
   res.json({ user: req.user });
 });
 
