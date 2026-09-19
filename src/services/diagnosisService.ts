@@ -9,6 +9,8 @@ import {
   DiagnosisMethod
 } from '../types/maintenance.js';
 import { GoogleGenAI } from '@google/genai';
+import { externalCircuitBreakers } from '../reliability/circuitBreaker.js';
+import { logger } from '../observability/logger.js';
 
 let geminiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -273,24 +275,30 @@ export const diagnosisService = {
 بر اساس این شواهد، لطفاً تحلیل فنی علت ریشه‌ای و ۳ اقدام پیشنهادی دارای اولویت را ارائه دهید.
 پاسخ را خلاصه، تخصصی و به زبان فارسی بنویسید.`;
 
-        const aiPromise = ai.models.generateContent({
-          model: 'gemini-flash-latest',
-          contents: prompt
+        const response: any = await externalCircuitBreakers.geminiAi.execute(async () => {
+          const aiPromise = ai.models.generateContent({
+            model: 'gemini-flash-latest',
+            contents: prompt
+          });
+
+          const timeoutPromise = new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error('AI generation timeout')), 3000)
+          );
+
+          return await Promise.race([aiPromise, timeoutPromise]);
         });
-
-        const timeoutPromise = new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('AI generation timeout')), 3000)
-        );
-
-        const response: any = await Promise.race([aiPromise, timeoutPromise]);
 
         if (response && response.text) {
           rawAiResponse = response.text;
           diagnosisMethod = 'AI_ASSISTED';
           confidenceScore = Math.min(95, confidenceScore + 5);
         }
-      } catch (aiErr) {
-        console.warn('Gemini diagnosis enrichment skipped or timed out:', aiErr);
+      } catch (aiErr: any) {
+        logger.warn('Gemini diagnosis enrichment skipped, timed out, or circuit open:', {
+          service: 'DIAGNOSIS_AI',
+          event: 'AI_ENRICHMENT_SKIPPED',
+          metadata: { errorMessage: aiErr?.message }
+        });
         // Fallback remains EXPERT_RULESET
       }
     }

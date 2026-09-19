@@ -75,9 +75,23 @@ subscriptionRouter.get("/verify", async (req, res) => {
     return res.redirect("/user-dashboard?error=transaction_not_found");
   }
 
+  // Idempotency: If transaction is already successful, do not re-create subscription
+  if (tx.status === "success") {
+    return res.redirect("/user-dashboard?success=payment_already_verified");
+  }
+
   if (Status !== "OK") {
     subscriptionRepository.updateTransactionStatus(tx.id, "failed");
     return res.redirect("/user-dashboard?error=payment_failed");
+  }
+
+  const config = getSecurityConfig();
+  if (config.isProduction && !config.mocks.paymentConfigured) {
+    return res.status(503).json({
+      code: 'SERVICE_NOT_CONFIGURED',
+      error: 'درگاه پرداخت در محیط عملیاتی فعال نیست.',
+      message: 'Payment gateway verification is not configured in production.'
+    });
   }
 
   // Verify with Zarinpal (mocked here)

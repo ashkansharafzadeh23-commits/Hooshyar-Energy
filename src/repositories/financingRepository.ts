@@ -2,11 +2,11 @@ import { db } from '../db/index.js';
 import { IFinancingRepository } from './interfaces/IFinancingRepository.js';
 
 export class JSONFinancingRepository implements IFinancingRepository {
-  getFinancingRequests(projectId: string) { return db.getFinancingRequests(projectId); }
+  getFinancingRequests(projectId?: string) { return db.getFinancingRequests ? db.getFinancingRequests(projectId) : (db.getFinancingRequestsByProjectId ? db.getFinancingRequestsByProjectId(projectId) : []); }
   getProjectById(projectId: string) { return db.getProjectById(projectId); }
   getFinancialModelsByProjectId(projectId: string) { return db.getFinancialModelsByProjectId(projectId); }
   createFinancingRequest(request: any) { return db.createFinancingRequest(request); }
-  getProjectContracts(projectId: string) { return db.getProjectContracts ? db.getProjectContracts(projectId) : []; }
+  getProjectContracts(projectId?: string) { return db.getProjectContracts ? db.getProjectContracts(projectId) : []; }
   getProjectDocuments(projectId: string) { return db.getProjectDocuments ? db.getProjectDocuments(projectId) : []; }
   createFinanceReadinessSnapshot(snapshot: any) { return db.createFinanceReadinessSnapshot(snapshot); }
   updateFinancingRequest(id: string, updates: any) { return db.updateFinancingRequest(id, updates); }
@@ -29,7 +29,7 @@ export class JSONFinancingRepository implements IFinancingRepository {
   getFinancingOfferById(id: string) { return db.getFinancingOfferById(id); }
   updateFinancingOffer(id: string, updates: any) { return db.updateFinancingOffer(id, updates); }
   createProjectFinancingRecord(record: any) { return db.createProjectFinancingRecord(record); }
-  getProjectFinancingRecords(projectId: string) { return db.getProjectFinancingRecords(projectId); }
+  getProjectFinancingRecords(projectId?: string) { return db.getProjectFinancingRecords ? db.getProjectFinancingRecords(projectId) : (db.getProjectFinancingRecordsByProjectId ? db.getProjectFinancingRecordsByProjectId(projectId) : []); }
   getFinancialModelById(id: string) { return db.getFinancialModelById(id); }
   getFinancialAssumptionSetById(id: string) { return db.getFinancialAssumptionSetById(id); }
   getRFQsByProjectId(projectId: string) { return (db as any).getRFQsByProjectId ? (db as any).getRFQsByProjectId(projectId) : []; }

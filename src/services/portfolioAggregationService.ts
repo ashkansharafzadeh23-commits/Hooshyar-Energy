@@ -126,39 +126,29 @@ export const portfolioAggregationService = {
     // 4. Projects under construction
     const projectsUnderConstruction = projects.filter(p => p.status === 'CONSTRUCTION').length;
 
-    // 5. Active procurement processes
-    let activeProcurementCount = 0;
-    for (const pid of projectIds) {
-      const pkgs = procurementRepository.getPackages(pid) || [];
-      const rfqs = procurementRepository.getRFQs(pid) || [];
-      const activePkgs = pkgs.filter(pkg => pkg.status === 'OPEN' || pkg.status === 'IN_PROGRESS' || pkg.status === 'EVALUATION' || pkg.status === 'DRAFT');
-      const activeRfqs = rfqs.filter(r => r.status === 'PUBLISHED' || r.status === 'EVALUATION' || r.status === 'OPEN');
-      activeProcurementCount += (activePkgs.length + activeRfqs.length);
-    }
+    // 5. Active procurement processes (Batched)
+    const allPkgs = procurementRepository.getPackages() || [];
+    const allRfqs = procurementRepository.getRFQs() || [];
+    const portfolioPkgs = allPkgs.filter(pkg => projectIds.includes(pkg.projectId));
+    const portfolioRfqs = allRfqs.filter(r => projectIds.includes(r.projectId));
+    const activePkgs = portfolioPkgs.filter(pkg => pkg.status === 'OPEN' || pkg.status === 'IN_PROGRESS' || pkg.status === 'EVALUATION' || pkg.status === 'DRAFT');
+    const activeRfqs = portfolioRfqs.filter(r => r.status === 'PUBLISHED' || r.status === 'EVALUATION' || r.status === 'OPEN');
+    const activeProcurementCount = activePkgs.length + activeRfqs.length;
 
-    // 6. Active contracts
-    let activeContractsCount = 0;
-    for (const pid of projectIds) {
-      const contracts = executionRepository.getProjectContracts(pid) || [];
-      const active = contracts.filter(c => c.status === 'ACTIVE' || c.status === 'SIGNED' || c.status === 'EXECUTED');
-      activeContractsCount += active.length;
-    }
+    // 6. Active contracts (Batched)
+    const allContracts = executionRepository.getProjectContracts() || [];
+    const portfolioContracts = allContracts.filter(c => projectIds.includes(c.projectId));
+    const activeContractsCount = portfolioContracts.filter(c => c.status === 'ACTIVE' || c.status === 'SIGNED' || c.status === 'EXECUTED').length;
 
-    // 7. Open financing applications
-    let openFinancingApplicationsCount = 0;
-    for (const pid of projectIds) {
-      const reqs = financingRepository.getFinancingRequests(pid) || [];
-      const openReqs = reqs.filter(r => r.status !== 'DECLINED' && r.status !== 'REJECTED' && r.status !== 'CANCELLED');
-      openFinancingApplicationsCount += openReqs.length;
-    }
+    // 7. Open financing applications (Batched)
+    const allFinReqs = financingRepository.getFinancingRequests() || [];
+    const portfolioFinReqs = allFinReqs.filter(r => projectIds.includes(r.projectId));
+    const openFinancingApplicationsCount = portfolioFinReqs.filter(r => r.status !== 'DECLINED' && r.status !== 'REJECTED' && r.status !== 'CANCELLED').length;
 
-    // 8. Active financing agreements
-    let activeFinancingAgreementsCount = 0;
-    for (const pid of projectIds) {
-      const finRecs = financingRepository.getProjectFinancingRecords(pid) || [];
-      const activeRecs = finRecs.filter(r => r.status === 'APPROVED' || r.status === 'ACTIVE');
-      activeFinancingAgreementsCount += activeRecs.length;
-    }
+    // 8. Active financing agreements (Batched)
+    const allFinRecs = financingRepository.getProjectFinancingRecords() || [];
+    const portfolioFinRecs = allFinRecs.filter(r => projectIds.includes(r.projectId));
+    const activeFinancingAgreementsCount = portfolioFinRecs.filter(r => r.status === 'APPROVED' || r.status === 'ACTIVE').length;
 
     // 9. Open maintenance cases
     let openMaintenanceCasesCount = 0;
@@ -370,6 +360,32 @@ export const portfolioAggregationService = {
     let totalKnownContractValueIRR = 0;
     let projectsWithContractValueCount = 0;
 
+    // Batched pre-fetch to eliminate N+1 queries
+    const allFinReqs = financingRepository.getFinancingRequests() || [];
+    const allFinRecords = financingRepository.getProjectFinancingRecords() || [];
+    const allContracts = executionRepository.getProjectContracts() || [];
+
+    const finReqsByProject = new Map<string, any[]>();
+    for (const req of allFinReqs) {
+      const list = finReqsByProject.get(req.projectId) || [];
+      list.push(req);
+      finReqsByProject.set(req.projectId, list);
+    }
+
+    const finRecordsByProject = new Map<string, any[]>();
+    for (const rec of allFinRecords) {
+      const list = finRecordsByProject.get(rec.projectId) || [];
+      list.push(rec);
+      finRecordsByProject.set(rec.projectId, list);
+    }
+
+    const contractsByProject = new Map<string, any[]>();
+    for (const c of allContracts) {
+      const list = contractsByProject.get(c.projectId) || [];
+      list.push(c);
+      contractsByProject.set(c.projectId, list);
+    }
+
     const projectFinancialDetails: ProjectFinancialDetail[] = projects.map(p => {
       // 1. CAPEX
       let capex: number | null = null;
@@ -385,7 +401,7 @@ export const portfolioAggregationService = {
       }
 
       // 2. Financing Requested & Equity
-      const finReqs = financingRepository.getFinancingRequests(p.id) || [];
+      const finReqs = finReqsByProject.get(p.id) || [];
       let financingRequested: number | null = null;
       let ownerEquity: number | null = null;
 
@@ -404,7 +420,7 @@ export const portfolioAggregationService = {
       }
 
       // 3. Financing Secured
-      const finRecords = financingRepository.getProjectFinancingRecords(p.id) || [];
+      const finRecords = finRecordsByProject.get(p.id) || [];
       let financingSecured: number | null = null;
       const approvedRecords = finRecords.filter(r => r.status === 'APPROVED' || r.status === 'ACTIVE');
       if (approvedRecords.length > 0) {
@@ -416,7 +432,7 @@ export const portfolioAggregationService = {
       }
 
       // 4. Contract Values
-      const contracts = executionRepository.getProjectContracts(p.id) || [];
+      const contracts = contractsByProject.get(p.id) || [];
       let contractValue: number | null = null;
       const activeContracts = contracts.filter(c => c.status === 'ACTIVE' || c.status === 'SIGNED' || c.status === 'EXECUTED');
       if (activeContracts.length > 0) {
@@ -510,56 +526,57 @@ export const portfolioAggregationService = {
     let approvedChangeRequests = 0;
     let pendingChangeRequests = 0;
 
-    for (const pid of projectIds) {
-      // BOQs
-      const boqs = procurementRepository.getBOQs(pid) || [];
-      totalBOQs += boqs.length;
+    // Pre-fetch all collections once (Batched to eliminate N+1 queries)
+    const allBOQs = procurementRepository.getBOQs() || [];
+    const allPackages = procurementRepository.getPackages() || [];
+    const allRFQs = procurementRepository.getRFQs() || [];
+    const allPurchaseOrders = procurementRepository.getPurchaseOrders() || [];
+    const allDeliveries = procurementRepository.getDeliveryRecordsByProjectId() || [];
+    const allInspections = procurementRepository.getDeliveryInspectionsByProjectId() || [];
+    const allContracts = executionRepository.getProjectContracts() || [];
+    const allContractRevisions = executionRepository.getContractRevisions() || [];
+    const allChangeRequests = executionRepository.getChangeRequestsByProjectId() || [];
 
-      // Packages
-      const pkgs = procurementRepository.getPackages(pid) || [];
-      totalProcurementPackages += pkgs.length;
-      openProcurementPackages += pkgs.filter(p => p.status === 'OPEN' || p.status === 'IN_PROGRESS' || p.status === 'EVALUATION' || p.status === 'DRAFT').length;
+    const projectIdSet = new Set(projectIds);
 
-      // Supplier RFQs
-      const rfqs = procurementRepository.getRFQs(pid) || [];
-      totalSupplierRFQs += rfqs.length;
-      activeSupplierRFQs += rfqs.filter(r => r.status === 'PUBLISHED' || r.status === 'EVALUATION' || r.status === 'OPEN').length;
+    const portfolioBOQs = allBOQs.filter(b => projectIdSet.has(b.projectId));
+    totalBOQs = portfolioBOQs.length;
 
-      // Purchase Orders
-      const pos = procurementRepository.getPurchaseOrders(pid) || [];
-      totalPurchaseOrders += pos.length;
+    const portfolioPkgs = allPackages.filter(p => projectIdSet.has(p.projectId));
+    totalProcurementPackages = portfolioPkgs.length;
+    openProcurementPackages = portfolioPkgs.filter(p => p.status === 'OPEN' || p.status === 'IN_PROGRESS' || p.status === 'EVALUATION' || p.status === 'DRAFT').length;
 
-      // Deliveries
-      const deliveries = procurementRepository.getDeliveryRecords(pid) || [];
-      for (const d of deliveries) {
-        const dStatus = d.status as string;
-        if (dStatus === 'DELIVERED' || dStatus === 'ACCEPTED' || dStatus === 'RECEIVED') {
-          completedDeliveries++;
-        } else if (dStatus === 'PLANNED' || dStatus === 'SHIPPED' || dStatus === 'IN_TRANSIT' || dStatus === 'EXPECTED') {
-          pendingDeliveries++;
-        }
+    const portfolioRfqs = allRFQs.filter(r => projectIdSet.has(r.projectId));
+    totalSupplierRFQs = portfolioRfqs.length;
+    activeSupplierRFQs = portfolioRfqs.filter(r => r.status === 'PUBLISHED' || r.status === 'EVALUATION' || r.status === 'OPEN').length;
+
+    const portfolioPOs = allPurchaseOrders.filter(p => projectIdSet.has(p.projectId));
+    totalPurchaseOrders = portfolioPOs.length;
+
+    const portfolioDeliveries = allDeliveries.filter(d => projectIdSet.has(d.projectId));
+    for (const d of portfolioDeliveries) {
+      const dStatus = d.status as string;
+      if (dStatus === 'DELIVERED' || dStatus === 'ACCEPTED' || dStatus === 'RECEIVED') {
+        completedDeliveries++;
+      } else if (dStatus === 'PLANNED' || dStatus === 'SHIPPED' || dStatus === 'IN_TRANSIT' || dStatus === 'EXPECTED') {
+        pendingDeliveries++;
       }
-
-      // Inspections
-      const inspections = procurementRepository.getDeliveryInspectionsByProjectId(pid) || [];
-      pendingInspections += inspections.filter(i => i.status === 'PENDING' || i.status === 'SCHEDULED' || i.status === 'IN_PROGRESS').length;
-
-      // Contracts
-      const contracts = executionRepository.getProjectContracts(pid) || [];
-      totalContracts += contracts.length;
-      activeContracts += contracts.filter(c => c.status === 'ACTIVE' || c.status === 'SIGNED' || c.status === 'EXECUTED').length;
-
-      // Contract Revisions
-      for (const c of contracts) {
-        const revs = executionRepository.getContractRevisions(c.id) || [];
-        totalContractRevisions += revs.length;
-      }
-
-      // Change Requests
-      const crs = executionRepository.getChangeRequestsByProjectId(pid) || [];
-      approvedChangeRequests += crs.filter(c => c.status === 'APPROVED').length;
-      pendingChangeRequests += crs.filter(c => c.status === 'PENDING' || c.status === 'SUBMITTED').length;
     }
+
+    const portfolioInspections = allInspections.filter(i => projectIdSet.has(i.projectId));
+    pendingInspections = portfolioInspections.filter(i => i.status === 'PENDING' || i.status === 'SCHEDULED' || i.status === 'IN_PROGRESS').length;
+
+    const portfolioContracts = allContracts.filter(c => projectIdSet.has(c.projectId));
+    totalContracts = portfolioContracts.length;
+    activeContracts = portfolioContracts.filter(c => c.status === 'ACTIVE' || c.status === 'SIGNED' || c.status === 'EXECUTED').length;
+
+    const portfolioContractIds = new Set(portfolioContracts.map(c => c.id));
+    const portfolioContractRevisions = allContractRevisions.filter(r => portfolioContractIds.has(r.contractId));
+    totalContractRevisions = portfolioContractRevisions.length;
+
+    const portfolioCRs = allChangeRequests.filter(c => projectIdSet.has(c.projectId));
+    approvedChangeRequests = portfolioCRs.filter(c => c.status === 'APPROVED').length;
+    pendingChangeRequests = portfolioCRs.filter(c => c.status === 'PENDING' || c.status === 'SUBMITTED').length;
 
     return {
       portfolioId: portfolio.id,

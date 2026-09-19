@@ -4,7 +4,7 @@ export interface IExecutionRepository {
   getProjectBaselineById(id: string): any;
   getChangeRequestById(id: string): any;
   getApprovalRequestById(id: string): any;
-  getProjectContracts(projectId: string): any[];
+  getProjectContracts(projectId?: string): any[];
   getEnergyProjects(): any[];
   createContract(contract: any): any;
   getOrganizationById(orgId: string): any;
@@ -14,8 +14,8 @@ export interface IExecutionRepository {
   updateContract(id: string, updates: any): any;
   getContractParties(contractId: string): any[];
   updateContractParty(id: string, updates: any): any;
-  getContractRevisions(contractId: string): any[];
-  getChangeRequestsByProjectId(projectId: string): any[];
+  getContractRevisions(contractId?: string): any[];
+  getChangeRequestsByProjectId(projectId?: string): any[];
   createChangeRequest(cr: any): any;
   updateChangeRequest(id: string, updates: any): any;
   createContractRevision(rev: any): any;

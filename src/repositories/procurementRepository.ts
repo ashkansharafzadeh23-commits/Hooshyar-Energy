@@ -25,7 +25,7 @@ export const procurementRepository = {
   getDeliveryInspectionsByProjectId: (projectId?: string): any[] => {
     return (db as any).getDeliveryInspectionsByProjectId ? (db as any).getDeliveryInspectionsByProjectId(projectId) : [];
   },
-  getBOQs: (projectId: string): BillOfQuantities[] => db.getBOQs(projectId),
+  getBOQs: (projectId?: string): BillOfQuantities[] => db.getBOQs(projectId),
   getBOQById: (id: string): BillOfQuantities | undefined => db.getBOQById(id),
   createBOQ: (boq: Omit<BillOfQuantities, 'id' | 'createdAt' | 'updatedAt' | 'boqCode'> & Partial<Pick<BillOfQuantities, 'boqCode'>>): BillOfQuantities => db.createBOQ(boq),
   updateBOQ: (id: string, updates: Partial<BillOfQuantities>): BillOfQuantities | null => db.updateBOQ(id, updates),
@@ -67,7 +67,7 @@ export const procurementRepository = {
   updateSupplierAward: (id: string, updates: Partial<SupplierAward>): SupplierAward | null => db.updateSupplierAward(id, updates),
 
   // Purchase Orders
-  getPurchaseOrders: (projectId: string): PurchaseOrder[] => db.getPurchaseOrders(projectId),
+  getPurchaseOrders: (projectId?: string): PurchaseOrder[] => db.getPurchaseOrders(projectId),
   getPurchaseOrderById: (id: string): PurchaseOrder | undefined => db.getPurchaseOrderById(id),
   createPurchaseOrder: (po: Omit<PurchaseOrder, 'id' | 'createdAt' | 'updatedAt' | 'poCode'> & Partial<Pick<PurchaseOrder, 'poCode'>>): PurchaseOrder => db.createPurchaseOrder(po),
   updatePurchaseOrder: (id: string, updates: Partial<PurchaseOrder>): PurchaseOrder | null => db.updatePurchaseOrder(id, updates),
@@ -78,7 +78,7 @@ export const procurementRepository = {
 
   // Deliveries
   getDeliveryRecords: (poId: string): DeliveryRecord[] => db.getDeliveryRecords(poId),
-  getDeliveryRecordsByProjectId: (projectId: string): DeliveryRecord[] => db.getDeliveryRecordsByProjectId(projectId),
+  getDeliveryRecordsByProjectId: (projectId?: string): DeliveryRecord[] => db.getDeliveryRecordsByProjectId(projectId),
   getDeliveryRecordById: (id: string): DeliveryRecord | undefined => db.getDeliveryRecordById(id),
   createDeliveryRecord: (rec: Omit<DeliveryRecord, 'id' | 'createdAt' | 'deliveryNumber'> & Partial<Pick<DeliveryRecord, 'deliveryNumber'>>): DeliveryRecord => db.createDeliveryRecord(rec),
   updateDeliveryRecord: (id: string, updates: Partial<DeliveryRecord>): DeliveryRecord | null => db.updateDeliveryRecord(id, updates),

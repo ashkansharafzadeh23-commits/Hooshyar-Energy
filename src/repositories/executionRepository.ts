@@ -7,7 +7,7 @@ export class JSONExecutionRepository implements IExecutionRepository {
   getProjectBaselineById(id: string) { return db.getProjectBaselineById(id); }
   getChangeRequestById(id: string) { return db.getChangeRequestById(id); }
   getApprovalRequestById(id: string) { return db.getApprovalRequestById(id); }
-  getProjectContracts(projectId: string) { return db.getProjectContracts(projectId); }
+  getProjectContracts(projectId?: string) { return db.getProjectContracts(projectId); }
   getEnergyProjects() { return db.getEnergyProjects(); }
   createContract(contract: any) { return db.createContract(contract); }
   getOrganizationById(orgId: string) { return db.getOrganizationById?.(orgId); }
@@ -17,8 +17,8 @@ export class JSONExecutionRepository implements IExecutionRepository {
   updateContract(id: string, updates: any) { return db.updateContract(id, updates); }
   getContractParties(contractId: string) { return db.getContractParties(contractId); }
   updateContractParty(id: string, updates: any) { return db.updateContractParty(id, updates); }
-  getContractRevisions(contractId: string) { return db.getContractRevisions(contractId); }
-  getChangeRequestsByProjectId(projectId: string) { return db.getChangeRequestsByProjectId(projectId); }
+  getContractRevisions(contractId?: string) { return db.getContractRevisions(contractId); }
+  getChangeRequestsByProjectId(projectId?: string) { return db.getChangeRequestsByProjectId(projectId); }
   createChangeRequest(cr: any) { return db.createChangeRequest(cr); }
   updateChangeRequest(id: string, updates: any) { return db.updateChangeRequest(id, updates); }
   createContractRevision(rev: any) { return db.createContractRevision(rev); }

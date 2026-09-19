@@ -8,6 +8,7 @@ import { validateTransition } from '../services/projectLifecycleService.js';
 import { userRepository } from '../repositories/userRepository.js';
 import { organizationRepository } from '../repositories/organizationRepository.js';
 import { EPCBid, ProjectRFQ } from '../types/rfq.js';
+import { idempotencyMiddleware } from '../reliability/idempotency.js';
 
 const router = express.Router();
 router.use(verifyAuthToken);
@@ -656,11 +657,12 @@ router.get('/bids/:bidId/revisions', (req, res) => {
 });
 
 // 13.1 POST /api/rfq/bids/:bidId/select (Select/Award bid directly)
-router.post('/bids/:bidId/select', (req, res) => {
+router.post('/bids/:bidId/select', idempotencyMiddleware('rfq-award'), (req, res) => {
   const user = req.user;
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-  const winningBid = rfqRepository.getBidById(req.params.bidId);
+  const bidId = typeof req.params.bidId === 'string' ? req.params.bidId : req.params.bidId[0];
+  const winningBid = rfqRepository.getBidById(bidId);
   if (!winningBid) return res.status(404).json({ error: "پیشنهاد مورد نظر یافت نشد" });
 
   const rfq = rfqRepository.findRFQById(winningBid.rfqId);
@@ -669,6 +671,16 @@ router.post('/bids/:bidId/select', (req, res) => {
   const project = projectRepository.findById(rfq.projectId);
   if (!project || (project.ownerId !== user.id && user.role !== 'admin')) {
     return res.status(403).json({ error: "تنها کارفرما یا مدیر سامانه می‌تواند پیمانکار نهایی را برگزیند" });
+  }
+
+  // Idempotency: If this bid is already selected and RFQ is AWARDED, return successfully
+  if (rfq.status === 'AWARDED' && rfq.selectedBidId === winningBid.id) {
+    return res.json({
+      message: "این پیشنهاد قبلاً به عنوان پیشنهاد منتخب برگزیده شده است",
+      rfq,
+      winningBid,
+      alreadyAwarded: true
+    });
   }
 
   // 1. Update winning bid status to SELECTED

@@ -1,9 +1,9 @@
 export interface IFinancingRepository {
-  getFinancingRequests(projectId: string): any[];
+  getFinancingRequests(projectId?: string): any[];
   getProjectById(projectId: string): any;
   getFinancialModelsByProjectId(projectId: string): any[];
   createFinancingRequest(request: any): any;
-  getProjectContracts(projectId: string): any[];
+  getProjectContracts(projectId?: string): any[];
   getProjectDocuments(projectId: string): any[];
   createFinanceReadinessSnapshot(snapshot: any): any;
   updateFinancingRequest(id: string, updates: any): any;
@@ -26,7 +26,7 @@ export interface IFinancingRepository {
   getFinancingOfferById(id: string): any;
   updateFinancingOffer(id: string, updates: any): any;
   createProjectFinancingRecord(record: any): any;
-  getProjectFinancingRecords(projectId: string): any[];
+  getProjectFinancingRecords(projectId?: string): any[];
   getFinancialModelById(id: string): any;
   getFinancialAssumptionSetById(id: string): any;
   getRFQsByProjectId(projectId: string): any[];

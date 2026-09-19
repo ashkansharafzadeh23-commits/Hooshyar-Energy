@@ -2,6 +2,9 @@ import { portfolioAggregationService } from './portfolioAggregationService.js';
 import { lifecycleIntelligenceService } from './lifecycleIntelligenceService.js';
 import { platformIntelligenceEngine } from './platformIntelligenceEngine.js';
 import { portfolioRepository } from '../repositories/portfolioRepository.js';
+import { externalCircuitBreakers } from '../reliability/circuitBreaker.js';
+import { executeWithTimeout, DEFAULT_TIMEOUTS } from '../reliability/externalClient.js';
+import { logger } from '../observability/logger.js';
 
 export interface ExecutiveSummaryResponse {
   portfolioId: string;
@@ -109,16 +112,28 @@ STRICT RULES:
         };
 
         const prompt = `${systemPrompt}\n\nداده‌های واقعی پرتفوی:\n${JSON.stringify(contextData, null, 2)}`;
-        const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: prompt
+        
+        const response = await externalCircuitBreakers.geminiAi.execute(async () => {
+          return await executeWithTimeout(
+            () => ai.models.generateContent({
+              model: 'gemini-2.5-flash',
+              contents: prompt
+            }),
+            'GEMINI_AI',
+            DEFAULT_TIMEOUTS.GEMINI_AI || 15000
+          );
         });
 
         if (response && response.text) {
           summaryText = response.text;
           generatedBy = 'GEMINI_AI';
         }
-      } catch (err) {
+      } catch (err: any) {
+        logger.warn(`Executive summary AI generation failed or circuit open: ${err?.message}; using deterministic verified facts engine`, {
+          service: 'EXECUTIVE_ASSISTANT',
+          event: 'AI_FALLBACK_TO_FACTS',
+          metadata: { portfolioId, errorMessage: err?.message }
+        });
         // Fallback gracefully to verified template
         generatedBy = 'VERIFIED_FACTS_ENGINE';
       }

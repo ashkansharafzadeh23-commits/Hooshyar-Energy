@@ -466,7 +466,10 @@ const defaultEPCs: Organization[] = [
 export const db: any = {
 
   // Execution & Workspace
-  getProjectContracts: (projectId: string) => readDB().projectContracts?.filter(c => c.projectId === projectId) || [],
+  getProjectContracts: (projectId?: string) => {
+    const list = readDB().projectContracts || [];
+    return projectId ? list.filter((c: any) => c.projectId === projectId) : list;
+  },
   getContractById: (id: string) => readDB().projectContracts?.find(c => c.id === id),
   createContract: (contract: Omit<ProjectContract, "id" | "createdAt" | "updatedAt">) => {
     const data = readDB();
@@ -540,7 +543,10 @@ export const db: any = {
     return null;
   },
   getChangeRequests: (contractId: string) => readDB().changeRequests?.filter((c: any) => c.contractId === contractId) || [],
-  getChangeRequestsByProjectId: (projectId: string) => readDB().changeRequests?.filter((c: any) => c.projectId === projectId) || [],
+  getChangeRequestsByProjectId: (projectId?: string) => {
+    const list = readDB().changeRequests || [];
+    return projectId ? list.filter((c: any) => c.projectId === projectId) : list;
+  },
   getChangeRequestById: (id: string) => readDB().changeRequests?.find((c: any) => c.id === id),
   createChangeRequest: (cr: Omit<ChangeRequest, "id" | "createdAt">) => {
     const data = readDB();
@@ -583,7 +589,10 @@ export const db: any = {
     }
     return null;
   },
-  getContractRevisions: (contractId: string) => readDB().contractRevisions?.filter((r: any) => r.contractId === contractId) || [],
+  getContractRevisions: (contractId?: string) => {
+    const list = readDB().contractRevisions || [];
+    return contractId ? list.filter((r: any) => r.contractId === contractId) : list;
+  },
   createContractRevision: (rev: Omit<ContractRevision, "id" | "createdAt">) => {
     const data = readDB();
     if (!data.contractRevisions) data.contractRevisions = [];
@@ -843,17 +852,21 @@ export const db: any = {
     return newPkg;
   },
 
-  getProcurementPackagesByProjectId: (projectId: string) => {
-    return (readDB().procurementPackages || []).filter((p: any) => p.projectId === projectId);
+  getProcurementPackagesByProjectId: (projectId?: string) => {
+    const list = readDB().procurementPackages || [];
+    return projectId ? list.filter((p: any) => p.projectId === projectId) : list;
   },
-  getProcurementRFQsByProjectId: (projectId: string) => {
-    return (readDB().procurementRfqs || []).filter((r: any) => r.projectId === projectId);
+  getProcurementRFQsByProjectId: (projectId?: string) => {
+    const list = readDB().procurementRfqs || [];
+    return projectId ? list.filter((r: any) => r.projectId === projectId) : list;
   },
-  getFinancingRequestsByProjectId: (projectId: string) => {
-    return (readDB().financingRequests || []).filter((r: any) => r.projectId === projectId);
+  getFinancingRequestsByProjectId: (projectId?: string) => {
+    const list = readDB().financingRequests || [];
+    return projectId ? list.filter((r: any) => r.projectId === projectId) : list;
   },
-  getProjectFinancingRecordsByProjectId: (projectId: string) => {
-    return (readDB().projectFinancingRecords || []).filter((r: any) => r.projectId === projectId);
+  getProjectFinancingRecordsByProjectId: (projectId?: string) => {
+    const list = readDB().projectFinancingRecords || [];
+    return projectId ? list.filter((r: any) => r.projectId === projectId) : list;
   },
   getAssetAlertsByAssetId: (assetId: string) => {
     return (readDB().assetAlerts || []).filter((a: any) => a.assetId === assetId);
@@ -870,8 +883,9 @@ export const db: any = {
   getTelemetryReadingsByAssetId: (assetId: string) => {
     return (readDB().telemetryReadings || []).filter((r: any) => r.assetId === assetId);
   },
-  getDeliveryInspectionsByProjectId: (projectId: string) => {
-    return (readDB().deliveryInspections || []).filter((i: any) => i.projectId === projectId);
+  getDeliveryInspectionsByProjectId: (projectId?: string) => {
+    const list = readDB().deliveryInspections || [];
+    return projectId ? list.filter((i: any) => i.projectId === projectId) : list;
   },
   getBOQsByProjectId: (projectId: string) => {
     return (readDB().boqs || []).filter((b: any) => b.projectId === projectId);
@@ -1307,7 +1321,10 @@ export const db: any = {
     return null;
   },
   // Procurement
-  getBOQs: (projectId: string) => readDB().boqs?.filter((b: any) => b.projectId === projectId) || [],
+  getBOQs: (projectId?: string) => {
+    const list = readDB().boqs || [];
+    return projectId ? list.filter((b: any) => b.projectId === projectId) : list;
+  },
   getBOQById: (id: string) => readDB().boqs?.find((b: any) => b.id === id),
   createBOQ: (boq: any) => { 
     const d = readDB(); 
@@ -1359,7 +1376,10 @@ export const db: any = {
   getSupplierAwardsByProjectId: (projectId: string) => readDB().supplierAwards?.filter((a: any) => a.projectId === projectId) || [],
   createSupplierAward: (award: any) => { const d = readDB(); if(!d.supplierAwards) d.supplierAwards = []; const n = { ...award, id: uuidv4(), createdAt: new Date().toISOString() }; d.supplierAwards.push(n); writeDB(d); return n; },
   updateSupplierAward: (id: string, updates: any) => { const d = readDB(); if(!d.supplierAwards) d.supplierAwards = []; const idx = d.supplierAwards.findIndex((a: any) => a.id === id); if(idx > -1) { d.supplierAwards[idx] = { ...d.supplierAwards[idx], ...updates }; writeDB(d); return d.supplierAwards[idx]; } return null; },
-  getPurchaseOrders: (projectId: string) => readDB().purchaseOrders?.filter((p: any) => p.projectId === projectId) || [],
+  getPurchaseOrders: (projectId?: string) => {
+    const list = readDB().purchaseOrders || [];
+    return projectId ? list.filter((p: any) => p.projectId === projectId) : list;
+  },
   getPurchaseOrderById: (id: string) => readDB().purchaseOrders?.find((p: any) => p.id === id),
   createPurchaseOrder: (po: any) => { 
     const d = readDB(); 
@@ -1374,7 +1394,10 @@ export const db: any = {
   getPurchaseOrderItems: (poId: string) => readDB().purchaseOrderItems?.filter((i: any) => i.purchaseOrderId === poId) || [],
   createPurchaseOrderItem: (item: any) => { const d = readDB(); if(!d.purchaseOrderItems) d.purchaseOrderItems = []; const n = { ...item, id: uuidv4() }; d.purchaseOrderItems.push(n); writeDB(d); return n; },
   getDeliveryRecords: (poId: string) => readDB().deliveryRecords?.filter((d: any) => d.purchaseOrderId === poId) || [],
-  getDeliveryRecordsByProjectId: (projectId: string) => readDB().deliveryRecords?.filter((d: any) => d.projectId === projectId) || [],
+  getDeliveryRecordsByProjectId: (projectId?: string) => {
+    const list = readDB().deliveryRecords || [];
+    return projectId ? list.filter((d: any) => d.projectId === projectId) : list;
+  },
   getDeliveryRecordById: (id: string) => readDB().deliveryRecords?.find((d: any) => d.id === id),
   createDeliveryRecord: (rec: any) => { 
     const d = readDB(); 

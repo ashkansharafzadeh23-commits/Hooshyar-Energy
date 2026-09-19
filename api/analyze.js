@@ -1,4 +1,7 @@
 import { getSunHoursForCity } from './lib/solarIrradiance.js';
+import { externalCircuitBreakers } from '../src/reliability/circuitBreaker.js';
+import { executeWithTimeout, DEFAULT_TIMEOUTS } from '../src/reliability/externalClient.js';
+import { logger } from '../src/observability/logger.js';
 
 export async function runRuleEngine(body) {
   const req = { body }; // mock req for compatibility
@@ -244,9 +247,10 @@ export default async function handler(req, res) {
   const engineResult = ruleRes.engineResult;
 
 // 3.3 فراخوانی Claude API
-  const generateFallback = (errorMsg) => {
+  const generateFallback = (errorMsg, status = 'UNAVAILABLE') => {
     return {
       summary: "تحلیل پایه بر اساس موتور قوانین انجام شد. (" + errorMsg + ")",
+      aiStatus: status,
       dailyConsumptionEstimate: engineResult.dailyConsumptionEstimate || { dailyKwh: 0, monthlyKwh: 0 },
       solar: engineResult.solar || {},
       generator: engineResult.generator || {},
@@ -255,7 +259,7 @@ export default async function handler(req, res) {
       requiredAccessories: engineResult.requiredAccessories || [],
       estimatedTotalCost: (engineResult.solar?.estimatedTotalCost || 0) + (engineResult.generator?.estimatedTotalCost || 0),
       warnings: [
-        { severity: "warning", message: "این پیشنهاد اولیه است؛ بازدید حضوری کارشناس توصیه می‌شود" },
+        { severity: "warning", message: "این پیشنهاد اولیه بر پایه موتور محاسباتی قطعی است؛ بازدید حضوری کارشناس توصیه می‌شود" },
         { severity: "error", message: errorMsg }
       ],
       missingInfo: []
@@ -263,8 +267,11 @@ export default async function handler(req, res) {
   };
 
   if (!process.env.GEMINI_API_KEY) {
-    console.error("GEMINI_API_KEY تنظیم نشده است");
-    return res.status(200).json(generateFallback("GEMINI_API_KEY تنظیم نشده است"));
+    logger.warn("GEMINI_API_KEY not configured; returning deterministic rule engine output", {
+      service: 'AI_ANALYZE',
+      event: 'AI_KEY_MISSING'
+    });
+    return res.status(200).json(generateFallback("کلید هوش مصنوعی تنظیم نشده است", "NOT_CONFIGURED"));
   }
 
   try {
@@ -302,31 +309,46 @@ export default async function handler(req, res) {
   ]
 }`;
     
-    const claudeRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: 'user', parts: [{ text: JSON.stringify({ ruleEngineResult: engineResult, catalog: { panels: req.body.catalogPanels, accessories: req.body.catalogAccessories } }) }] }],
-        generationConfig: {
-            temperature: 0.2,
-            responseMimeType: "application/json"
-        }
-      }),
+    const claudeRes = await externalCircuitBreakers.geminiAi.execute(async () => {
+      return await executeWithTimeout(
+        (signal) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+          method: 'POST',
+          signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents: [{ role: 'user', parts: [{ text: JSON.stringify({ ruleEngineResult: engineResult, catalog: { panels: req.body.catalogPanels, accessories: req.body.catalogAccessories } }) }] }],
+            generationConfig: {
+              temperature: 0.2,
+              responseMimeType: "application/json"
+            }
+          }),
+        }),
+        'GEMINI_AI',
+        DEFAULT_TIMEOUTS.GEMINI_AI || 15000
+      );
     });
 
     if (!claudeRes.ok) {
       const errorText = await claudeRes.text();
-      console.error("Claude API error:", errorText);
-      return res.status(200).json(generateFallback("خطا در ارتباط با هوش مصنوعی (Claude API)"));
+      logger.warn("Gemini API HTTP non-200 error", {
+        service: 'GEMINI_AI',
+        event: 'AI_HTTP_ERROR',
+        metadata: { status: claudeRes.status, errorText }
+      });
+      return res.status(200).json(generateFallback("خطا در پاسخ سرویس هوش مصنوعی", "UNAVAILABLE"));
     }
 
     const claudeData = await claudeRes.json();
     if (claudeData.error) {
-       console.error("Gemini API error:", claudeData.error);
-       return res.status(200).json(generateFallback("خطا در API (Gemini)"));
+      logger.warn("Gemini API error payload", {
+        service: 'GEMINI_AI',
+        event: 'AI_PAYLOAD_ERROR',
+        metadata: { error: claudeData.error }
+      });
+      return res.status(200).json(generateFallback("خطا در پردازش مدل هوش مصنوعی", "UNAVAILABLE"));
     }
     let textContent = claudeData.candidates[0].content.parts[0].text;
     
@@ -343,10 +365,15 @@ export default async function handler(req, res) {
     
     const finalResult = JSON.parse(textContent);
     finalResult.dataSource = engineResult.dataSource;
+    finalResult.aiStatus = 'SUCCESS';
     return res.status(200).json(finalResult);
     
   } catch (err) {
-    console.error("Analysis Error:", err);
-    return res.status(200).json(generateFallback("خطا در پردازش هوش مصنوعی (فرمت نامعتبر)"));
+    logger.warn(`AI Analysis failed or timed out: ${err.message}`, {
+      service: 'GEMINI_AI',
+      event: 'AI_EXCEPTION',
+      metadata: { errorMessage: err.message }
+    });
+    return res.status(200).json(generateFallback("خطا در ارتباط یا زمان پاسخ‌دهی هوش مصنوعی", "UNAVAILABLE"));
   }
 }

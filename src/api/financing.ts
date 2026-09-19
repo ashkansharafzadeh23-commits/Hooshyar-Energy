@@ -7,6 +7,7 @@ import { financingOfferComparisonService } from '../services/financingOfferCompa
 import { canTransition } from '../services/projectLifecycleService.js';
 import { verifyAuthToken, requireAuth } from './auth.js';
 import { checkProjectAccess } from './projects.js';
+import { idempotencyMiddleware } from '../reliability/idempotency.js';
 
 const router = Router();
 
@@ -466,7 +467,7 @@ router.post('/financing-offers/:id/select', (req: Request, res: Response) => {
 });
 
 // 16. Record partner final approval and create Project Financing Record
-router.post('/financing-offers/:id/record-partner-approval', (req: Request, res: Response) => {
+router.post('/financing-offers/:id/record-partner-approval', idempotencyMiddleware('financing-approval'), (req: Request, res: Response) => {
   const id = getParam(req.params.id);
   const offer = financingRepository.getFinancingOfferById(id);
   if (!offer) return res.status(404).json({ error: 'Offer not found' });
@@ -477,6 +478,19 @@ router.post('/financing-offers/:id/record-partner-approval', (req: Request, res:
   const access = checkProjectAccess(request.projectId, req.user?.id, req.user?.role);
   if (!access.allowed) {
     return res.status(access.status || 403).json({ error: access.error });
+  }
+
+  // Idempotency: Check if financing record already created for this offer
+  const existingRecords = financingRepository.getProjectFinancingRecords(request.projectId);
+  const alreadyApproved = existingRecords.find((r: any) => r.financingOfferId === offer.id);
+  if (alreadyApproved) {
+    const project = financingRepository.getProjectById(request.projectId);
+    return res.json({
+      success: true,
+      financingRecord: alreadyApproved,
+      projectStatus: project?.status,
+      alreadyRecorded: true
+    });
   }
 
   // Update offer and request status
