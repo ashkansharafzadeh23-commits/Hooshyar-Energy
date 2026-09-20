@@ -4,6 +4,7 @@ import { platformIntelligenceEngine } from './platformIntelligenceEngine.js';
 import { portfolioRepository } from '../repositories/portfolioRepository.js';
 import { externalCircuitBreakers } from '../reliability/circuitBreaker.js';
 import { executeWithTimeout, DEFAULT_TIMEOUTS } from '../reliability/externalClient.js';
+import { extractSafeExternalErrorMetadata } from '../reliability/errorRedaction.js';
 import { logger } from '../observability/logger.js';
 
 export interface ExecutiveSummaryResponse {
@@ -129,10 +130,17 @@ STRICT RULES:
           generatedBy = 'GEMINI_AI';
         }
       } catch (err: any) {
-        logger.warn(`Executive summary AI generation failed or circuit open: ${err?.message}; using deterministic verified facts engine`, {
+        const safeMeta = extractSafeExternalErrorMetadata('GEMINI_AI', err);
+        logger.warn(`Executive summary AI generation failed; using deterministic verified facts engine`, {
           service: 'EXECUTIVE_ASSISTANT',
           event: 'AI_FALLBACK_TO_FACTS',
-          metadata: { portfolioId, errorMessage: err?.message }
+          metadata: {
+            portfolioId,
+            provider: safeMeta.provider,
+            httpStatus: safeMeta.httpStatus,
+            errorCategory: safeMeta.errorCategory,
+            isTransient: safeMeta.isTransient
+          }
         });
         // Fallback gracefully to verified template
         generatedBy = 'VERIFIED_FACTS_ENGINE';

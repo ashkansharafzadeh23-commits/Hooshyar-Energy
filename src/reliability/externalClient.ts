@@ -7,6 +7,7 @@
 
 import { logger } from '../observability/logger.js';
 import { metrics } from '../observability/metrics.js';
+import { extractSafeExternalErrorMetadata } from './errorRedaction.js';
 
 export interface ExternalRequestConfig {
   service: string;
@@ -143,6 +144,7 @@ export async function callExternalService<T>(
 
       const isTransient = isTransientError(error);
       const canRetry = isIdempotent && isTransient && attempt <= maxRetries;
+      const safeMeta = extractSafeExternalErrorMetadata(config.service, error);
 
       logger.warn(`External request failed: ${config.service}.${config.operation} (attempt ${attempt}/${maxRetries + 1})`, {
         service: config.service,
@@ -154,7 +156,9 @@ export async function callExternalService<T>(
           isIdempotent,
           isTransient,
           willRetry: canRetry,
-          errorMessage: error?.message,
+          httpStatus: safeMeta.httpStatus,
+          errorCategory: safeMeta.errorCategory,
+          safeSummary: safeMeta.safeSummary
         },
       });
 

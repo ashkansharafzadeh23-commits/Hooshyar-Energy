@@ -1,14 +1,15 @@
 import { CITY_COORDINATES } from '../../data/cityCoordinates.js';
-import { db } from '../../src/db/index.js';
+import { monitoringRepository } from '../../src/repositories/monitoringRepository.js';
 import { externalCircuitBreakers } from '../../src/reliability/circuitBreaker.js';
 import { executeWithTimeout } from '../../src/reliability/externalClient.js';
+import { extractSafeExternalErrorMetadata } from '../../src/reliability/errorRedaction.js';
 import { logger } from '../../src/observability/logger.js';
 
 const CACHE_MAX_AGE_DAYS = 180;
 const NASA_TIMEOUT_MS = Number(process.env.NASA_POWER_TIMEOUT_MS) || 10000;
 
 export async function getSunHoursForCity(city) {
-  const cached = db.getCityIrradianceCache(city);
+  const cached = monitoringRepository.getCityIrradianceCache(city);
   if (cached) {
     const ageDays = (Date.now() - cached.fetchedAt) / (1000 * 60 * 60 * 24);
     if (ageDays < CACHE_MAX_AGE_DAYS) {
@@ -16,6 +17,7 @@ export async function getSunHoursForCity(city) {
         sunHours: cached.sunHours,
         monthlySunHours: cached.monthlySunHours,
         source: 'nasa_power_api_cached',
+        dataClassification: 'VERIFIED_SOURCE',
         isVerifiedSource: true,
         isReferenceOnly: false,
         status: 'READY'
@@ -28,16 +30,18 @@ export async function getSunHoursForCity(city) {
     logger.warn(`Coordinates for city "${city}" not found in atlas; using regional reference estimate`, {
       service: 'SOLAR_IRRADIANCE',
       event: 'CITY_COORDS_MISSING',
-      metadata: { city }
+      metadata: { city, provider: 'NASA_POWER', errorCategory: 'DATA_UNAVAILABLE' }
     });
     const fallback = fallbackRegionalEstimate(city);
     return {
       sunHours: fallback,
       monthlySunHours: generateFallbackMonthly(fallback),
       source: 'REGIONAL_REFERENCE_ESTIMATE',
+      dataClassification: 'REFERENCE_ESTIMATE',
       isVerifiedSource: false,
       isReferenceOnly: true,
-      status: 'DEGRADED'
+      status: 'DEGRADED',
+      warning: 'Regional estimate for reference only; not verified measured engineering input'
     };
   }
 
@@ -66,7 +70,7 @@ export async function getSunHoursForCity(city) {
         OCT: dataObj.OCT, NOV: dataObj.NOV, DEC: dataObj.DEC
       };
 
-      db.setCityIrradianceCache({
+      monitoringRepository.setCityIrradianceCache({
         city,
         sunHours,
         fetchedAt: Date.now(),
@@ -78,25 +82,35 @@ export async function getSunHoursForCity(city) {
         sunHours,
         monthlySunHours,
         source: 'nasa_power_api',
+        dataClassification: 'VERIFIED_SOURCE',
         isVerifiedSource: true,
         isReferenceOnly: false,
         status: 'READY'
       };
     });
   } catch (err) {
-    logger.warn(`NASA POWER fetch failed or circuit open: ${err.message}. Using marked regional reference values.`, {
+    const safeMeta = extractSafeExternalErrorMetadata('NASA_POWER', err);
+    logger.warn(`NASA POWER fetch failed; using marked regional reference estimate`, {
       service: 'NASA_POWER',
       event: 'NASA_FETCH_FALLBACK',
-      metadata: { city, errorMessage: err.message }
+      metadata: {
+        city,
+        provider: safeMeta.provider,
+        httpStatus: safeMeta.httpStatus,
+        errorCategory: safeMeta.errorCategory,
+        isTransient: safeMeta.isTransient
+      }
     });
     const fallback = fallbackRegionalEstimate(city);
     return {
       sunHours: fallback,
       monthlySunHours: generateFallbackMonthly(fallback),
       source: 'REGIONAL_REFERENCE_ESTIMATE',
+      dataClassification: 'REFERENCE_ESTIMATE',
       isVerifiedSource: false,
       isReferenceOnly: true,
       status: 'DEGRADED',
+      warning: 'Regional estimate for reference only; not verified measured engineering input',
       error: 'NASA_POWER_UNAVAILABLE'
     };
   }

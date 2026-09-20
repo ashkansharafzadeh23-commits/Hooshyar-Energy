@@ -48,12 +48,33 @@ async function runDirectBypassCheck() {
       passed++;
     }
 
+    // Check src/reliability
+    const reliabilityFilesOutput = execSync('grep -rnE "import.*db.*from.*db/index" src/reliability/ || true', { encoding: 'utf8' }).trim();
+    if (reliabilityFilesOutput.length > 0) {
+      console.error(`[FAIL] Found prohibited direct DB bypasses in src/reliability:`, reliabilityFilesOutput);
+      failed++;
+    } else {
+      console.log(`[PASS] Zero production DB bypasses found in src/reliability/`);
+      passed++;
+    }
+
+    // Check api/lib/solarIrradiance.js
+    const solarIrradianceOutput = execSync('grep -rnE "import.*db.*from.*db/index" api/lib/solarIrradiance.js || true', { encoding: 'utf8' }).trim();
+    if (solarIrradianceOutput.length > 0) {
+      console.error(`[FAIL] Found prohibited direct DB bypass in api/lib/solarIrradiance.js:`, solarIrradianceOutput);
+      failed++;
+    } else {
+      console.log(`[PASS] Zero production DB bypasses found in api/lib/solarIrradiance.js`);
+      passed++;
+    }
+
   } catch (err: any) {
     console.error(`Error running grep:`, err);
     failed++;
   }
 
   console.log(`================================================================`);
+  console.log(`Critical direct DB bypasses remaining: ${failed}`);
   console.log(`DIRECT BYPASS REGRESSION TESTS COMPLETED: ${passed} PASSED, ${failed} FAILED`);
   console.log(`================================================================`);
 

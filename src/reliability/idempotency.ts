@@ -1,11 +1,35 @@
 /**
- * Idempotency Management (PH-4)
- * Protects high-risk mutation endpoints from accidental duplicate side effects.
- * Supports Idempotency-Key headers with TTL and memory caching.
+ * Idempotency Architecture (PH-4)
+ * 
+ * The system implements a two-tier idempotency model:
+ * 
+ * 1. LOCAL IDEMPOTENCY:
+ *    - In-memory Idempotency-Key cache (`IdempotencyStore`) with configurable TTL (default 10 min).
+ *    - Guards individual application instances against rapid client retries, double clicks, and network re-transmissions.
+ *    - Replays cached HTTP status code and response payload with `X-Idempotent-Replay: true`.
+ * 
+ * 2. DURABLE DOMAIN IDEMPOTENCY:
+ *    - High-risk domain mutations (RFQ award, Financing Offer approval, Subscription/Payment verification)
+ *      DO NOT rely solely on transient in-memory state.
+ *    - They enforce stored state invariants directly in persistent storage:
+ *      * RFQ Award: Checks `rfq.status === 'AWARDED'` and matches `rfq.selectedBidId === bid.id`. Rejects double award with HTTP 409.
+ *      * Financing Approval: Checks `existingRecords.find(r => r.financingOfferId === offer.id)` before creating ProjectFinancingRecord.
+ *      * Subscription Payment: Verifies `tx.status === 'success'` to prevent duplicate subscription creation on payment gateway callback.
+ * 
+ * 3. DISTRIBUTED IDEMPOTENCY NOT YET VERIFIED:
+ *    - A shared distributed key-value cache (e.g. Redis/PostgreSQL idempotency log with distributed advisory locking)
+ *      for transport-level Idempotency-Key replay across multiple horizontal container nodes is NOT yet implemented.
+ *    - In multi-instance deployments, transport-level deduplication relies on the underlying DURABLE DOMAIN IDEMPOTENCY.
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../observability/logger.js';
+
+export const IDEMPOTENCY_TIERS = {
+  LOCAL_IDEMPOTENCY: 'In-memory process cache for rapid network retry replay',
+  DURABLE_DOMAIN_IDEMPOTENCY: 'Persistent database state invariants for critical operations (RFQ, financing, payments)',
+  DISTRIBUTED_IDEMPOTENCY: 'NOT_YET_VERIFIED (requires external distributed lock/key-value store)'
+} as const;
 
 export interface IdempotencyRecord {
   statusCode: number;

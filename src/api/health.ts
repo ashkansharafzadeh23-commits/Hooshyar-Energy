@@ -6,7 +6,7 @@
  */
 
 import express, { Request, Response } from 'express';
-import { db } from '../db/index.js';
+import { checkDatabaseReadiness } from '../database/health.js';
 import { getSecurityConfig } from '../security/config.js';
 import { externalCircuitBreakers } from '../reliability/circuitBreaker.js';
 
@@ -15,6 +15,9 @@ const router = express.Router();
 export interface ComponentHealth {
   status: 'UP' | 'DOWN' | 'DEGRADED';
   details?: string;
+  driver?: string;
+  postgresStatus?: string;
+  isProductionVerified?: boolean;
 }
 
 export interface ReadinessReport {
@@ -38,20 +41,27 @@ router.get('/live', (_req: Request, res: Response) => {
   });
 });
 
-// Readiness Probe: evaluates dependencies safely
-router.get('/ready', (_req: Request, res: Response) => {
+// Readiness Probe: evaluates dependencies safely through abstractions
+router.get('/ready', async (_req: Request, res: Response) => {
   const uptime = Math.floor(process.uptime());
   const timestamp = new Date().toISOString();
 
-  // 1. Database Check
+  // 1. Database Check via Database Health Abstraction (Health route does NOT know about db.json)
   let dbHealth: ComponentHealth = { status: 'UP' };
   try {
-    const isDbInitialized = typeof db.getUsers === 'function' && Array.isArray(db.getUsers());
-    if (!isDbInitialized) {
-      dbHealth = { status: 'DOWN', details: 'Database store not initialized' };
-    }
+    const dbCheck = await checkDatabaseReadiness();
+    dbHealth = {
+      status: dbCheck.status,
+      details: dbCheck.details,
+      driver: dbCheck.activeDriver,
+      postgresStatus: dbCheck.postgres.status,
+      isProductionVerified: dbCheck.isProductionVerified
+    };
   } catch (err: any) {
-    dbHealth = { status: 'DOWN', details: 'Database query failure' };
+    dbHealth = {
+      status: 'DOWN',
+      details: 'Database health abstraction check failure: ' + (err?.message || 'unknown error')
+    };
   }
 
   // 2. Configuration Check

@@ -31,3 +31,56 @@ export const closePostgresDB = async () => {
     await pool.end();
   }
 };
+
+export const checkPostgresConnectivity = async (timeoutMs: number = 2500): Promise<{
+  ok: boolean;
+  status: 'UP' | 'DOWN' | 'NOT_CONFIGURED' | 'NOT_PRODUCTION_VERIFIED';
+  latencyMs?: number;
+  error?: string;
+}> => {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    return {
+      ok: false,
+      status: 'NOT_CONFIGURED',
+      error: 'DATABASE_URL is not configured'
+    };
+  }
+
+  let tempPool = pool;
+  let shouldCloseTemp = false;
+  if (!tempPool) {
+    tempPool = new Pool({
+      connectionString: databaseUrl,
+      connectionTimeoutMillis: timeoutMs,
+    });
+    shouldCloseTemp = true;
+  }
+
+  const start = Date.now();
+  let client: any = null;
+  try {
+    client = await tempPool.connect();
+    await client.query('SELECT 1');
+    const latencyMs = Date.now() - start;
+    return {
+      ok: true,
+      status: 'UP',
+      latencyMs
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      status: 'NOT_PRODUCTION_VERIFIED',
+      error: err?.message || 'Failed to execute SELECT 1 on PostgreSQL'
+    };
+  } finally {
+    if (client) {
+      try { client.release(); } catch {}
+    }
+    if (shouldCloseTemp && !pool) {
+      try { await tempPool.end(); } catch {}
+    }
+  }
+};
+

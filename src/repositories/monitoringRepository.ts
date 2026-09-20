@@ -97,5 +97,14 @@ export const monitoringRepository = {
   // Alerts
   getAllAlerts: (): any[] => {
     return (db as any).getAlerts ? (db as any).getAlerts() : [];
+  },
+
+  // City Solar Irradiance Cache (PH-4 clean abstraction)
+  getCityIrradianceCache: (city: string): any => {
+    return (db as any).getCityIrradianceCache ? (db as any).getCityIrradianceCache(city) : null;
+  },
+
+  setCityIrradianceCache: (cacheData: any): any => {
+    return (db as any).setCityIrradianceCache ? (db as any).setCityIrradianceCache(cacheData) : null;
   }
 };

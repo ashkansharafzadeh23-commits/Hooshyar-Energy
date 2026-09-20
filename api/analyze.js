@@ -59,7 +59,15 @@ export async function runRuleEngine(body) {
     const isPowerbank = targets && targets.includes("powerbank");
   
     // Sun hours mapping via NASA POWER API
-    const { sunHours, monthlySunHours, source: sunHoursSource } = await getSunHoursForCity(city);
+    const sunData = await getSunHoursForCity(city);
+    const {
+      sunHours,
+      monthlySunHours,
+      source: sunHoursSource,
+      dataClassification = 'REFERENCE_ESTIMATE',
+      isVerifiedSource = false,
+      isReferenceOnly = true
+    } = sunData;
   
     let sourceLabel = "داده تابش خورشیدی ماهواره‌ای NASA POWER (میانگین ۲۲ ساله)";
     if (sunHoursSource !== "nasa_power_api" && sunHoursSource !== "nasa_power_api_cached") {
@@ -140,7 +148,10 @@ export async function runRuleEngine(body) {
         finalKwp: +(finalKwp).toFixed(2),
         spaceConstrained,
         catalogAvailable,
-        panelOptions
+        panelOptions,
+        dataClassification,
+        isVerifiedSource,
+        isReferenceOnly
       };
     }
   
@@ -149,7 +160,10 @@ export async function runRuleEngine(body) {
       sunHours,
       monthlySunHours,
       sunHoursSource,
-      sourceLabel
+      sourceLabel,
+      dataClassification,
+      isVerifiedSource,
+      isReferenceOnly
     };
   
     if (isGenerator) {
