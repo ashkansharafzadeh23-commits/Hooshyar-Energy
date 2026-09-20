@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import express from 'express';
 import http from 'http';
 import { getSecurityConfig } from '../src/security/config.js';
+import { resetEnvironmentConfig } from '../src/config/environment.js';
 import { jwtService } from '../src/security/jwtService.js';
 import { otpService } from '../src/security/otpService.js';
 import { passwordService } from '../src/security/passwordService.js';
@@ -48,17 +49,22 @@ async function runSecurityTests() {
     try {
       process.env.NODE_ENV = 'production';
       delete process.env.JWT_SECRET;
+      resetEnvironmentConfig();
       let caughtError = false;
       try {
         getSecurityConfig();
       } catch (e: any) {
         caughtError = true;
-        assert(e.message.includes('strictly required in production'), 'Production missing JWT_SECRET fails fast with fatal error');
+        assert(
+          e.message.includes('JWT_SECRET') && (e.message.includes('production') || e.message.includes('missing')),
+          'Production missing JWT_SECRET fails fast with fatal error'
+        );
       }
       assert(caughtError, 'Config correctly rejected production without JWT_SECRET');
     } finally {
       process.env.NODE_ENV = originalEnv;
       if (originalSecret) process.env.JWT_SECRET = originalSecret;
+      resetEnvironmentConfig();
     }
 
     // Sign and verify with claims

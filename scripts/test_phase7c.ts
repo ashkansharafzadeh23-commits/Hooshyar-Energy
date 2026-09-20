@@ -34,6 +34,7 @@ import { technicianMatchingService } from '../src/services/technicianMatchingSer
 import monitoringRouter from '../src/api/monitoring.js';
 import { maintenanceRouter } from '../src/api/maintenance.js';
 import authRouter, { verifyAuthToken } from '../src/api/auth.js';
+import { jwtService } from '../src/security/jwtService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_dev';
 
@@ -82,7 +83,7 @@ async function runAudit() {
 
   try {
     // Helper to generate JWT tokens
-    const generateToken = (userId: string) => jwt.sign({ userId }, JWT_SECRET, { expiresIn: '1h' });
+    const generateToken = (userId: string) => jwtService.sign({ userId });
 
     // Seed Test Entities
     console.log('\n--- 1. SEEDING TEST USERS & PROJECTS ---');

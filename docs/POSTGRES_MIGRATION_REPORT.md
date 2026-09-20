@@ -2,7 +2,7 @@
   
 ## Summary
 * Mode: DRY RUN
-* Date: 2026-09-20T08:10:23.612Z
+* Date: 2026-09-20T08:31:18.981Z
 
 ## Verification Table
 
@@ -11,13 +11,13 @@
 | users | 0 | 0 | 0 | DRY_RUN_PASS |
 | organizations | 0 | 0 | 0 | DRY_RUN_PASS |
 | organizationMembers | 0 | 0 | 0 | DRY_RUN_PASS |
-| energyProjects | 0 | 0 | 0 | DRY_RUN_PASS |
+| energyProjects | 4 | 4 | 0 | DRY_RUN_PASS |
 | projectMembers | 0 | 0 | 0 | DRY_RUN_PASS |
 | portfolios | 0 | 0 | 0 | DRY_RUN_PASS |
 | energyAssets | 0 | 0 | 0 | DRY_RUN_PASS |
 | assetComponents | 0 | 0 | 0 | DRY_RUN_PASS |
-| telemetrySources | 0 | 0 | 0 | DRY_RUN_PASS |
-| telemetryReadings | 0 | 0 | 0 | DRY_RUN_PASS |
+| telemetrySources | 5 | 5 | 0 | DRY_RUN_PASS |
+| telemetryReadings | 8 | 8 | 0 | DRY_RUN_PASS |
 | projectContracts | 0 | 0 | 0 | DRY_RUN_PASS |
 | financingRequests | 0 | 0 | 0 | DRY_RUN_PASS |
 | financingOffers | 0 | 0 | 0 | DRY_RUN_PASS |
