@@ -499,6 +499,10 @@ function performCommissioningApproval(projectId: string, userId: string, notes?:
   }
 
   const record = gating.record!;
+  if (record.status === 'APPROVED') {
+    return { success: true, record, alreadyApproved: true };
+  }
+
   const updated = assetRepository.updateCommissioningRecord(record.id, {
     status: 'APPROVED',
     approvedByUserId: userId,

@@ -15,6 +15,27 @@ import {
 } from '../types/monitoring.js';
 import { EnergyAsset } from '../types/asset.js';
 
+export type AssetConnectionStatus =
+  | 'NOT_CONNECTED'
+  | 'CONFIGURED_NOT_VERIFIED'
+  | 'CONNECTED'
+  | 'DEGRADED'
+  | 'STALE'
+  | 'UNAVAILABLE';
+
+export interface AssetConnectionReport {
+  assetId: string;
+  status: AssetConnectionStatus;
+  isLiveConnected: boolean;
+  telemetryVerified: boolean;
+  activeSourcesCount: number;
+  totalSourcesCount: number;
+  latestReadingTimestamp?: string;
+  staleThresholdHours: number;
+  reason: string;
+  dataClassification: 'VERIFIED_TELEMETRY' | 'SYNTHETIC_TEST_DATA' | 'NO_TELEMETRY';
+}
+
 // Centralized & Configurable Health Scoring Weights
 export const HEALTH_WEIGHTS = {
   performanceDeviation: 0.40,
@@ -902,5 +923,126 @@ export const monitoringService = {
    */
   getLatestHealthAssessment(assetId: string): AssetHealthAssessment | null {
     return monitoringRepository.getLatestHealthAssessment(assetId);
+  },
+
+  /**
+   * 11. Truthfully determine Asset Telemetry Connection Status (PH-5)
+   * Prevents fabricating live connections when no active telemetry exists.
+   */
+  getAssetConnectionStatus(assetId: string): AssetConnectionReport {
+    const asset = assetRepository.getAssetById(assetId);
+    if (!asset) {
+      return {
+        assetId,
+        status: 'UNAVAILABLE',
+        isLiveConnected: false,
+        telemetryVerified: false,
+        activeSourcesCount: 0,
+        totalSourcesCount: 0,
+        staleThresholdHours: 24,
+        reason: 'Asset does not exist in registry.',
+        dataClassification: 'NO_TELEMETRY'
+      };
+    }
+
+    if (asset.status === 'UNDER_MAINTENANCE' || asset.status === 'DECOMMISSIONED') {
+      return {
+        assetId,
+        status: 'UNAVAILABLE',
+        isLiveConnected: false,
+        telemetryVerified: false,
+        activeSourcesCount: 0,
+        totalSourcesCount: 0,
+        staleThresholdHours: 24,
+        reason: `Asset is currently in ${asset.status} state.`,
+        dataClassification: 'NO_TELEMETRY'
+      };
+    }
+
+    const sources = monitoringRepository.getSourcesByAsset(assetId);
+    const activeSources = sources.filter(s => s.status === 'ACTIVE');
+
+    if (sources.length === 0 || activeSources.length === 0) {
+      return {
+        assetId,
+        status: 'NOT_CONNECTED',
+        isLiveConnected: false,
+        telemetryVerified: false,
+        activeSourcesCount: activeSources.length,
+        totalSourcesCount: sources.length,
+        staleThresholdHours: 24,
+        reason: 'No active telemetry data sources or logger registered for this asset.',
+        dataClassification: 'NO_TELEMETRY'
+      };
+    }
+
+    const readings = monitoringRepository.getReadingsByAsset(assetId);
+    if (readings.length === 0) {
+      return {
+        assetId,
+        status: 'CONFIGURED_NOT_VERIFIED',
+        isLiveConnected: false,
+        telemetryVerified: false,
+        activeSourcesCount: activeSources.length,
+        totalSourcesCount: sources.length,
+        staleThresholdHours: 24,
+        reason: 'Telemetry sources configured, but no readings have been ingested yet.',
+        dataClassification: 'NO_TELEMETRY'
+      };
+    }
+
+    // Sort readings by timestamp desc
+    const sortedReadings = [...readings].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const latestReading = sortedReadings[0];
+    const latestTime = new Date(latestReading.timestamp).getTime();
+    const now = Date.now();
+    const ageHours = (now - latestTime) / (1000 * 60 * 60);
+
+    const staleThresholdHours = 24;
+    const hasValidQuality = readings.some(r => r.quality === 'VALID' || r.quality === 'ESTIMATED');
+    const hasErrors = activeSources.some(s => s.status === 'ERROR') || readings.filter(r => r.quality === 'INVALID').length > readings.length * 0.5;
+
+    if (ageHours > staleThresholdHours) {
+      return {
+        assetId,
+        status: 'STALE',
+        isLiveConnected: false,
+        telemetryVerified: hasValidQuality,
+        activeSourcesCount: activeSources.length,
+        totalSourcesCount: sources.length,
+        latestReadingTimestamp: latestReading.timestamp,
+        staleThresholdHours,
+        reason: `Latest telemetry reading is older than ${staleThresholdHours} hours (${Math.round(ageHours)} hours ago).`,
+        dataClassification: 'SYNTHETIC_TEST_DATA'
+      };
+    }
+
+    if (hasErrors) {
+      return {
+        assetId,
+        status: 'DEGRADED',
+        isLiveConnected: true,
+        telemetryVerified: hasValidQuality,
+        activeSourcesCount: activeSources.length,
+        totalSourcesCount: sources.length,
+        latestReadingTimestamp: latestReading.timestamp,
+        staleThresholdHours,
+        reason: 'Telemetry stream is experiencing high error rate or logger degradation.',
+        dataClassification: 'VERIFIED_TELEMETRY'
+      };
+    }
+
+    return {
+      assetId,
+      status: 'CONNECTED',
+      isLiveConnected: true,
+      telemetryVerified: true,
+      activeSourcesCount: activeSources.length,
+      totalSourcesCount: sources.length,
+      latestReadingTimestamp: latestReading.timestamp,
+      staleThresholdHours,
+      reason: 'Active telemetry stream received and verified within operational window.',
+      dataClassification: 'VERIFIED_TELEMETRY'
+    };
   }
 };

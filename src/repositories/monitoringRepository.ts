@@ -35,6 +35,10 @@ export const monitoringRepository = {
     return db.deleteTelemetrySource(id);
   },
 
+  getSourcesByAsset: (assetId: string): TelemetrySource[] => {
+    return db.getTelemetrySources(undefined, assetId);
+  },
+
   // Telemetry Readings
   getReadings: (
     assetId?: string,
@@ -51,12 +55,18 @@ export const monitoringRepository = {
   getTelemetryReadings: (assetId?: string, filters?: any): TelemetryReading[] => {
     return db.getTelemetryReadings(assetId, filters);
   },
+  getReadingsByAsset: (assetId: string): TelemetryReading[] => {
+    return db.getTelemetryReadings(assetId);
+  },
 
   getReadingById: (id: string): TelemetryReading | undefined => {
     return db.getTelemetryReadingById(id);
   },
 
   createReading: (reading: Omit<TelemetryReading, 'id' | 'createdAt'>): TelemetryReading => {
+    return db.createTelemetryReading(reading);
+  },
+  addReading: (reading: Omit<TelemetryReading, 'id' | 'createdAt'>): TelemetryReading => {
     return db.createTelemetryReading(reading);
   },
 

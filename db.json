@@ -167,17 +167,464 @@
       }
     }
   ],
-  "energyProjects": [],
+  "energyProjects": [
+    {
+      "title": "پروژه استعلام تستی",
+      "ownerId": "usr-owner-1",
+      "organizationId": "org-test-1",
+      "status": "RFQ_PUBLISHED",
+      "targetCapacityKw": 250,
+      "id": "cdc9c00b-2d6e-45d0-8f5b-f76a11f310af",
+      "createdAt": "2026-09-20T08:13:34.792Z",
+      "updatedAt": "2026-09-20T08:13:34.792Z"
+    },
+    {
+      "title": "پروژه استعلام تستی",
+      "ownerId": "usr-owner-1",
+      "organizationId": "org-test-1",
+      "status": "RFQ_PUBLISHED",
+      "targetCapacityKw": 250,
+      "id": "3d3669b5-ca2e-4ea0-9c1e-70c8f43f78c5",
+      "createdAt": "2026-09-20T08:13:45.753Z",
+      "updatedAt": "2026-09-20T08:13:45.753Z"
+    },
+    {
+      "title": "پروژه استعلام تستی",
+      "ownerId": "usr-owner-1",
+      "organizationId": "org-test-1",
+      "status": "ACTIVE",
+      "targetCapacityKw": 250,
+      "id": "51aea13b-ad07-45d6-bf7d-d8ff38b44f7d",
+      "createdAt": "2026-09-20T08:17:11.284Z",
+      "updatedAt": "2026-09-20T08:17:11.284Z"
+    }
+  ],
   "financialModels": [],
   "financialAssumptionSets": [],
   "investmentOpportunities": [],
   "investorProfiles": [],
-  "projectRfqs": [],
-  "epcBids": [],
+  "projectRfqs": [
+    {
+      "projectId": "cdc9c00b-2d6e-45d0-8f5b-f76a11f310af",
+      "title": "مناقصه تامین تجهیزات",
+      "status": "AWARDED",
+      "scopeOfWork": [
+        "EPC"
+      ],
+      "closingDate": "2026-09-21T08:13:34.792Z",
+      "id": "975f4b22-feb9-470a-a677-eecb12e7ea97",
+      "createdAt": "2026-09-20T08:13:34.792Z",
+      "selectedBidId": "0b926513-52a2-437c-b112-a18e098a42eb",
+      "selectedEpcOrganizationId": "epc-org-1"
+    },
+    {
+      "projectId": "3d3669b5-ca2e-4ea0-9c1e-70c8f43f78c5",
+      "title": "مناقصه تامین تجهیزات",
+      "status": "AWARDED",
+      "scopeOfWork": [
+        "EPC"
+      ],
+      "closingDate": "2026-09-21T08:13:45.753Z",
+      "id": "ec863e68-017b-453c-989c-c2c85bc46efe",
+      "createdAt": "2026-09-20T08:13:45.754Z",
+      "selectedBidId": "8c19c18a-3c6e-4b4e-9c5b-b4332e2f528a",
+      "selectedEpcOrganizationId": "epc-org-1"
+    },
+    {
+      "projectId": "51aea13b-ad07-45d6-bf7d-d8ff38b44f7d",
+      "title": "مناقصه تامین تجهیزات",
+      "status": "AWARDED",
+      "closingDate": "2026-09-21T08:17:11.284Z",
+      "id": "a734db66-94ee-4c1e-8c31-1c8e73688426",
+      "createdAt": "2026-09-20T08:17:11.285Z",
+      "selectedBidId": "f27ef37e-e677-4aac-a34b-e97897fe7bdd",
+      "selectedEpcOrganizationId": "epc-org-1"
+    }
+  ],
+  "epcBids": [
+    {
+      "rfqId": "975f4b22-feb9-470a-a677-eecb12e7ea97",
+      "epcOrganizationId": "epc-org-1",
+      "proposedPriceIRR": 5000000000,
+      "status": "SELECTED",
+      "id": "0b926513-52a2-437c-b112-a18e098a42eb",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-20T08:13:34.793Z"
+    },
+    {
+      "rfqId": "975f4b22-feb9-470a-a677-eecb12e7ea97",
+      "epcOrganizationId": "epc-org-2",
+      "proposedPriceIRR": 4800000000,
+      "status": "SUBMITTED",
+      "id": "d0ee9554-3215-4bb5-b8a5-aeec3de733ab",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-20T08:13:34.793Z"
+    },
+    {
+      "rfqId": "ec863e68-017b-453c-989c-c2c85bc46efe",
+      "epcOrganizationId": "epc-org-1",
+      "proposedPriceIRR": 5000000000,
+      "status": "SELECTED",
+      "id": "8c19c18a-3c6e-4b4e-9c5b-b4332e2f528a",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-20T08:13:45.754Z"
+    },
+    {
+      "rfqId": "ec863e68-017b-453c-989c-c2c85bc46efe",
+      "epcOrganizationId": "epc-org-2",
+      "proposedPriceIRR": 4800000000,
+      "status": "SUBMITTED",
+      "id": "5f03b8c2-943f-456d-94de-159be79d4721",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-20T08:13:45.755Z"
+    },
+    {
+      "rfqId": "a734db66-94ee-4c1e-8c31-1c8e73688426",
+      "epcOrganizationId": "epc-org-1",
+      "proposedPriceIRR": 5000000000,
+      "status": "SELECTED",
+      "id": "f27ef37e-e677-4aac-a34b-e97897fe7bdd",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-20T08:17:11.285Z"
+    },
+    {
+      "rfqId": "a734db66-94ee-4c1e-8c31-1c8e73688426",
+      "epcOrganizationId": "epc-org-2",
+      "proposedPriceIRR": 4800000000,
+      "status": "SUBMITTED",
+      "id": "4ee33384-e128-41b7-85c4-80bc4b790d31",
+      "currentRevisionNumber": 1,
+      "createdAt": "2026-09-20T08:17:11.286Z"
+    }
+  ],
   "projectContracts": [],
   "contractParties": [],
   "projectBaselines": [],
   "projectMilestones": [],
   "changeRequests": [],
-  "contractRevisions": []
+  "contractRevisions": [],
+  "subscriptionPlans": [
+    {
+      "id": "plan_free",
+      "name": "رایگان",
+      "priceIRR": 0,
+      "durationDays": null,
+      "features": [
+        "۳ تحلیل رایگان در ماه"
+      ]
+    },
+    {
+      "id": "plan_pro",
+      "name": "حرفه‌ای",
+      "priceIRR": 990000,
+      "durationDays": 30,
+      "features": [
+        "تحلیل نامحدود",
+        "دسترسی به تاریخچه کامل",
+        "اولویت در نمایش پیشنهاد فروشندگان"
+      ]
+    }
+  ],
+  "transactions": [
+    {
+      "userId": "u-dev-test",
+      "planId": "plan_pro",
+      "amount": 990000,
+      "currency": "IRR",
+      "status": "pending",
+      "authority": null,
+      "gateway": "zarinpal_sandbox_mock",
+      "gatewayMetadata": {
+        "isMock": true,
+        "merchantId": "[NOT_CONFIGURED]"
+      },
+      "id": "a5a22e26-7e9a-4d86-8e99-3c4abdb2e7d5",
+      "createdAt": "2026-09-20T08:12:23.177Z"
+    },
+    {
+      "userId": "u-dev-test",
+      "planId": "plan_pro",
+      "amount": 990000,
+      "currency": "IRR",
+      "status": "success",
+      "authority": "MOCK_AUTH_1789891998385_7894",
+      "gateway": "zarinpal_sandbox_mock",
+      "gatewayMetadata": {
+        "isMock": true,
+        "merchantId": "[NOT_CONFIGURED]"
+      },
+      "id": "6eec9b93-da1d-420a-817d-101d41a598fd",
+      "createdAt": "2026-09-20T08:13:18.385Z",
+      "refId": "SIM_REF_1789891998386",
+      "verifiedAt": "2026-09-20T08:13:18.386Z"
+    },
+    {
+      "userId": "u-dev-test",
+      "planId": "plan_pro",
+      "amount": 990000,
+      "currency": "IRR",
+      "status": "success",
+      "authority": "MOCK_AUTH_1789892014772_8091",
+      "gateway": "zarinpal_sandbox_mock",
+      "gatewayMetadata": {
+        "isMock": true,
+        "merchantId": "[NOT_CONFIGURED]"
+      },
+      "id": "5b6486e2-7d7c-4ccc-9796-a95eceaa4943",
+      "createdAt": "2026-09-20T08:13:34.773Z",
+      "refId": "SIM_REF_1789892014780",
+      "verifiedAt": "2026-09-20T08:13:34.780Z"
+    },
+    {
+      "userId": "u-dev-test",
+      "planId": "plan_pro",
+      "amount": 990000,
+      "currency": "IRR",
+      "status": "success",
+      "authority": "MOCK_AUTH_1789892025742_1477",
+      "gateway": "zarinpal_sandbox_mock",
+      "gatewayMetadata": {
+        "isMock": true,
+        "merchantId": "[NOT_CONFIGURED]"
+      },
+      "id": "5b2a0913-8b15-4263-8e4b-f7bee86b2506",
+      "createdAt": "2026-09-20T08:13:45.743Z",
+      "refId": "SIM_REF_1789892025744",
+      "verifiedAt": "2026-09-20T08:13:45.744Z"
+    },
+    {
+      "userId": "u-dev-test",
+      "planId": "plan_pro",
+      "amount": 990000,
+      "currency": "IRR",
+      "status": "success",
+      "authority": "MOCK_AUTH_1789892231272_2135",
+      "gateway": "zarinpal_sandbox_mock",
+      "gatewayMetadata": {
+        "isMock": true,
+        "merchantId": "[NOT_CONFIGURED]"
+      },
+      "id": "8309cd57-371f-49ef-9621-3c57c77c5345",
+      "createdAt": "2026-09-20T08:17:11.273Z",
+      "refId": "SIM_REF_1789892231274",
+      "verifiedAt": "2026-09-20T08:17:11.274Z"
+    }
+  ],
+  "subscriptions": [
+    {
+      "userId": "u-dev-test",
+      "planId": "plan_pro",
+      "status": "active",
+      "startDate": "2026-09-20T08:13:18.387Z",
+      "endDate": "2026-10-20T08:13:18.387Z",
+      "pricePaid": 990000,
+      "currency": "IRR",
+      "transactionId": "6eec9b93-da1d-420a-817d-101d41a598fd",
+      "autoRenew": false,
+      "id": "54e10df4-671a-498b-846d-368e801faab0",
+      "createdAt": "2026-09-20T08:13:18.387Z"
+    },
+    {
+      "userId": "u-dev-test",
+      "planId": "plan_pro",
+      "status": "active",
+      "startDate": "2026-09-20T08:13:34.781Z",
+      "endDate": "2026-10-20T08:13:34.781Z",
+      "pricePaid": 990000,
+      "currency": "IRR",
+      "transactionId": "5b6486e2-7d7c-4ccc-9796-a95eceaa4943",
+      "autoRenew": false,
+      "id": "79018005-6e8d-4b77-a9d7-34cb130762d7",
+      "createdAt": "2026-09-20T08:13:34.781Z"
+    },
+    {
+      "userId": "u-dev-test",
+      "planId": "plan_pro",
+      "status": "active",
+      "startDate": "2026-09-20T08:13:45.745Z",
+      "endDate": "2026-10-20T08:13:45.745Z",
+      "pricePaid": 990000,
+      "currency": "IRR",
+      "transactionId": "5b2a0913-8b15-4263-8e4b-f7bee86b2506",
+      "autoRenew": false,
+      "id": "770559a8-104d-4076-8ce0-20728ed3b90c",
+      "createdAt": "2026-09-20T08:13:45.745Z"
+    },
+    {
+      "userId": "u-dev-test",
+      "planId": "plan_pro",
+      "status": "active",
+      "startDate": "2026-09-20T08:17:11.275Z",
+      "endDate": "2026-10-20T08:17:11.275Z",
+      "pricePaid": 990000,
+      "currency": "IRR",
+      "transactionId": "8309cd57-371f-49ef-9621-3c57c77c5345",
+      "autoRenew": false,
+      "id": "971dc4e9-d7e4-4710-9c1d-8fbd7874da24",
+      "createdAt": "2026-09-20T08:17:11.275Z"
+    }
+  ],
+  "energyAssets": [
+    {
+      "projectId": "test-prj-telemetry",
+      "name": "تست نیروگاه خورشیدی تله‌متری",
+      "type": "SOLAR_PV",
+      "status": "ACTIVE",
+      "capacityKw": 100,
+      "id": "257c6456-6cd9-4a85-8912-1554e9c86ef0",
+      "assetCode": "HEA-IR-000001",
+      "createdAt": "2026-09-20T08:12:23.182Z",
+      "updatedAt": "2026-09-20T08:12:23.182Z"
+    },
+    {
+      "projectId": "test-prj-telemetry",
+      "name": "تست نیروگاه خورشیدی تله‌متری",
+      "type": "SOLAR_PV",
+      "status": "ACTIVE",
+      "capacityKw": 100,
+      "id": "19c9fbd9-33c4-43a3-b9b3-a3fba47f1e59",
+      "assetCode": "HEA-IR-000002",
+      "createdAt": "2026-09-20T08:13:18.390Z",
+      "updatedAt": "2026-09-20T08:13:18.390Z"
+    },
+    {
+      "projectId": "test-prj-telemetry",
+      "name": "تست نیروگاه خورشیدی تله‌متری",
+      "type": "SOLAR_PV",
+      "status": "ACTIVE",
+      "capacityKw": 100,
+      "id": "8b6cbadb-984e-41ed-b12e-6b9a0f7a1d06",
+      "assetCode": "HEA-IR-000003",
+      "createdAt": "2026-09-20T08:13:34.787Z",
+      "updatedAt": "2026-09-20T08:13:34.787Z"
+    },
+    {
+      "projectId": "test-prj-telemetry",
+      "name": "تست نیروگاه خورشیدی تله‌متری",
+      "type": "SOLAR_PV",
+      "status": "ACTIVE",
+      "capacityKw": 100,
+      "id": "d56393d9-2533-4b1c-a6e2-940b35b65f23",
+      "assetCode": "HEA-IR-000004",
+      "createdAt": "2026-09-20T08:13:45.749Z",
+      "updatedAt": "2026-09-20T08:13:45.749Z"
+    },
+    {
+      "projectId": "test-prj-telemetry",
+      "name": "تست نیروگاه خورشیدی تله‌متری",
+      "type": "SOLAR_PV",
+      "status": "ACTIVE",
+      "capacityKw": 100,
+      "id": "6cc6a91d-1fc0-45db-94cc-c3cdb20ff946",
+      "assetCode": "HEA-IR-000005",
+      "createdAt": "2026-09-20T08:17:11.279Z",
+      "updatedAt": "2026-09-20T08:17:11.279Z"
+    }
+  ],
+  "telemetrySources": [
+    {
+      "assetId": "19c9fbd9-33c4-43a3-b9b3-a3fba47f1e59",
+      "projectId": "test-prj-telemetry",
+      "name": "Smart Logger 3000",
+      "sourceType": "INVERTER",
+      "status": "ACTIVE",
+      "id": "396906dd-4066-467d-8796-c25642b4e4c7",
+      "createdAt": "2026-09-20T08:13:18.391Z",
+      "updatedAt": "2026-09-20T08:13:18.391Z"
+    },
+    {
+      "assetId": "8b6cbadb-984e-41ed-b12e-6b9a0f7a1d06",
+      "projectId": "test-prj-telemetry",
+      "name": "Smart Logger 3000",
+      "sourceType": "INVERTER",
+      "status": "ACTIVE",
+      "id": "435aaa83-12ed-4ca1-ac50-e33f4bf4c4b5",
+      "createdAt": "2026-09-20T08:13:34.789Z",
+      "updatedAt": "2026-09-20T08:13:34.789Z"
+    },
+    {
+      "assetId": "d56393d9-2533-4b1c-a6e2-940b35b65f23",
+      "projectId": "test-prj-telemetry",
+      "name": "Smart Logger 3000",
+      "sourceType": "INVERTER",
+      "status": "ACTIVE",
+      "id": "b7284a6c-6190-4f95-a0ae-d0cdff2b2db3",
+      "createdAt": "2026-09-20T08:13:45.750Z",
+      "updatedAt": "2026-09-20T08:13:45.750Z"
+    },
+    {
+      "assetId": "6cc6a91d-1fc0-45db-94cc-c3cdb20ff946",
+      "projectId": "test-prj-telemetry",
+      "name": "Smart Logger 3000",
+      "sourceType": "INVERTER",
+      "status": "ACTIVE",
+      "id": "1b53c972-2276-43d4-bd9a-72097ce1c904",
+      "createdAt": "2026-09-20T08:17:11.280Z",
+      "updatedAt": "2026-09-20T08:17:11.280Z"
+    }
+  ],
+  "telemetryReadings": [
+    {
+      "assetId": "8b6cbadb-984e-41ed-b12e-6b9a0f7a1d06",
+      "sourceId": "435aaa83-12ed-4ca1-ac50-e33f4bf4c4b5",
+      "timestamp": "2026-09-18T08:13:34.790Z",
+      "metricType": "POWER_KW",
+      "value": 85.5,
+      "quality": "VALID",
+      "id": "2c4faa83-47e2-4716-8ea5-afdc62fca59b",
+      "createdAt": "2026-09-20T08:13:34.790Z"
+    },
+    {
+      "assetId": "8b6cbadb-984e-41ed-b12e-6b9a0f7a1d06",
+      "sourceId": "435aaa83-12ed-4ca1-ac50-e33f4bf4c4b5",
+      "timestamp": "2026-09-20T08:11:34.791Z",
+      "metricType": "POWER_KW",
+      "value": 92.4,
+      "quality": "VALID",
+      "id": "59dcc2fe-3c84-4ad7-b350-2cc6f36b70a2",
+      "createdAt": "2026-09-20T08:13:34.791Z"
+    },
+    {
+      "assetId": "d56393d9-2533-4b1c-a6e2-940b35b65f23",
+      "sourceId": "b7284a6c-6190-4f95-a0ae-d0cdff2b2db3",
+      "timestamp": "2026-09-18T08:13:45.751Z",
+      "metricType": "POWER_KW",
+      "value": 85.5,
+      "quality": "VALID",
+      "id": "62739d9b-23f2-46bf-9b6e-bf4cfcf289de",
+      "createdAt": "2026-09-20T08:13:45.751Z"
+    },
+    {
+      "assetId": "d56393d9-2533-4b1c-a6e2-940b35b65f23",
+      "sourceId": "b7284a6c-6190-4f95-a0ae-d0cdff2b2db3",
+      "timestamp": "2026-09-20T08:11:45.752Z",
+      "metricType": "POWER_KW",
+      "value": 92.4,
+      "quality": "VALID",
+      "id": "91523956-61ba-4293-94c5-6db4d4a66aaa",
+      "createdAt": "2026-09-20T08:13:45.752Z"
+    },
+    {
+      "assetId": "6cc6a91d-1fc0-45db-94cc-c3cdb20ff946",
+      "sourceId": "1b53c972-2276-43d4-bd9a-72097ce1c904",
+      "timestamp": "2026-09-18T08:17:11.281Z",
+      "metricType": "POWER_KW",
+      "value": 85.5,
+      "unit": "kW",
+      "quality": "VALID",
+      "id": "a4539c78-6f0c-4a1e-8b4c-f08f23c2ca36",
+      "createdAt": "2026-09-20T08:17:11.281Z"
+    },
+    {
+      "assetId": "6cc6a91d-1fc0-45db-94cc-c3cdb20ff946",
+      "sourceId": "1b53c972-2276-43d4-bd9a-72097ce1c904",
+      "timestamp": "2026-09-20T08:15:11.282Z",
+      "metricType": "POWER_KW",
+      "value": 92.4,
+      "unit": "kW",
+      "quality": "VALID",
+      "id": "80ce5061-cfcf-49fc-a065-9bbf3d273e0c",
+      "createdAt": "2026-09-20T08:17:11.283Z"
+    }
+  ]
 }

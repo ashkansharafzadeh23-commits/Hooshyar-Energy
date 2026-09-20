@@ -177,3 +177,79 @@ export async function callExternalService<T>(
 
   throw new ExternalServiceUnavailableError(config.service, 'حداکثر دفعات تلاش مجدد سپری شد.');
 }
+
+/**
+ * Resilient HTTP client wrapper enforcing timeouts, metric recording, and error redaction.
+ */
+export const externalClient = {
+  async post<T = any>(
+    url: string,
+    body: any,
+    options: {
+      service?: string;
+      operation?: string;
+      timeoutMs?: number;
+      isIdempotent?: boolean;
+      headers?: Record<string, string>;
+    } = {}
+  ): Promise<{ status: number; data: T }> {
+    const service = options.service || 'EXTERNAL_SERVICE';
+    const operation = options.operation || 'POST';
+
+    return callExternalService(async (signal) => {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {})
+        },
+        body: JSON.stringify(body),
+        signal
+      });
+
+      const data = await response.json().catch(() => ({}));
+      return {
+        status: response.status,
+        data: data as T
+      };
+    }, {
+      service,
+      operation,
+      timeoutMs: options.timeoutMs,
+      isIdempotent: options.isIdempotent ?? false
+    });
+  },
+
+  async get<T = any>(
+    url: string,
+    options: {
+      service?: string;
+      operation?: string;
+      timeoutMs?: number;
+      headers?: Record<string, string>;
+    } = {}
+  ): Promise<{ status: number; data: T }> {
+    const service = options.service || 'EXTERNAL_SERVICE';
+    const operation = options.operation || 'GET';
+
+    return callExternalService(async (signal) => {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: options.headers || {},
+        signal
+      });
+
+      const data = await response.json().catch(() => ({}));
+      return {
+        status: response.status,
+        data: data as T
+      };
+    }, {
+      service,
+      operation,
+      timeoutMs: options.timeoutMs,
+      isIdempotent: true
+    });
+  }
+};
+

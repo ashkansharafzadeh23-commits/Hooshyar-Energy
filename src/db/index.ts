@@ -417,13 +417,26 @@ function readDB(): DB {
   }
   const data = fs.readFileSync(currentDbPath, "utf-8");
   try {
-    return JSON.parse(data) as DB;
+    const parsed = JSON.parse(data) as DB;
+    if (!parsed.subscriptionPlans) {
+      parsed.subscriptionPlans = defaultDB.subscriptionPlans;
+    }
+    if (!parsed.transactions) {
+      parsed.transactions = defaultDB.transactions || [];
+    }
+    if (!parsed.subscriptions) {
+      parsed.subscriptions = defaultDB.subscriptions || [];
+    }
+    return parsed;
   } catch {
     return defaultDB;
   }
 }
 
 function writeDB(data: DB) {
+  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_DEV_LOCAL_STORAGE) {
+    throw new Error('FATAL: Filesystem database mutation is strictly forbidden in production mode. Use PostgreSQL adapter.');
+  }
   fs.writeFileSync(currentDbPath, JSON.stringify(data, null, 2));
 }
 
@@ -1148,9 +1161,9 @@ export const db: any = {
   },
   getSubscriptionPlans: () => readDB().subscriptionPlans,
   getSubscriptionPlanById: (id: string) => readDB().subscriptionPlans.find(p => p.id === id),
-  createTransaction: (tx: Omit<Transaction, "id" | "createdAt" | "status" | "authority">) => {
+  createTransaction: (tx: Omit<Transaction, "id" | "createdAt" | "status" | "authority"> & { authority?: string | null }) => {
     const data = readDB();
-    const newTx: Transaction = { ...tx, id: uuidv4(), authority: null, status: "pending", createdAt: new Date().toISOString() };
+    const newTx: Transaction = { ...tx, id: uuidv4(), authority: tx.authority || null, status: "pending", createdAt: new Date().toISOString() };
     data.transactions.push(newTx);
     writeDB(data);
     return newTx;
@@ -1166,6 +1179,16 @@ export const db: any = {
     return null;
   },
   getTransactionByAuthority: (authority: string) => readDB().transactions.find(t => t.authority === authority),
+  updateTransaction: (id: string, updates: Partial<Transaction>) => {
+    const data = readDB();
+    const tx = data.transactions.find(t => t.id === id);
+    if (tx) {
+      Object.assign(tx, updates);
+      writeDB(data);
+      return tx;
+    }
+    return null;
+  },
   updateTransactionStatus: (id: string, status: Transaction["status"]) => {
     const data = readDB();
     const tx = data.transactions.find(t => t.id === id);
@@ -1184,6 +1207,7 @@ export const db: any = {
     return newSub;
   },
   getSubscriptionById: (id: string) => readDB().subscriptions.find(s => s.id === id),
+  getUserSubscriptions: (userId: string) => (readDB().subscriptions || []).filter(s => s.userId === userId),
 
   getVendors: () => readDB().vendors,
   getVendorById: (id: string) => readDB().vendors.find((v) => v.id === id),

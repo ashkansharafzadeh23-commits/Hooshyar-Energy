@@ -26,6 +26,9 @@ import monitoringRouter from "./src/api/monitoring.js";
 import { maintenanceRouter } from "./src/api/maintenance.js";
 import rfqRouter from "./src/api/rfq.js";
 import enterpriseRouter from "./src/api/enterprise.js";
+import healthRouter from "./src/api/health.js";
+import { validateEnvironment, assertProductionReadiness } from "./src/config/environment.js";
+import { closePostgresDB } from "./src/database/postgres/connection.js";
 
 // Vercel handlers
 import analyzeHandler from "./api/analyze.js";
@@ -89,9 +92,8 @@ app.use("/api", maintenanceRouter);
 app.use("/api/rfq", rfqRouter);
 app.use("/api/enterprise", enterpriseRouter);
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+app.use("/health", healthRouter);
+app.use("/api/health", healthRouter);
 
 app.get("/api/vendors", (req, res) => {
   res.json(db.getVendors());
@@ -193,10 +195,29 @@ app.post("/api/plan-powerplant", async (req, res) => {
   }
 });
 
+// Fallback for unmatched API routes: return JSON 404, never index.html
+app.all("/api/*", (req, res) => {
+  res.status(404).json({
+    code: "NOT_FOUND",
+    message: `API endpoint not found: ${req.method} ${req.path}`,
+    requestId: (req as any).id
+  });
+});
+
 // Centralized error handling
 app.use(errorHandler);
 
 async function startServer() {
+  // Production Readiness Environment Check
+  const envReport = validateEnvironment();
+  if (!envReport.isValid && envReport.config.isProduction) {
+    console.error("FATAL: Environment validation failed in production:");
+    envReport.errors.forEach(err => console.error(` - ${err}`));
+    process.exit(1);
+  } else if (envReport.warnings.length > 0) {
+    envReport.warnings.forEach(warn => console.warn(`[CONFIG-WARN] ${warn}`));
+  }
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -210,8 +231,32 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-  app.listen(PORT, "0.0.0.0", () => {
+
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
   });
+
+  // Graceful shutdown handling
+  const handleShutdown = (signal: string) => {
+    console.log(`Received ${signal}. Starting graceful shutdown...`);
+    server.close(async () => {
+      console.log("HTTP server stopped accepting connections.");
+      try {
+        await closePostgresDB();
+        console.log("PostgreSQL connection pool drained successfully.");
+      } catch (err) {
+        console.error("Error closing PostgreSQL connection:", err);
+      }
+      process.exit(0);
+    });
+
+    setTimeout(() => {
+      console.error("Forceful shutdown after timeout.");
+      process.exit(1);
+    }, 10000).unref();
+  };
+
+  process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+  process.on("SIGINT", () => handleShutdown("SIGINT"));
 }
 startServer();

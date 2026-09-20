@@ -2,13 +2,24 @@ import express from "express";
 import { subscriptionRepository } from '../repositories/subscriptionRepository.js';
 import { userRepository } from '../repositories/userRepository.js';
 import { verifyAuthToken, requireAuth } from "./auth.js";
-import { getSecurityConfig } from "../security/config.js";
+import { paymentService } from "../services/paymentService.js";
 
 const subscriptionRouter = express.Router();
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:3000";
 
 subscriptionRouter.get("/plans", (req, res) => {
   res.json({ plans: subscriptionRepository.getSubscriptionPlans() });
+});
+
+subscriptionRouter.get("/production-status", (req, res) => {
+  const status = paymentService.getPaymentProductionStatus();
+  res.json({
+    status,
+    gateway: "zarinpal",
+    isProductionVerified: status === "PRODUCTION_VERIFIED",
+    isSandboxOnly: status === "SANDBOX_ONLY",
+    isConfigured: status !== "NOT_CONFIGURED"
+  });
 });
 
 subscriptionRouter.post("/purchase", verifyAuthToken, requireAuth, async (req, res) => {
@@ -19,47 +30,38 @@ subscriptionRouter.post("/purchase", verifyAuthToken, requireAuth, async (req, r
   if (!plan) return res.status(404).json({ error: "Plan not found" });
 
   if (plan.priceIRR === 0) {
-     // Handle free plan activation immediately
-     const newSub = subscriptionRepository.createSubscription({
-        userId: user.id,
-        planId: plan.id,
-        startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // default 30 days for free if not specified
-     });
-     userRepository.updateUser(user.id, { activeSubscriptionId: newSub.id });
-     return res.json({ message: "Free plan activated successfully", subscription: newSub });
-  }
-
-  const config = getSecurityConfig();
-  if (config.isProduction && !config.mocks.paymentConfigured) {
-    return res.status(503).json({
-      code: 'SERVICE_NOT_CONFIGURED',
-      error: 'درگاه پرداخت در محیط عملیاتی پیکربندی نشده است. شبیه‌سازی پرداخت در محیط پروداکشن مجاز نیست.',
-      message: 'Payment gateway is not configured in production. Mock payment is prohibited.'
+    // Handle free plan activation immediately
+    const newSub = subscriptionRepository.createSubscription({
+      userId: user.id,
+      planId: plan.id,
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
     });
+    userRepository.updateUser(user.id, { activeSubscriptionId: newSub.id });
+    return res.json({ message: "Free plan activated successfully", subscription: newSub });
   }
-
-  const tx = subscriptionRepository.createTransaction({
-    userId: user.id,
-    planId: plan.id,
-    amount: plan.priceIRR,
-  });
 
   try {
-    // Mock Zarinpal request for now, since we don't have the real API key and we need this to run
-    // const zpResponse = await fetch('https://api.zarinpal.com/pg/v4/payment/request.json', { ... });
-    const mockAuthority = "A" + Math.random().toString(36).substring(2, 12).toUpperCase();
-    
-    subscriptionRepository.updateTransactionAuthority(tx.id, mockAuthority);
+    const paymentResult = await paymentService.requestPayment({
+      userId: user.id,
+      planId: plan.id,
+      userPhone: user.phone,
+      callbackUrl: `${APP_BASE_URL}/api/subscription/verify`
+    });
 
-    // In a real app we'd redirect to zarinpal:
-    // const paymentUrl = `https://www.zarinpal.com/pg/StartPay/${mockAuthority}`;
-    const paymentUrl = `/api/subscription/verify?Authority=${mockAuthority}&Status=OK`; // Mock redirect for testing
-
-    res.json({ paymentUrl });
-  } catch (error) {
-    subscriptionRepository.updateTransactionStatus(tx.id, "failed");
-    res.status(500).json({ error: "Payment request failed" });
+    res.json({
+      paymentUrl: paymentResult.paymentUrl,
+      authority: paymentResult.authority,
+      transactionId: paymentResult.transactionId,
+      isSandbox: paymentResult.isSandbox
+    });
+  } catch (error: any) {
+    const isConfigError = error.message?.includes('NOT_CONFIGURED') || error.message?.includes('Mock payment is prohibited');
+    const statusCode = isConfigError ? 503 : 500;
+    res.status(statusCode).json({
+      code: isConfigError ? 'SERVICE_NOT_CONFIGURED' : 'PAYMENT_REQUEST_FAILED',
+      error: error.message || "Payment request failed"
+    });
   }
 });
 
@@ -70,57 +72,33 @@ subscriptionRouter.get("/verify", async (req, res) => {
     return res.redirect("/user-dashboard?error=invalid_request");
   }
 
-  const tx = subscriptionRepository.getTransactionByAuthority(Authority);
-  if (!tx) {
-    return res.redirect("/user-dashboard?error=transaction_not_found");
-  }
-
-  // Idempotency: If transaction is already successful, do not re-create subscription
-  if (tx.status === "success") {
-    return res.redirect("/user-dashboard?success=payment_already_verified");
-  }
-
-  if (Status !== "OK") {
-    subscriptionRepository.updateTransactionStatus(tx.id, "failed");
-    return res.redirect("/user-dashboard?error=payment_failed");
-  }
-
-  const config = getSecurityConfig();
-  if (config.isProduction && !config.mocks.paymentConfigured) {
-    return res.status(503).json({
-      code: 'SERVICE_NOT_CONFIGURED',
-      error: 'درگاه پرداخت در محیط عملیاتی فعال نیست.',
-      message: 'Payment gateway verification is not configured in production.'
-    });
-  }
-
-  // Verify with Zarinpal (mocked here)
   try {
-    // In a real app:
-    // const verifyRes = await fetch('https://api.zarinpal.com/pg/v4/payment/verify.json', { ... })
-    const isSuccess = true;
+    const result = await paymentService.verifyPayment({
+      authority: Authority,
+      status: String(Status || 'FAILED')
+    });
 
-    if (isSuccess) {
-      subscriptionRepository.updateTransactionStatus(tx.id, "success");
-      const plan = subscriptionRepository.getSubscriptionPlanById(tx.planId);
-      
-      const startDate = new Date();
-      const endDate = new Date(startDate.getTime() + (plan?.durationDays || 30) * 24 * 60 * 60 * 1000);
+    if (result.verified) {
+      const targetUser = subscriptionRepository.getTransactionByAuthority(Authority);
+      if (targetUser && result.subscriptionId) {
+        userRepository.updateUser(targetUser.userId, { activeSubscriptionId: result.subscriptionId });
+      }
 
-      const newSub = subscriptionRepository.createSubscription({
-        userId: tx.userId,
-        planId: tx.planId,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      });
-
-      userRepository.updateUser(tx.userId, { activeSubscriptionId: newSub.id });
+      if (result.alreadyVerified) {
+        return res.redirect("/user-dashboard?success=payment_already_verified");
+      }
       return res.redirect("/user-dashboard?success=payment_successful");
     } else {
-      subscriptionRepository.updateTransactionStatus(tx.id, "failed");
-      return res.redirect("/user-dashboard?error=verification_failed");
+      return res.redirect(`/user-dashboard?error=${encodeURIComponent(result.message || 'verification_failed')}`);
     }
-  } catch (error) {
+  } catch (error: any) {
+    const isConfigError = error.message?.includes('NOT_CONFIGURED') || error.message?.includes('Mock payment is prohibited');
+    if (isConfigError) {
+      return res.status(503).json({
+        code: 'SERVICE_NOT_CONFIGURED',
+        error: 'درگاه پرداخت در محیط عملیاتی فعال نیست.'
+      });
+    }
     return res.redirect("/user-dashboard?error=server_error");
   }
 });

@@ -11,6 +11,7 @@ import { z } from "zod";
 import { userRepository } from '../repositories/userRepository.js';
 import { jwtService } from '../security/jwtService.js';
 import { otpService } from '../security/otpService.js';
+import { smsService } from '../services/smsService.js';
 import { passwordService } from '../security/passwordService.js';
 import { rateLimiters } from '../security/rateLimiter.js';
 import { mockGuards } from '../security/mockGuard.js';
@@ -72,23 +73,32 @@ authRouter.post(
   rateLimiters.authStrict.middleware(),
   mockGuards.requireServiceConfigured('SMS'),
   validateRequest({ body: sendOtpSchema }),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const { phone } = req.body;
     const config = getSecurityConfig();
 
     const { code } = otpService.generateOTP(phone);
 
-    // Development/test behavior explicitly separated
-    if (!config.isProduction) {
-      console.log(`[DEV-SMS] OTP generated for ${phone}: [SECURE-DEV-TEST]`);
-      return res.json({
-        message: "کد تأیید با موفقیت ارسال شد.",
-        devCode: config.isTest ? code : undefined // only expose to test runner if in test mode
+    try {
+      const sendResult = await smsService.sendOtp(phone, code);
+
+      // Development/test behavior explicitly separated
+      if (!config.isProduction) {
+        return res.json({
+          message: "کد تأیید با موفقیت ارسال شد.",
+          devCode: config.isTest ? code : undefined,
+          status: sendResult.status
+        });
+      }
+
+      // Production: Never return OTP or log it
+      return res.json({ message: "کد تأیید ارسال شد." });
+    } catch (err: any) {
+      return res.status(500).json({
+        code: 'SMS_DISPATCH_FAILED',
+        error: err.message || 'خطا در ارسال پیامک تأیید'
       });
     }
-
-    // Production: Never return OTP or log it
-    return res.json({ message: "کد تأیید ارسال شد." });
   }
 );
 

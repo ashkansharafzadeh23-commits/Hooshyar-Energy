@@ -801,6 +801,24 @@ router.post('/:rfqId/select-epc', (req, res) => {
     return res.status(404).json({ error: "پیشنهاد مورد نظر برای این استعلام یافت نشد" });
   }
 
+  // Idempotency: If this bid is already selected and RFQ is AWARDED, return successfully
+  if (rfq.status === 'AWARDED' && rfq.selectedBidId === winningBid.id) {
+    return res.json({
+      message: "این پیشنهاد قبلاً به عنوان پیشنهاد منتخب برگزیده شده است",
+      rfq,
+      winningBid,
+      alreadyAwarded: true
+    });
+  }
+
+  // Durable domain conflict guard: If RFQ is already awarded to a different bid, reject double-awarding
+  if (rfq.status === 'AWARDED' && rfq.selectedBidId && rfq.selectedBidId !== winningBid.id) {
+    return res.status(409).json({
+      error: "این استعلام قبلاً به پیشنهاد دیگری واگذار شده است و امکان واگذاری مجدد بدون ابطال وجود ندارد",
+      alreadyAwardedBidId: rfq.selectedBidId
+    });
+  }
+
   // 1. Update winning bid status to SELECTED
   rfqRepository.updateBid(winningBid.id, { status: 'SELECTED' });
 

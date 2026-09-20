@@ -18,8 +18,15 @@ export const getPostgresDB = () => {
     return null;
   }
 
+  const isProduction = process.env.NODE_ENV === 'production';
+  const ssl = isProduction || process.env.PG_SSL === 'true' || (databaseUrl && databaseUrl.includes('sslmode=require'));
+
   pool = new Pool({
     connectionString: databaseUrl,
+    max: parseInt(process.env.PG_MAX_CONNECTIONS || '20', 10),
+    connectionTimeoutMillis: parseInt(process.env.PG_CONNECTION_TIMEOUT_MS || '5000', 10),
+    idleTimeoutMillis: 30000,
+    ssl: ssl ? { rejectUnauthorized: process.env.PG_SSL_REJECT_UNAUTHORIZED !== 'false' } : false
   });
 
   pgDb = drizzle(pool, { schema });

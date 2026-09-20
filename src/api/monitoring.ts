@@ -342,4 +342,26 @@ monitoringRouter.post('/assets/:assetId/health/calculate', (req: Request, res: R
   }
 });
 
+/**
+ * GET /api/assets/:assetId/connection-status
+ * Truthfully returns asset telemetry connection status and live data verification (PH-5)
+ */
+monitoringRouter.get('/assets/:assetId/connection-status', (req: Request, res: Response) => {
+  const assetId = getParam(req.params.assetId);
+  const asset = assetRepository.getAssetById(assetId);
+  if (!asset) {
+    return res.status(404).json({ error: 'دارایی انرژی یافت نشد.' });
+  }
+
+  if (asset.projectId) {
+    const access = checkProjectAccess(asset.projectId, req.user?.id, req.user?.role);
+    if (!access.allowed) {
+      return res.status(access.status || 403).json({ error: access.error });
+    }
+  }
+
+  const report = monitoringService.getAssetConnectionStatus(assetId);
+  return res.json(report);
+});
+
 export default monitoringRouter;
