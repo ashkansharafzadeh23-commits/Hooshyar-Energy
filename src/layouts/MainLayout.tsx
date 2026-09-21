@@ -1,170 +1,88 @@
-import { Link } from 'react-router-dom';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { NotificationCenter } from '../components/NotificationCenter';
-import { ThemeToggle } from '../components/ThemeToggle';
+import React from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { DesktopHeader } from '../components/navigation/DesktopHeader';
+import { MobileBottomNav } from '../components/navigation/MobileBottomNav';
 import { useAppContext } from '../context/AppContext';
-import { Home, Factory, Warehouse, Tractor, LayoutDashboard, UserPlus, LogIn, Wrench, FileText, Settings, ShoppingCart, Sun, MapPin, Search, Layers, AlertTriangle, LogOut } from 'lucide-react';
 
 export default function MainLayout() {
-  const { state, resetState } = useAppContext();
+  const { state } = useAppContext();
   const location = useLocation();
-  const navigate = useNavigate();
 
-  // Calculate dominant color based on target
-  let bgGradient = 'linear-gradient(to left, #60A5FA, #3B82F6, #2563EB)';
-  if (state.targets.includes('solar') || location.pathname.includes('solar') || location.pathname.includes('powerplant')) {
-    bgGradient = 'linear-gradient(to left, var(--solar-secondary), var(--solar-primary), var(--solar-accent))';
-  } else if (state.targets.includes('generator')) {
-    bgGradient = 'linear-gradient(to left, var(--generator-secondary), var(--generator-primary), #0F6B45)';
-  } else if (state.targets.includes('powerbank')) {
-    bgGradient = 'linear-gradient(to left, var(--powerbank-secondary), var(--powerbank-primary), var(--powerbank-accent))';
-  }
+  // Determine if on a calculation wizard step
+  const isWizardFlow = [
+    '/location-type',
+    '/area-city',
+    '/checklist',
+    '/consumption',
+    '/result',
+    '/recommendation'
+  ].some(path => location.pathname === path);
 
-  const handleReset = () => {
-    resetState();
-    navigate('/target-select');
-  };
-
-  const getPageInfo = () => {
-    if (location.pathname.startsWith('/target-select')) return { label: 'انتخاب هدف', icon: <Search size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/customer-login')) return { label: 'ورود مشتری', icon: <LogIn size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/powerplant-setup')) return { label: 'احداث نیروگاه', icon: <Sun size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/solar-assets')) return { label: 'پروژه‌های خورشیدی', icon: <Layers size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/admin/solar-assets')) return { label: 'بررسی پروژه‌ها (ادمین)', icon: <Layers size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/solar-planner')) return { label: 'شبیه‌ساز سه‌بعدی', icon: <Sun size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/vendors')) return { label: 'فروشگاه‌ها', icon: <ShoppingCart size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/ads-portal')) return { label: 'ثبت آگهی', icon: <FileText size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/smart-maintenance')) return { label: 'تعمیرات هوشمند', icon: <Settings size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/technician-auth')) return { label: 'ورود متخصص', icon: <UserPlus size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/technician-dashboard')) return { label: 'داشبورد متخصص', icon: <LayoutDashboard size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/vendor-auth')) return { label: 'ورود فروشنده', icon: <UserPlus size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/technicians-list')) return { label: 'متخصصین', icon: <Wrench size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/vendor/')) return { label: 'پروفایل فروشگاه', icon: <ShoppingCart size={24} />, isFlow: false };
-    if (location.pathname.startsWith('/vendor-portal')) return { label: 'پرتال فروشندگان', icon: <LayoutDashboard size={24} />, isFlow: false };
-
-    // Default flow pages
-    let icon = <Home size={24} />;
-    let label = 'خانه مسکونی';
-    
-    switch (state.locationType) {
-      case 'residential': icon = <Home size={24} />; label = 'خانه مسکونی'; break;
-      case 'industrial_warehouse': icon = <Warehouse size={24} />; label = 'سوله صنعتی'; break;
-      case 'factory': icon = <Factory size={24} />; label = 'کارخانه'; break;
-      case 'agricultural': icon = <Tractor size={24} />; label = 'زمین کشاورزی'; break;
-      default: label = 'انتخاب مکان'; break;
+  const getWizardStepInfo = () => {
+    switch (location.pathname) {
+      case '/location-type': return { step: 1, total: 5, label: 'نوع ساختگاه' };
+      case '/area-city': return { step: 2, total: 5, label: 'شهر و مساحت' };
+      case '/checklist': return { step: 3, total: 5, label: 'تجهیزات و پایداری شبکه' };
+      case '/consumption': return { step: 4, total: 5, label: 'اطلاعات مصرف برق' };
+      case '/result': return { step: 5, total: 5, label: 'نتایج تحلیل اقتصادی و مهندسی' };
+      default: return null;
     }
-
-    return { label, icon, isFlow: true };
   };
 
-  const handleBack = () => {
-    if (location.pathname === '/target-select') { navigate('/'); return; }
-    if (location.pathname === '/customer-login') { navigate('/'); return; }
-    if (location.pathname === '/location-type') { navigate('/target-select'); return; }
-    if (location.pathname === '/powerplant-setup') { navigate('/target-select'); return; }
-    if (location.pathname === '/smart-maintenance') { navigate('/target-select'); return; }
-    if (location.pathname === '/vendors') { navigate('/target-select'); return; }
-    if (location.pathname === '/ads-portal') { navigate('/vendors'); return; }
-    if (location.pathname === '/technicians-list') { navigate('/vendors'); return; }
-    if (location.pathname === '/contractors') { navigate(-1); return; }
-    if (location.pathname === '/contractor-dashboard') { navigate('/vendors'); return; }
-    if (location.pathname === '/user-dashboard') { navigate('/target-select'); return; }
-    if (location.pathname.startsWith('/solar-assets/')) { navigate('/solar-assets'); return; }
-    if (location.pathname === '/technician-auth') { navigate('/target-select'); return; }
-    if (location.pathname === '/vendor-auth') { navigate('/target-select'); return; }
-    if (location.pathname === '/contractor-auth') { navigate('/target-select'); return; }
-    
-    if (location.pathname === '/area-city') { navigate('/location-type'); return; }
-    if (location.pathname === '/checklist') { navigate('/area-city'); return; }
-    if (location.pathname === '/consumption') { navigate('/checklist'); return; }
-    if (location.pathname === '/result') { navigate('/consumption'); return; }
-    if (location.pathname === '/sellers') { navigate('/result'); return; }
-    if (location.pathname === '/solar-planner') { navigate('/checklist'); return; }
-    
-    navigate(-1);
-  };
-
-  const { label, icon, isFlow } = getPageInfo();
+  const wizardInfo = isWizardFlow ? getWizardStepInfo() : null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F8FA] dark:bg-zinc-950">
-      
-        <header 
-          className="sticky top-0 z-50 h-[72px] w-full bg-white dark:bg-zinc-900/80 dark:bg-zinc-900/80 backdrop-blur-lg border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 sm:px-8 flex items-center justify-between shadow-sm"
+    <div className="min-h-screen flex flex-col bg-[#F8FAFC] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans antialiased transition-colors" dir="rtl">
+      {/* Global Unified Header */}
+      <DesktopHeader />
 
-        >
-          <div className="flex items-center gap-3 sm:gap-4">
-            <button 
-              onClick={handleBack}
-              className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm px-3 py-2 rounded-lg transition-colors shrink-0 text-xs font-bold"
-            >
-              بازگشت
-            </button>
-            <div className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-800/80 p-2 rounded-lg shrink-0 hidden sm:block">
-              {icon}
+      {/* Optional Contextual Breadcrumb/Progress Bar for Energy Analysis Flow */}
+      {wizardInfo && (
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 py-2.5">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="text-slate-500 dark:text-slate-400 font-medium">تحلیل هوشمند انرژی:</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">{wizardInfo.label}</span>
+              {state.city && (
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 mr-2 border-r border-slate-200 dark:border-slate-700 pr-2 hidden sm:inline">
+                  موقعیت: {state.city}
+                </span>
+              )}
             </div>
-            
-            <div className="flex flex-col">
-              <h1 className="text-sm sm:text-lg font-bold leading-none">{label}</h1>
-              {isFlow && state.city && <span className="text-[10px] sm:text-xs opacity-80 font-medium mt-1">موقعیت: {state.city}</span>}
-            </div>
-          </div>
-          
-          <div className="hidden lg:flex items-center gap-6">
-            <Link to="/user-dashboard" className="flex items-center gap-1 text-sm font-medium hover:text-blue-600 transition-colors"><LayoutDashboard size={16}/> داشبورد من</Link>
-            <Link to="/portfolio" className="text-sm font-medium hover:text-blue-600 transition-colors">پرتفوی سازمانی</Link>
-            <Link to="/user-dashboard?tab=history" className="flex items-center gap-1 text-sm font-medium hover:text-blue-600 transition-colors"><FileText size={16}/> تاریخچه تحلیل‌ها</Link>
-            <Link to="/solar-assets" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های خورشیدی</Link>
-            <Link to="/solar-assets/my-projects" className="text-sm font-medium hover:text-blue-600 transition-colors">پروژه‌های من</Link>
-            <button onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }} className="flex items-center gap-1 text-sm font-medium text-red-500 hover:text-red-600 transition-colors"><LogOut size={16}/> خروج</button>
-          </div>
 
-          
-          <div className="flex items-center gap-2 sm:gap-4">
-            {isFlow && location.pathname !== '/target-select' && state.locationType && (
-              <div className="flex items-center gap-4 sm:gap-6 ml-2 sm:ml-4 border-l border-zinc-200/80 dark:border-zinc-800/80 pl-2 sm:pl-4">
-                <div className="hidden sm:flex flex-col items-end">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-semibold mb-1">پیشرفت تحلیل</div>
-                  <div className="w-32 sm:w-48 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-zinc-900 dark:bg-zinc-100 shadow-[0_0_8px_rgba(255,255,255,0.5)] dark:shadow-[0_0_8px_rgba(0,0,0,0.5)] transition-all duration-500" 
-                      style={{ width: location.pathname === '/result' ? '100%' : '50%' }}
-                    ></div>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleReset}
-                  className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm px-3 py-1.5 rounded-md text-[10px] sm:text-xs font-medium transition-colors shrink-0 whitespace-nowrap"
-                >
-                  تغییر نوع مکان ✏️
-                </button>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                گام {wizardInfo.step} از {wizardInfo.total}
+              </span>
+              <div className="w-20 sm:w-28 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-500 transition-all duration-300 rounded-full"
+                  style={{ width: `${(wizardInfo.step / wizardInfo.total) * 100}%` }}
+                />
               </div>
-            )}
-            <ThemeToggle />
-            <NotificationCenter />
+            </div>
           </div>
-        </header>
-      
-      
-      <main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6">
-        {(location.pathname.startsWith('/solar-assets') || location.pathname.startsWith('/admin/solar-assets')) && (
-          <div className="bg-amber-100 border border-amber-300 text-amber-800 text-xs sm:text-sm px-4 py-3 rounded-lg mb-6 flex items-start gap-2 shadow-sm font-medium">
-            <AlertTriangle className="shrink-0 mt-0.5 text-amber-600" size={16} />
-            <p>حالت شبیه‌سازی — این بخش صرفاً برای نمایش اطلاعات پروژه است. هیچ تراکنش مالی واقعی انجام نمی‌شود.</p>
-          </div>
-        )}
+        </div>
+      )}
+
+      {/* Main Page Content - with bottom padding on mobile so MobileBottomNav never overlaps */}
+      <main className="flex-1 w-full pb-24 md:pb-10">
         <Outlet />
       </main>
 
+      {/* Persistent Mobile Bottom Navigation (Visible below md / 768px) */}
+      <MobileBottomNav />
 
+      {/* Clean Technical Context Footer on Analysis Results */}
       {location.pathname === '/result' && (
-        <footer className="h-10 bg-white dark:bg-zinc-900 border-t border-[#E4E7EC] dark:border-zinc-800 flex items-center justify-center px-4 sm:px-6 gap-4 sm:gap-8 shrink-0">
-          <div className="flex items-center gap-2 text-[10px] sm:text-xs font-medium text-[#5A6072] dark:text-zinc-400">
-            <span className="w-2 h-2 rounded-full bg-[#1F9254]"></span>
-            اتصال به دیتابیس قیمت لحظه‌ای برقرار است
+        <footer className="h-10 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 hidden md:flex items-center justify-center px-4 gap-6 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>محاسبات اقتصادی بر مبنای تعرفه‌های رسمی ساتبا و تابلو سبز بورس انرژی</span>
           </div>
-          <div className="h-3 w-px bg-[#E4E7EC] hidden sm:block"></div>
-          <div className="text-[10px] sm:text-xs text-[#5A6072] dark:text-zinc-400 hidden sm:block">مشاور هوشمند انرژی | قدرت گرفته از مدل‌های پیشرفته</div>
+          <div className="h-3 w-px bg-slate-200 dark:bg-slate-800" />
+          <span>هوشیار انرژی | زیرساخت دیجیتال چرخه کامل پروژه‌های خورشیدی</span>
         </footer>
       )}
     </div>

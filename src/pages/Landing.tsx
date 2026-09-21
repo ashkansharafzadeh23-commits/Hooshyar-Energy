@@ -53,8 +53,8 @@ export default function Landing() {
             transition={{ delay: 0.2 }}
             className="text-lg sm:text-xl text-gray-200 leading-relaxed font-medium mb-4"
           >
-            پلتفرم هوشمند مشاوره، طراحی و تامین تجهیزات انرژی خورشیدی و موتور برق.
-            <br className="hidden sm:block" /> تامین برق پایدار، اقتصادی و مطمئن برای آینده.
+            زیرساخت دیجیتال یکپارچه برای چرخه کامل پروژه‌های انرژی خورشیدی.
+            <br className="hidden sm:block" /> از تحلیل و امکان‌سنجی مهندسی تا احداث، تأمین مالی و بهره‌برداری.
           </motion.p>
 
           <motion.div 
