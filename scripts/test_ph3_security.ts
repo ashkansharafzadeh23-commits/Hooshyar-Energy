@@ -16,10 +16,8 @@ import { requestIdMiddleware } from '../src/middleware/requestId.js';
 import { errorHandler } from '../src/middleware/errorHandler.js';
 import { requireAuthenticatedUser, requireAdmin, requireProjectAccess, requireOrganizationAccess } from '../src/middleware/authorization.js';
 import { validateRequest, commonSchemas } from '../src/security/schemaValidator.js';
+import { setupTestDatabaseIsolation } from './test_isolation_guard.js';
 import { z } from 'zod';
-
-const DB_PATH = path.join(process.cwd(), 'db.json');
-const initialDbBytes = fs.readFileSync(DB_PATH);
 
 let passedCount = 0;
 let failedCount = 0;
@@ -40,6 +38,9 @@ async function runSecurityTests() {
   console.log('HOOSHYAR ENERGY — PRODUCTION HARDENING (PH-3) SECURITY SUITE');
   console.log('================================================================');
 
+  const isolation = setupTestDatabaseIsolation('ph3_security');
+
+  try {
   // TEST 1: JWT Production Fail-Fast & Claims
   console.log('\n--- TEST 1: JWT SECURITY & CLAIMS ---');
   {
@@ -333,13 +334,9 @@ async function runSecurityTests() {
   console.log('\n================================================================');
   console.log(`PH-3 SECURITY TESTS COMPLETED: ${passedCount} PASSED, ${failedCount} FAILED`);
   console.log('================================================================');
-
-  // Verify byte-for-byte immutability of db.json
-  const finalDbBytes = fs.readFileSync(DB_PATH);
-  if (!initialDbBytes.equals(finalDbBytes)) {
-    throw new Error('FATAL: Production db.json was modified during security tests!');
+  } finally {
+    isolation.cleanup();
   }
-  console.log('[ISOLATION CHECK] SUCCESS: Production db.json is 100% BYTE-FOR-BYTE UNCHANGED.\n');
 }
 
 runSecurityTests().catch(err => {

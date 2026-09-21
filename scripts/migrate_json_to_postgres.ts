@@ -6,7 +6,10 @@ const { Pool } = pkg;
 import * as schema from '../src/database/postgres/schema.js';
 
 // Configuration
-const dbPath = path.join(process.cwd(), 'db.json');
+const sourceArgIndex = process.argv.indexOf('--source');
+const dbPath = (sourceArgIndex !== -1 && process.argv[sourceArgIndex + 1])
+  ? path.resolve(process.argv[sourceArgIndex + 1])
+  : (process.env.JSON_DB_PATH || process.env.TEST_DB_PATH || path.join(process.cwd(), 'db.json'));
 const isDryRun = process.argv.includes('--dry-run');
 const dbUrl = process.env.DATABASE_URL;
 

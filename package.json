@@ -8,7 +8,9 @@
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "tsx scripts/test_ph5_production_readiness.ts",
+    "test:all": "tsx scripts/test_ph5_production_readiness.ts && tsx scripts/test_ph4_reliability.ts && tsx scripts/test_ph3_security.ts && tsx scripts/test_ph2_database.ts && tsx scripts/test_non_empty_migration.ts && tsx scripts/test_phase8.ts && tsx scripts/test_phase9.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

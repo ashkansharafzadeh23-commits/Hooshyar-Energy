@@ -12,6 +12,7 @@ import { financeReadinessService } from '../src/services/financeReadinessService
 import { financialPartnerMatchingService } from '../src/services/financialPartnerMatchingService.js';
 import { financingOfferComparisonService } from '../src/services/financingOfferComparisonService.js';
 import { getSecurityConfig } from '../src/security/config.js';
+import { setupTestDatabaseIsolation } from './test_isolation_guard.js';
 
 const JWT_SECRET = getSecurityConfig().jwt.secret;
 
@@ -68,33 +69,7 @@ async function runPhase8Tests() {
   console.log('HOOSHYAR ENERGY — PHASE 8 FINANCING LAYER VERIFICATION (ISOLATED)');
   console.log('================================================================');
 
-  // Verify production db isolation
-  const prodDbPath = path.resolve(process.cwd(), 'db.json');
-  const prodDbRaw = fs.readFileSync(prodDbPath);
-  const prodDbChecksum = prodDbRaw.toString('utf8');
-
-  const tmpDbPath = path.join(os.tmpdir(), `hooshyar_test_phase8_${Date.now()}.json`);
-  fs.writeFileSync(tmpDbPath, JSON.stringify({
-    users: [],
-    energyProjects: [],
-    projectMembers: [],
-    financialModels: [],
-    financingRequests: [],
-    financeReadinessSnapshots: [],
-    financialPartnerProfiles: [],
-    financingProducts: [],
-    financialPartnerMatches: [],
-    financingSubmissions: [],
-    financeInformationRequests: [],
-    financeReviewNotes: [],
-    financingOffers: [],
-    projectFinancingRecords: [],
-    documents: [],
-    contracts: []
-  }, null, 2));
-
-  db.setDBPath(tmpDbPath);
-  console.log(`[SETUP] Isolated DB active at: ${tmpDbPath}`);
+  const isolation = setupTestDatabaseIsolation('phase8');
 
   // Setup Express App
   const app = express();
@@ -540,21 +515,7 @@ async function runPhase8Tests() {
     console.log('================================================================');
   } finally {
     server.close();
-
-    // Verify prod db was not touched
-    const afterProdDbRaw = fs.readFileSync(prodDbPath);
-    const afterChecksum = afterProdDbRaw.toString('utf8');
-
-    if (prodDbChecksum === afterChecksum) {
-      console.log('[ISOLATION CHECK] SUCCESS: Production db.json is 100% BYTE-FOR-BYTE UNCHANGED.');
-    } else {
-      console.error('[ISOLATION CHECK] CRITICAL FAILURE: Production db.json was modified!');
-      process.exit(1);
-    }
-
-    if (fs.existsSync(tmpDbPath)) {
-      fs.unlinkSync(tmpDbPath);
-    }
+    isolation.cleanup();
   }
 }
 

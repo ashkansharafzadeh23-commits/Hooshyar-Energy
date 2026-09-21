@@ -14,6 +14,7 @@ import { platformIntelligenceEngine } from '../src/services/platformIntelligence
 import { enterpriseAccessService } from '../src/services/enterpriseAccessService.js';
 import { aiExecutiveAssistantService } from '../src/services/aiExecutiveAssistantService.js';
 import { getSecurityConfig } from '../src/security/config.js';
+import { setupTestDatabaseIsolation } from './test_isolation_guard.js';
 
 const JWT_SECRET = getSecurityConfig().jwt.secret;
 
@@ -70,42 +71,7 @@ async function runPhase9Tests() {
   console.log('HOOSHYAR ENERGY — PHASE 9 PLATFORM & PORTFOLIO INTELLIGENCE (ISOLATED)');
   console.log('================================================================');
 
-  // Verify production db isolation
-  const prodDbPath = path.resolve(process.cwd(), 'db.json');
-  const prodDbRaw = fs.readFileSync(prodDbPath);
-  const prodDbChecksum = prodDbRaw.toString('utf8');
-
-  const tmpDbPath = path.join(os.tmpdir(), `hooshyar_test_phase9_${Date.now()}.json`);
-  fs.writeFileSync(tmpDbPath, JSON.stringify({
-    users: [],
-    organizations: [],
-    organizationMembers: [],
-    portfolios: [],
-    energyProjects: [],
-    energyAssets: [],
-    assetComponents: [],
-    telemetrySources: [],
-    telemetryReadings: [],
-    assetAlerts: [],
-    maintenanceCases: [],
-    equipmentWarranties: [],
-    boqs: [],
-    procurementPackages: [],
-    procurementRfqs: [],
-    purchaseOrders: [],
-    deliveryRecords: [],
-    deliveryInspections: [],
-    projectContracts: [],
-    contractRevisions: [],
-    changeRequests: [],
-    projectMilestones: [],
-    commissioningTests: [],
-    financingRequests: [],
-    projectFinancingRecords: []
-  }, null, 2));
-
-  db.setDBPath(tmpDbPath);
-  console.log(`[SETUP] Isolated DB active at: ${tmpDbPath}`);
+  const isolation = setupTestDatabaseIsolation('phase9');
 
   // Setup Express App
   const app = express();
@@ -568,19 +534,7 @@ async function runPhase9Tests() {
 
   } finally {
     server.close();
-    // Verify production db.json remains strictly untouched
-    const afterProdDb = fs.readFileSync(prodDbPath).toString('utf8');
-    if (afterProdDb !== prodDbChecksum) {
-      console.error('[CRITICAL] Production db.json was modified during testing!');
-      process.exit(1);
-    } else {
-      console.log('[VERIFICATION] Production db.json verified byte-for-byte unchanged.');
-    }
-
-    // Clean up temporary db
-    if (fs.existsSync(tmpDbPath)) {
-      fs.unlinkSync(tmpDbPath);
-    }
+    isolation.cleanup();
   }
 }
 

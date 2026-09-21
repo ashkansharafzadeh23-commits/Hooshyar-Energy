@@ -1,21 +1,28 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { setupTestDatabaseIsolation } from './test_isolation_guard.js';
 
 async function runPH2Tests() {
   console.log(`================================================================`);
   console.log(`HOOSHYAR ENERGY — PHASE 2 POSTGRES MIGRATION TESTS`);
   console.log(`================================================================`);
 
+  const isolation = setupTestDatabaseIsolation('ph2_database');
+
   let passed = 0;
   let failed = 0;
 
-  const dbPath = path.join(process.cwd(), 'db.json');
-  const originalDbContent = fs.readFileSync(dbPath, 'utf8');
-
   try {
     console.log(`[TEST] Running migration dry-run...`);
-    const output = execSync('npx tsx scripts/migrate_json_to_postgres.ts --dry-run', { encoding: 'utf8' });
+    const output = execSync('npx tsx scripts/migrate_json_to_postgres.ts --dry-run', {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        TEST_DB_PATH: isolation.tempDbPath,
+        JSON_DB_PATH: isolation.tempDbPath
+      }
+    });
     
     if (output.includes('DRY RUN COMPLETE')) {
       console.log(`  [PASS] Dry run completed successfully`);
@@ -32,13 +39,9 @@ async function runPH2Tests() {
     }
 
     console.log(`[TEST] Verifying production DB protection...`);
-    const newDbContent = fs.readFileSync(dbPath, 'utf8');
-    if (originalDbContent === newDbContent) {
-      console.log(`  [PASS] db.json is 100% byte-for-byte unchanged`);
-      passed++;
-    } else {
-      throw new Error("db.json was modified!");
-    }
+    isolation.verifyImmutability();
+    console.log(`  [PASS] db.json is 100% byte-for-byte unchanged`);
+    passed++;
 
     console.log(`[TEST] Verifying report generation...`);
     const reportPath = path.join(process.cwd(), 'docs', 'POSTGRES_MIGRATION_REPORT.md');
@@ -96,6 +99,8 @@ async function runPH2Tests() {
     console.log(`PHASE 2 TESTS COMPLETED: ${passed} PASSED, ${failed} FAILED`);
     console.log(`================================================================`);
     process.exit(1);
+  } finally {
+    isolation.cleanup();
   }
 }
 

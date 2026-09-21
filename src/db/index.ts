@@ -417,15 +417,19 @@ function readDB(): DB {
   }
   const data = fs.readFileSync(currentDbPath, "utf-8");
   try {
-    const parsed = JSON.parse(data) as DB;
-    if (!parsed.subscriptionPlans) {
+    const raw = JSON.parse(data) as Partial<DB>;
+    const parsed: DB = { ...defaultDB, ...raw };
+    if (!parsed.subscriptionPlans || parsed.subscriptionPlans.length === 0) {
       parsed.subscriptionPlans = defaultDB.subscriptionPlans;
     }
     if (!parsed.transactions) {
-      parsed.transactions = defaultDB.transactions || [];
+      parsed.transactions = [];
     }
     if (!parsed.subscriptions) {
-      parsed.subscriptions = defaultDB.subscriptions || [];
+      parsed.subscriptions = [];
+    }
+    if (!parsed.users) {
+      parsed.users = [];
     }
     return parsed;
   } catch {
@@ -436,6 +440,10 @@ function readDB(): DB {
 function writeDB(data: DB) {
   if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_DEV_LOCAL_STORAGE) {
     throw new Error('FATAL: Filesystem database mutation is strictly forbidden in production mode. Use PostgreSQL adapter.');
+  }
+  const repoDbPath = path.resolve(process.cwd(), 'db.json');
+  if (process.env.NODE_ENV === 'test' && path.resolve(currentDbPath) === repoDbPath) {
+    throw new Error('FATAL: Test environment attempted write to repository db.json! Test database must be isolated via TEST_DB_PATH or setDBPath.');
   }
   fs.writeFileSync(currentDbPath, JSON.stringify(data, null, 2));
 }
@@ -1069,6 +1077,7 @@ export const db: any = {
   getUserById: (id: string) => readDB().users.find(u => u.id === id),
   createUser: (user: Omit<User, "id" | "createdAt">) => {
     const data = readDB();
+    if (!data.users) data.users = [];
     const newUser: User = { ...user, id: uuidv4(), createdAt: new Date().toISOString() };
     data.users.push(newUser);
     writeDB(data);
@@ -1076,6 +1085,7 @@ export const db: any = {
   },
   updateUser: (id: string, updates: Partial<User>) => {
     const data = readDB();
+    if (!data.users) data.users = [];
     const index = data.users.findIndex(u => u.id === id);
     if (index !== -1) {
       data.users[index] = { ...data.users[index], ...updates };

@@ -27,6 +27,7 @@ import { idempotencyMiddleware, idempotencyStore, IDEMPOTENCY_TIERS } from '../s
 import { checkDatabaseReadiness } from '../src/database/health.js';
 import healthRouter from '../src/api/health.js';
 import { getSunHoursForCity } from '../api/lib/solarIrradiance.js';
+import { setupTestDatabaseIsolation } from './test_isolation_guard.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -48,6 +49,9 @@ async function runPH4Tests() {
   console.log(`HOOSHYAR ENERGY — PRODUCTION HARDENING (PH-4) RELIABILITY SUITE`);
   console.log(`================================================================`);
 
+  const isolation = setupTestDatabaseIsolation('ph4_reliability');
+
+  try {
   // -------------------------------------------------------------
   // TEST 1: TIMEOUTS & ABORT SIGNALS
   // -------------------------------------------------------------
@@ -319,6 +323,9 @@ async function runPH4Tests() {
   console.log(`\n================================================================`);
   console.log(`PH-4 RELIABILITY TESTS COMPLETED: ${passed} PASSED, ${failed} FAILED`);
   console.log(`================================================================`);
+  } finally {
+    isolation.cleanup();
+  }
 
   if (failed > 0) {
     process.exit(1);

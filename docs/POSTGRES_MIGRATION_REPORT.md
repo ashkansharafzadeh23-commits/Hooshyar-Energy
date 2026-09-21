@@ -2,24 +2,24 @@
   
 ## Summary
 * Mode: DRY RUN
-* Date: 2026-09-20T08:31:18.981Z
+* Date: 2026-09-21T08:41:16.750Z
 
 ## Verification Table
 
 | Entity | JSON Source Count | PG Dest Count | Diff | Status |
 |---|---|---|---|---|
-| users | 0 | 0 | 0 | DRY_RUN_PASS |
-| organizations | 0 | 0 | 0 | DRY_RUN_PASS |
+| users | 1 | 1 | 0 | DRY_RUN_PASS |
+| organizations | 1 | 1 | 0 | DRY_RUN_PASS |
 | organizationMembers | 0 | 0 | 0 | DRY_RUN_PASS |
-| energyProjects | 4 | 4 | 0 | DRY_RUN_PASS |
+| energyProjects | 1 | 1 | 0 | DRY_RUN_PASS |
 | projectMembers | 0 | 0 | 0 | DRY_RUN_PASS |
-| portfolios | 0 | 0 | 0 | DRY_RUN_PASS |
-| energyAssets | 0 | 0 | 0 | DRY_RUN_PASS |
+| portfolios | 1 | 1 | 0 | DRY_RUN_PASS |
+| energyAssets | 1 | 1 | 0 | DRY_RUN_PASS |
 | assetComponents | 0 | 0 | 0 | DRY_RUN_PASS |
-| telemetrySources | 5 | 5 | 0 | DRY_RUN_PASS |
-| telemetryReadings | 8 | 8 | 0 | DRY_RUN_PASS |
-| projectContracts | 0 | 0 | 0 | DRY_RUN_PASS |
-| financingRequests | 0 | 0 | 0 | DRY_RUN_PASS |
+| telemetrySources | 0 | 0 | 0 | DRY_RUN_PASS |
+| telemetryReadings | 0 | 0 | 0 | DRY_RUN_PASS |
+| projectContracts | 1 | 1 | 0 | DRY_RUN_PASS |
+| financingRequests | 1 | 1 | 0 | DRY_RUN_PASS |
 | financingOffers | 0 | 0 | 0 | DRY_RUN_PASS |
 | procurementPackages | 0 | 0 | 0 | DRY_RUN_PASS |
 | purchaseOrders | 0 | 0 | 0 | DRY_RUN_PASS |

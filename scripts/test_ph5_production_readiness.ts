@@ -17,6 +17,7 @@ import { rfqRepository } from '../src/repositories/rfqRepository.js';
 import { projectRepository } from '../src/repositories/projectRepository.js';
 import { IDEMPOTENCY_TIERS } from '../src/reliability/idempotency.js';
 import { externalCircuitBreakers } from '../src/reliability/circuitBreaker.js';
+import { setupTestDatabaseIsolation } from './test_isolation_guard.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -38,6 +39,9 @@ async function runPH5ReleaseGate() {
   console.log(`HOOSHYAR ENERGY — PH-5 RELEASE GATE & PRODUCTION AUDIT`);
   console.log(`================================================================\n`);
 
+  const isolation = setupTestDatabaseIsolation('ph5_readiness');
+
+  try {
   // -------------------------------------------------------------------------
   // TEST 1: ENVIRONMENT CONFIGURATION & FAIL-FAST VALIDATION
   // -------------------------------------------------------------------------
@@ -365,6 +369,9 @@ async function runPH5ReleaseGate() {
   console.log(`  Direct DB Bypasses: 0`);
   console.log(`  Fail-Fast Startup: ENFORCED`);
   console.log(`================================================================\n`);
+  } finally {
+    isolation.cleanup();
+  }
 
   if (failed > 0) {
     process.exit(1);

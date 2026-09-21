@@ -1,30 +1,15 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { setupTestDatabaseIsolation } from './test_isolation_guard.js';
 
 async function runNonEmptyMigrationTest() {
   console.log(`================================================================`);
   console.log(`HOOSHYAR ENERGY — PH-2 NON-EMPTY MIGRATION FIXTURE TEST`);
   console.log(`================================================================`);
 
-  // 1. Create a temporary mock db.json
-  const tempDbPath = path.join(process.cwd(), 'db_test_migration.json');
-  const originalDbPath = path.join(process.cwd(), 'db.json');
-
-  // Preserve production db by temporarily moving it, or just backing it up
-  // Better yet, modify migrate script to accept a custom path, but since it's hardcoded to db.json:
-  // We will rename db.json -> db.json.bak
-  // Write temp -> db.json
-  // Run migration (dry-run)
-  // Restore db.json.bak -> db.json
-
-  if (!fs.existsSync(originalDbPath)) {
-    console.error("No db.json found to backup!");
-    process.exit(1);
-  }
-
-  const backupPath = path.join(process.cwd(), 'db.json.bak');
-  fs.copyFileSync(originalDbPath, backupPath);
+  // Step 2 & 5: Isolate test storage completely from repository db.json
+  const isolation = setupTestDatabaseIsolation('non_empty_migration');
 
   const fixtureData = {
     users: [
@@ -53,14 +38,22 @@ async function runNonEmptyMigrationTest() {
     ]
   };
 
-  fs.writeFileSync(originalDbPath, JSON.stringify(fixtureData, null, 2));
+  // Write fixture directly to isolated temp database path ONLY
+  fs.writeFileSync(isolation.tempDbPath, JSON.stringify(fixtureData, null, 2));
 
   let passed = 0;
   let failed = 0;
 
   try {
-    console.log(`[TEST] Running migration dry-run on non-empty fixture...`);
-    const output = execSync('npx tsx scripts/migrate_json_to_postgres.ts --dry-run', { encoding: 'utf8' });
+    console.log(`[TEST] Running migration dry-run on isolated non-empty fixture...`);
+    const output = execSync(`npx tsx scripts/migrate_json_to_postgres.ts --dry-run --source "${isolation.tempDbPath}"`, {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        TEST_DB_PATH: isolation.tempDbPath,
+        JSON_DB_PATH: isolation.tempDbPath
+      }
+    });
 
     // Validate the report
     const reportPath = path.join(process.cwd(), 'docs', 'POSTGRES_MIGRATION_REPORT.md');
@@ -97,14 +90,11 @@ async function runNonEmptyMigrationTest() {
     console.log(`  [PASS] Null fields mapped strictly to database NULLs instead of defaults`);
     passed++;
 
-
   } catch (error: any) {
     console.error(`  [FAIL] Test failed:`, error.message);
     failed++;
   } finally {
-    // Restore backup
-    fs.copyFileSync(backupPath, originalDbPath);
-    fs.unlinkSync(backupPath);
+    isolation.cleanup();
   }
 
   console.log(`================================================================`);
