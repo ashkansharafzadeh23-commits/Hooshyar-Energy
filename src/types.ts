@@ -18,6 +18,8 @@ export interface UserFlowState {
   monthlyConsumptionKwh?: number;
   usableArea: number;
   city: string;
+  province?: string;
+  monthlyKwh?: number;
   gridConnected: boolean;
   gridStable: boolean;
   appliances: SelectedAppliance[];

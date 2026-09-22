@@ -33,6 +33,7 @@ import SolarAssetsList from './pages/solar-assets/AssetList';
 import SolarAssetDetail from './pages/solar-assets/AssetDetail';
 import MyProjects from './pages/solar-assets/MyProjects';
 import AdminReview from './pages/solar-assets/AdminReview';
+import SolarAnalysisExperience from './pages/SolarAnalysisExperience';
 import MainLayout from './layouts/MainLayout';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
@@ -74,7 +75,9 @@ export default function App() {
               <Route path="/solar-assets/:id" element={<SolarAssetDetail />} />
               <Route path="/admin/solar-assets" element={<AdminReview />} />
               <Route path="/solar-planner" element={<SolarPlanner />} />
-              <Route path="/target-select" element={<Home />} />
+              <Route path="/target-select" element={<SolarAnalysisExperience />} />
+              <Route path="/solar-analysis" element={<SolarAnalysisExperience />} />
+              <Route path="/legacy-target-select" element={<Home />} />
               <Route path="/location-type" element={<LocationTypePage />} />
               <Route path="/area-city" element={<AreaCityPage />} />
               <Route path="/checklist" element={<ChecklistPage />} />

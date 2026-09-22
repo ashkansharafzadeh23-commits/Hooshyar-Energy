@@ -2,6 +2,8 @@ import React from 'react';
 
 export type DataProvenanceType = 
   | 'REAL' 
+  | 'VERIFIED_SOURCE'
+  | 'REFERENCE_ESTIMATE'
   | 'CALCULATED' 
   | 'USER_PROVIDED' 
   | 'MARKET' 
@@ -20,6 +22,18 @@ const BADGE_CONFIG: Record<DataProvenanceType, { label: string; bg: string; text
     bg: 'bg-emerald-50 dark:bg-emerald-950/40',
     text: 'text-emerald-700 dark:text-emerald-300',
     border: 'border-emerald-200 dark:border-emerald-800'
+  },
+  VERIFIED_SOURCE: {
+    label: 'منبع داده تأییدشده',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    border: 'border-emerald-200 dark:border-emerald-800'
+  },
+  REFERENCE_ESTIMATE: {
+    label: 'برآورد مرجع',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-700 dark:text-amber-300',
+    border: 'border-amber-200 dark:border-amber-800'
   },
   CALCULATED: {
     label: 'محاسباتی مهندسی',
@@ -46,7 +60,7 @@ const BADGE_CONFIG: Record<DataProvenanceType, { label: string; bg: string; text
     border: 'border-indigo-200 dark:border-indigo-800'
   },
   MISSING: {
-    label: 'ثبت‌نشده / نامتصل',
+    label: 'داده در دسترس نیست',
     bg: 'bg-rose-50 dark:bg-rose-950/40',
     text: 'text-rose-700 dark:text-rose-300',
     border: 'border-rose-200 dark:border-rose-800'
