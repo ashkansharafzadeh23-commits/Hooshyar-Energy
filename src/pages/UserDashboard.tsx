@@ -1,83 +1,160 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
-import { 
-  User, 
-  MapPin, 
-  Settings, 
-  LogOut, 
-  FileText, 
-  Clock, 
-  ArrowRight, 
-  Users, 
-  Sun, 
-  Calendar,
-  Briefcase,
-  Plus,
-  ExternalLink,
-  Zap
-} from 'lucide-react';
-import { STATUS_LABELS } from '../services/projectLifecycleService.js';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { Briefcase, Clock, FileText, Plus, Search, Filter, ArrowLeft, ArrowRight, ExternalLink } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { EnergyProject } from '../types/project';
+import { EnergyAsset } from '../types/asset';
+import { PageContainer } from '../components/common/PageContainer';
+import { LoadingState } from '../components/common/LoadingState';
+import { ErrorState } from '../components/common/ErrorState';
+import { EmptyState } from '../components/common/EmptyState';
+import { StatusBadge } from '../components/common/StatusBadge';
+import {
+  DashboardHeader,
+  AttentionCenter,
+  NextActions,
+  ActiveProjects,
+  OperationalAssets,
+  RoleSummary,
+  RecentActivity,
+  NewUserOnboarding,
+  DashboardAttentionItem,
+  DashboardNextAction,
+  DashboardMetric,
+  DashboardActivityItem
+} from '../components/dashboard';
+import { getProjectPhase, getNextRecommendedAction } from '../components/projects/lifecycleMapping';
+import { formatSolarCapacity, formatCurrencyIRR, toPersianDigits, formatPersianNumber } from '../utils/formatters';
 
 export default function UserDashboard() {
-  const searchParams = new URLSearchParams(window.location.search);
-  const initialTab = searchParams.get('tab') || 'projects';
-  const [activeTab, setActiveTab] = useState(initialTab);
-
-  const [requests, setRequests] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
+  const location = useLocation();
   const navigate = useNavigate();
+  const { user, activeRole, activeOrganization, token } = useAuth();
 
-  useEffect(() => {
-    const currentTab = searchParams.get('tab');
-    if (currentTab && currentTab !== activeTab) {
-      setActiveTab(currentTab);
-    }
-  }, [window.location.search]);
+  // URL parameters and tabs for backwards compatibility
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const requestedTab = searchParams.get('tab');
+  
+  // Determine if on explicit projects route (/projects) or legacy tab
+  const isProjectsRoute = location.pathname === '/projects' || requestedTab === 'projects';
+  const isHistoryTab = requestedTab === 'history';
+  const isRequestsTab = requestedTab === 'requests';
 
-  useEffect(() => {
+  const [projects, setProjects] = useState<EnergyProject[]>([]);
+  const [assets, setAssets] = useState<EnergyAsset[]>([]);
+  const [activities, setActivities] = useState<DashboardActivityItem[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [analysisHistory, setAnalysisHistory] = useState<any[]>([]);
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Projects list filter/search state when viewing all projects
+  const [projectSearchQuery, setProjectSearchQuery] = useState('');
+  const [projectStatusFilter, setProjectStatusFilter] = useState('ALL');
+
+  // Fetch projects and assets from backend
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    const authToken = token || localStorage.getItem('token');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+    };
+
     try {
-      const stored = localStorage.getItem('epc_requests');
-      if (stored) {
-        const loadedReqs = JSON.parse(stored);
-        if (Array.isArray(loadedReqs)) {
-          setRequests(loadedReqs.filter((r: any) => r.userId === 'user_1'));
+      // 1. Fetch user projects
+      const prjRes = await fetch('/api/projects', { headers });
+      let prjData: EnergyProject[] = [];
+      if (prjRes.ok) {
+        prjData = await prjRes.json();
+        setProjects(Array.isArray(prjData) ? prjData : []);
+      }
+
+      // 2. Fetch user / approved solar assets
+      const assetRes = await fetch('/api/assets', { headers });
+      if (assetRes.ok) {
+        const assetData = await assetRes.json();
+        setAssets(Array.isArray(assetData) ? assetData : []);
+      }
+
+      // 3. Fetch activities for user's projects (aggregate recent ones)
+      if (Array.isArray(prjData) && prjData.length > 0) {
+        const recentProjects = prjData.slice(0, 5);
+        const activityPromises = recentProjects.map(async (p) => {
+          try {
+            const actRes = await fetch(`/api/projects/${p.id}/activity`, { headers });
+            if (actRes.ok) {
+              const acts = await actRes.json();
+              return (Array.isArray(acts) ? acts : []).map((a: any) => ({
+                id: a.id,
+                title: a.description || a.eventType || 'رویداد پروژه',
+                description: a.eventType ? `نوع: ${a.eventType}` : undefined,
+                timestamp: a.createdAt,
+                projectName: p.title
+              }));
+            }
+          } catch {
+            return [];
+          }
+          return [];
+        });
+
+        const activityResults = await Promise.all(activityPromises);
+        const flatActivities = activityResults.flat().sort(
+          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+        setActivities(flatActivities.slice(0, 6));
+      }
+
+      // 4. Load localStorage data for legacy requests and history
+      try {
+        const storedReqs = localStorage.getItem('epc_requests');
+        if (storedReqs) {
+          const loaded = JSON.parse(storedReqs);
+          if (Array.isArray(loaded)) {
+            setRequests(loaded.filter((r: any) => !user?.id || r.userId === user.id || r.userId === 'user_1'));
+          }
         }
+      } catch {
+        // Safe fallback
       }
-    } catch (e) {
-      console.error("Error parsing epc_requests", e);
-    }
 
-    fetchProjects();
-  }, []);
-
-  const fetchProjects = async () => {
-    setLoadingProjects(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/projects', {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setProjects(Array.isArray(data) ? data : []);
+      try {
+        const storedHistory = localStorage.getItem('analysis_history');
+        if (storedHistory) {
+          const loaded = JSON.parse(storedHistory);
+          if (Array.isArray(loaded)) {
+            setAnalysisHistory(loaded);
+          }
+        }
+      } catch {
+        // Safe fallback
       }
-    } catch (err) {
-      console.error("Error fetching projects", err);
+
+    } catch (err: any) {
+      console.error('Error fetching dashboard data:', err);
+      setError('خطا در دریافت اطلاعات پیشخوان. لطفاً اتصال شبکه را بررسی نمایید.');
     } finally {
-      setLoadingProjects(false);
+      setLoading(false);
     }
-  };
+  }, [token, user?.id]);
 
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Convert analysis to project handler (for history tab compatibility)
   const handleConvertAnalysis = async (analysisId: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const authToken = token || localStorage.getItem('token');
       const res = await fetch(`/api/projects/from-analysis/${analysisId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
         }
       });
       if (res.ok) {
@@ -87,417 +164,761 @@ export default function UserDashboard() {
         const err = await res.json();
         alert(err.error || 'خطا در تبدیل تحلیل به پروژه');
       }
-    } catch (e) {
+    } catch {
       alert('خطا در برقراری ارتباط با سرور');
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'DRAFT': return 'bg-gray-100 text-gray-700 border-gray-200';
-      case 'ANALYSIS': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'FEASIBILITY': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'READY_FOR_RFQ': return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'RFQ_OPEN': return 'bg-orange-50 text-orange-700 border-orange-200';
-      case 'BIDS_RECEIVED': return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'EPC_SELECTED': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'CONTRACTING': return 'bg-teal-50 text-teal-700 border-teal-200';
-      case 'OPERATIONAL': return 'bg-green-50 text-green-700 border-green-200';
-      case 'CANCELLED': return 'bg-red-50 text-red-700 border-red-200';
-      default: return 'bg-blue-50 text-blue-600 border-blue-100';
+  // -------------------------------------------------------------
+  // REAL DATA DERIVATION FOR UI-3 DASHBOARD SECTIONS
+  // -------------------------------------------------------------
+
+  // 1. Attention Items: strictly real actionable conditions
+  const attentionItems = useMemo<DashboardAttentionItem[]>(() => {
+    const items: DashboardAttentionItem[] = [];
+
+    // Projects conditions
+    projects.forEach((p) => {
+      // Incomplete technical inputs
+      if (!p.site?.areaM2 || !p.targetCapacityKw) {
+        items.push({
+          id: `missing-specs-${p.id}`,
+          title: 'اطلاعات فنی یا مساحت سایت تکمیل نشده است',
+          description: `پروژه «${p.title}» برای محاسبات دقیق مهندسی نیازمند تکمیل مساحت و ظرفیت هدف است.`,
+          severity: 'WARNING',
+          category: 'PROJECT',
+          actionLabel: 'تکمیل مشخصات',
+          actionHref: `/projects/${p.id}?tab=process`,
+          badgeText: p.projectCode
+        });
+      }
+
+      // Ready for RFQ
+      if (p.status === 'READY_FOR_RFQ') {
+        items.push({
+          id: `ready-rfq-${p.id}`,
+          title: 'پروژه آماده انتشار استعلام قیمت (RFQ) است',
+          description: `اسناد فنی و مدارک پروژه «${p.title}» آماده انتشار و ارسال به پیمانکاران EPC است.`,
+          severity: 'URGENT',
+          category: 'RFQ',
+          actionLabel: 'انتشار استعلام',
+          actionHref: `/projects/${p.id}?tab=process`,
+          badgeText: 'RFQ'
+        });
+      }
+
+      // Bids Received
+      if (p.status === 'BIDS_RECEIVED') {
+        items.push({
+          id: `bids-received-${p.id}`,
+          title: 'پیشنهادهای جدید پیمانکاران در انتظار بررسی است',
+          description: `پیشنهادهای ارسال‌شده برای پروژه «${p.title}» نیازمند ارزیابی فنی و مالی است.`,
+          severity: 'URGENT',
+          category: 'RFQ',
+          actionLabel: 'ارزیابی پیشنهادها',
+          actionHref: `/projects/${p.id}?tab=process`,
+          badgeText: 'پیشنهادها'
+        });
+      }
+
+      // Contracting
+      if (p.status === 'CONTRACTING') {
+        items.push({
+          id: `contracting-${p.id}`,
+          title: 'قرارداد احداث در مرحله نهایی‌سازی و امضا است',
+          description: `پیش‌نویس قرارداد احداث پروژه «${p.title}» در انتظار نهایی‌سازی و تبادل تضامین است.`,
+          severity: 'URGENT',
+          category: 'CONTRACT',
+          actionLabel: 'مشاهده قرارداد',
+          actionHref: `/projects/${p.id}?tab=process`,
+          badgeText: 'قرارداد'
+        });
+      }
+
+      // Financing
+      if (p.status === 'FINANCING') {
+        items.push({
+          id: `financing-${p.id}`,
+          title: 'تأمین مالی نیازمند ارزیابی و تکمیل است',
+          description: `پرونده تسهیلات مالی پروژه «${p.title}» نیازمند بررسی و تأیید مستندات اعتباری است.`,
+          severity: 'INFO',
+          category: 'FINANCE',
+          actionLabel: 'بررسی تسهیلات',
+          actionHref: `/projects/${p.id}?tab=process`,
+          badgeText: 'تسهیلات'
+        });
+      }
+    });
+
+    // Assets conditions
+    assets.forEach((a) => {
+      // Under maintenance
+      if (a.operationalStatus === 'UNDER_MAINTENANCE' || a.status === 'UNDER_MAINTENANCE') {
+        items.push({
+          id: `asset-maint-${a.id}`,
+          title: 'نیروگاه در وضعیت نگهداری و تعمیرات فعال است',
+          description: `نیروگاه «${a.name}» هم‌اکنون تحت فرآیند سرویس، شست‌وشو یا تعمیرات است.`,
+          severity: 'WARNING',
+          category: 'MAINTENANCE',
+          actionLabel: 'سوابق نگهداری',
+          actionHref: `/solar-assets/${a.id}`,
+          badgeText: a.assetCode
+        });
+      }
+
+      // Telemetry not connected
+      if (a.operationalStatus === 'OPERATIONAL' && a.source !== 'TELEMETRY_CONNECTED') {
+        items.push({
+          id: `asset-telemetry-${a.id}`,
+          title: 'پایش برخط متصل نیست',
+          description: `درگاه تله‌متری برخط نیروگاه «${a.name}» متصل نشده و دریافت داده‌های توان نیازمند اتصال است.`,
+          severity: 'INFO',
+          category: 'ASSET',
+          actionLabel: 'تنظیم درگاه پایش',
+          actionHref: `/solar-assets/${a.id}`,
+          badgeText: 'نامتصل'
+        });
+      }
+    });
+
+    return items;
+  }, [projects, assets]);
+
+  // 2. Next Actions: deterministic lifecycle recommendations
+  const nextActions = useMemo<DashboardNextAction[]>(() => {
+    // Sort projects by urgency / active status
+    const activeProjects = projects.filter(p => p.status !== 'CANCELLED');
+    
+    if (activeProjects.length > 0) {
+      return activeProjects.slice(0, 3).map((p) => {
+        const { phase } = getProjectPhase(p.status);
+        const rec = getNextRecommendedAction(p);
+        return {
+          id: `action-${p.id}`,
+          projectOrAssetName: p.title,
+          title: rec.title,
+          reason: rec.description,
+          actionText: rec.actionText,
+          actionHref: `/projects/${p.id}`,
+          phaseTitle: phase ? `گام ${phase.index}: ${phase.title}` : undefined,
+          isPrimary: true
+        };
+      });
     }
-  };
+
+    // Role-specific deterministic fallback when no projects exist
+    const role = (activeRole || '').toUpperCase();
+    if (role === 'INVESTOR') {
+      return [{
+        id: 'investor-next',
+        projectOrAssetName: 'هاب سرمایه‌گذاری',
+        title: 'بررسی فرصت‌های سرمایه‌گذاری فعال',
+        reason: 'پروژه‌های آماده جذب سرمایه با تحلیل بازدهی و مدل جریان نقدی',
+        actionText: 'مشاهده فرصت‌ها',
+        actionHref: '/investment-hub/opportunities',
+        isPrimary: true
+      }];
+    }
+
+    if (role === 'EPC' || role === 'EPC_CONTRACTOR') {
+      return [{
+        id: 'epc-next',
+        projectOrAssetName: 'استعلام‌های احداث',
+        title: 'بررسی استعلام‌های قیمت (RFQ) جدید',
+        reason: 'استعلام‌های منتشر شده توسط کارفرمایان جهت ارسال پیشنهاد قیمت',
+        actionText: 'مشاهده استعلام‌ها',
+        actionHref: '/contractors',
+        isPrimary: true
+      }];
+    }
+
+    if (role === 'TECHNICIAN') {
+      return [{
+        id: 'tech-next',
+        projectOrAssetName: 'پایش و عیب‌یابی',
+        title: 'ورود به سامانه نگهداری هوشمند',
+        reason: 'بررسی هشدارهای فعال، تجهیزات و ثبت گزارش‌های بازدید میدانی',
+        actionText: 'نگهداری هوشمند',
+        actionHref: '/smart-maintenance',
+        isPrimary: true
+      }];
+    }
+
+    return [{
+      id: 'owner-next',
+      projectOrAssetName: 'پروژه جدید',
+      title: 'شروع تحلیل هوشمند انرژی خورشیدی',
+      reason: 'شبیه‌سازی تابش، متراژ ساختگاه و برآورد ظرفیت نیروگاه خورشیدی',
+      actionText: 'محاسبه پتانسیل خورشیدی',
+      actionHref: '/target-select',
+      isPrimary: true
+    }];
+  }, [projects, activeRole]);
+
+  // 3. Role Summary Metrics: maximum 4 metrics strictly derived from real data
+  const roleMetrics = useMemo<DashboardMetric[]>(() => {
+    const role = (activeRole || '').toUpperCase();
+
+    switch (role) {
+      case 'INVESTOR': {
+        const matchingProjects = projects.filter(p => ['FEASIBILITY', 'READY_FOR_RFQ', 'CONTRACTING'].includes(p.status));
+        return [
+          {
+            id: 'active-projects-inv',
+            label: 'پروژه‌های واجد شرایط سرمایه‌گذاری',
+            value: formatPersianNumber(matchingProjects.length),
+            provenance: 'REAL',
+            subtext: 'پروژه‌های دارای مدل مالی'
+          },
+          {
+            id: 'operational-assets-inv',
+            label: 'نیروگاه‌های در حال بهره‌برداری',
+            value: formatPersianNumber(assets.length),
+            provenance: 'REAL',
+            subtext: 'دارایی‌های متصل یا ثبت‌شده'
+          }
+        ];
+      }
+
+      case 'EPC':
+      case 'EPC_CONTRACTOR': {
+        const epcProjects = projects.filter(p => ['RFQ_OPEN', 'BIDS_RECEIVED', 'EPC_SELECTED', 'CONTRACTING', 'CONSTRUCTION'].includes(p.status));
+        const constructionProjects = projects.filter(p => p.status === 'CONSTRUCTION');
+        const constructionCapKw = constructionProjects.reduce((acc, p) => acc + (p.targetCapacityKw || 0), 0);
+
+        const list: DashboardMetric[] = [
+          {
+            id: 'epc-active',
+            label: 'پروژه‌های مرتبط یا در مرحله مناقصه',
+            value: formatPersianNumber(epcProjects.length),
+            provenance: 'REAL',
+            subtext: 'استعلام‌ها و قراردادها'
+          }
+        ];
+
+        if (constructionCapKw > 0) {
+          list.push({
+            id: 'epc-capacity',
+            label: 'مجموع ظرفیت در حال احداث',
+            value: formatSolarCapacity(constructionCapKw),
+            provenance: 'CALCULATED',
+            subtext: 'بر مبنای ظرفیت هدف ثبت‌شده'
+          });
+        }
+
+        return list;
+      }
+
+      case 'TECHNICIAN': {
+        const reportingAssets = assets.filter(a => a.source === 'TELEMETRY_CONNECTED');
+        const maintAssets = assets.filter(a => a.operationalStatus === 'UNDER_MAINTENANCE' || a.status === 'UNDER_MAINTENANCE');
+
+        return [
+          {
+            id: 'tech-assets',
+            label: 'نیروگاه‌های تحت نظارت فنی',
+            value: formatPersianNumber(assets.length),
+            provenance: 'REAL',
+            subtext: 'شناسنامه‌های دارایی فعال'
+          },
+          {
+            id: 'tech-reporting',
+            label: 'سامانه‌های متصل به پایش',
+            value: formatPersianNumber(reportingAssets.length),
+            provenance: 'REAL',
+            subtext: 'درگاه‌های تله‌متری برقرار'
+          },
+          {
+            id: 'tech-maint',
+            label: 'پرونده‌های فعال نگهداری',
+            value: formatPersianNumber(maintAssets.length),
+            provenance: 'REAL',
+            subtext: 'سرویس‌های در حال انجام'
+          }
+        ];
+      }
+
+      case 'FINANCE':
+      case 'FINANCIAL_PARTNER': {
+        const financingProjects = projects.filter(p => p.status === 'FINANCING' || p.status === 'CONTRACTING');
+        const totalBudget = financingProjects.reduce((acc, p) => acc + (p.estimatedBudgetIRR || 0), 0);
+
+        const list: DashboardMetric[] = [
+          {
+            id: 'fin-projects',
+            label: 'پرونده‌های متقاضی تسهیلات',
+            value: formatPersianNumber(financingProjects.length),
+            provenance: 'REAL',
+            subtext: 'در مرحله تأمین و قرارداد'
+          }
+        ];
+
+        if (totalBudget > 0) {
+          list.push({
+            id: 'fin-volume',
+            label: 'حجم تسهیلات مورد نیاز',
+            value: formatCurrencyIRR(totalBudget),
+            provenance: 'CALCULATED',
+            subtext: 'برآورد مالی اظهار شده'
+          });
+        }
+
+        return list;
+      }
+
+      case 'ADMIN':
+      case 'SUPER_ADMIN': {
+        const totalCapKw = projects.reduce((acc, p) => acc + (p.targetCapacityKw || 0), 0);
+        return [
+          {
+            id: 'adm-projects',
+            label: 'کل پروژه‌های ثبت‌شده',
+            value: formatPersianNumber(projects.length),
+            provenance: 'REAL',
+            subtext: 'در تمامی فازهای چرخه عمر'
+          },
+          {
+            id: 'adm-capacity',
+            label: 'مجموع توان برنامه‌ریزی‌شده',
+            value: totalCapKw > 0 ? formatSolarCapacity(totalCapKw) : '—',
+            provenance: totalCapKw > 0 ? 'CALCULATED' : 'MISSING',
+            subtext: 'مجموع توان نامی پروژه‌ها'
+          },
+          {
+            id: 'adm-assets',
+            label: 'دارایی‌های دیجیتال انرژی',
+            value: formatPersianNumber(assets.length),
+            provenance: 'REAL',
+            subtext: 'نیروگاه‌های دارای شناسنامه'
+          }
+        ];
+      }
+
+      case 'PROJECT_OWNER':
+      case 'CUSTOMER':
+      case 'OWNER':
+      default: {
+        const activeProjectsCount = projects.filter(p => p.status !== 'CANCELLED').length;
+        const totalPlannedCapKw = projects.reduce((acc, p) => acc + (p.targetCapacityKw || 0), 0);
+        const totalBudget = projects.reduce((acc, p) => acc + (p.estimatedBudgetIRR || 0), 0);
+
+        const list: DashboardMetric[] = [
+          {
+            id: 'owner-projects',
+            label: 'پروژه‌های فعال',
+            value: formatPersianNumber(activeProjectsCount),
+            provenance: 'REAL',
+            subtext: 'پروژه‌های در حال توسعه'
+          }
+        ];
+
+        if (totalPlannedCapKw > 0) {
+          list.push({
+            id: 'owner-capacity',
+            label: 'مجموع ظرفیت هدف',
+            value: formatSolarCapacity(totalPlannedCapKw),
+            provenance: 'CALCULATED',
+            subtext: 'مجموع توان نامی پروژه‌ها'
+          });
+        }
+
+        if (totalBudget > 0) {
+          list.push({
+            id: 'owner-budget',
+            label: 'برآورد مالی کل',
+            value: formatCurrencyIRR(totalBudget),
+            provenance: 'CALCULATED',
+            subtext: 'برآورد بودجه مورد نیاز احداث'
+          });
+        }
+
+        if (assets.length > 0) {
+          list.push({
+            id: 'owner-assets',
+            label: 'نیروگاه‌های به بهره‌برداری رسیده',
+            value: formatPersianNumber(assets.length),
+            provenance: 'REAL',
+            subtext: 'دارایی‌های فعال در پایش'
+          });
+        }
+
+        return list;
+      }
+    }
+  }, [projects, assets, activeRole]);
+
+  // Filtered projects for the "All Projects" view
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
+      const matchesSearch = projectSearchQuery === '' ||
+        p.title.toLowerCase().includes(projectSearchQuery.toLowerCase()) ||
+        (p.projectCode && p.projectCode.toLowerCase().includes(projectSearchQuery.toLowerCase())) ||
+        (p.location?.city && p.location.city.includes(projectSearchQuery)) ||
+        (p.location?.province && p.location.province.includes(projectSearchQuery));
+
+      const matchesStatus = projectStatusFilter === 'ALL' || p.status === projectStatusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [projects, projectSearchQuery, projectStatusFilter]);
+
+  // Render loading state
+  if (loading) {
+    return (
+      <PageContainer maxWidth="wide">
+        <LoadingState message="در حال بارگذاری اطلاعات پیشخوان هوشیار انرژی..." />
+      </PageContainer>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <PageContainer maxWidth="wide">
+        <ErrorState
+          title="عدم موفقیت در دریافت اطلاعات"
+          message={error}
+          onRetry={fetchData}
+        />
+      </PageContainer>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 1: FULL ALL PROJECTS VIEW (/projects or ?tab=projects)
+  // -------------------------------------------------------------
+  if (isProjectsRoute) {
+    return (
+      <PageContainer maxWidth="wide" className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/dashboard"
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1"
+              >
+                <ArrowRight size={14} />
+                <span>بازگشت به پیشخوان</span>
+              </Link>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 mt-1">
+              پروژه‌های انرژی خورشیدی من
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+              مدیریت و پایش یکپارچه کلیه پروژه‌ها در گام‌های ۵ گانه چرخه عمر مهندسی
+            </p>
+          </div>
+
+          <Link
+            to="/target-select"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-600 text-slate-950 transition-colors shadow-xs min-h-[44px]"
+          >
+            <Plus size={18} />
+            <span>پروژه جدید</span>
+          </Link>
+        </div>
+
+        {/* Filter & Search Bar */}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative w-full sm:flex-1">
+            <Search size={18} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="جستجو در نام، کد پروژه یا استان..."
+              value={projectSearchQuery}
+              onChange={(e) => setProjectSearchQuery(e.target.value)}
+              className="w-full pr-10 pl-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-amber-500 min-h-[44px]"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Filter size={16} className="text-slate-400 hidden sm:inline" />
+            <select
+              value={projectStatusFilter}
+              onChange={(e) => setProjectStatusFilter(e.target.value)}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden min-h-[44px]"
+            >
+              <option value="ALL">همه وضعیت‌ها</option>
+              <option value="DRAFT">پیش‌نویس</option>
+              <option value="ANALYSIS">تحلیل انرژی</option>
+              <option value="FEASIBILITY">امکان‌سنجی</option>
+              <option value="READY_FOR_RFQ">آماده استعلام (RFQ)</option>
+              <option value="RFQ_OPEN">استعلام فعال</option>
+              <option value="BIDS_RECEIVED">پیشنهادها دریافت شد</option>
+              <option value="CONTRACTING">قرارداد</option>
+              <option value="CONSTRUCTION">احداث و ساخت</option>
+              <option value="COMMISSIONING">راه‌اندازی</option>
+              <option value="OPERATIONAL">بهره‌برداری</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Projects List */}
+        {filteredProjects.length === 0 ? (
+          <EmptyState
+            icon={Briefcase}
+            title="پروژه‌ای با این مشخصات یافت نشد"
+            description="می‌توانید فیلترهای جستجو را پاک کنید یا یک پروژه جدید ایجاد نمایید."
+            actionLabel="تحلیل و ایجاد پروژه جدید"
+            actionHref="/target-select"
+          />
+        ) : (
+          <div className="space-y-3">
+            {filteredProjects.map((p) => {
+              const { phase } = getProjectPhase(p.status);
+              const nextRec = getNextRecommendedAction(p);
+              return (
+                <div
+                  key={p.id}
+                  className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                        {p.projectCode || 'HSE-IR'}
+                      </span>
+                      <StatusBadge status={p.status} size="sm" />
+                      {phase && (
+                        <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-800">
+                          گام {phase.index}: {phase.title}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
+                      {p.title}
+                    </h3>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
+                      {p.location?.province && (
+                        <span>موقعیت: {p.location.province} {p.location.city ? `(${p.location.city})` : ''}</span>
+                      )}
+                      {p.targetCapacityKw && (
+                        <span>ظرفیت: {formatSolarCapacity(p.targetCapacityKw)}</span>
+                      )}
+                      {p.estimatedBudgetIRR && (
+                        <span>برآورد: {formatCurrencyIRR(p.estimatedBudgetIRR)}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 hidden lg:inline max-w-[200px] truncate">
+                      اقدام: {nextRec.title}
+                    </span>
+                    <Link
+                      to={`/projects/${p.id}`}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-900 transition-colors shadow-xs min-h-[44px]"
+                    >
+                      <span>ورود به فضای کار</span>
+                      <ArrowLeft size={16} />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </PageContainer>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 2: HISTORY TAB (Deep link compatibility: ?tab=history)
+  // -------------------------------------------------------------
+  if (isHistoryTab) {
+    return (
+      <PageContainer maxWidth="wide" className="space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <Link
+              to="/dashboard"
+              className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1"
+            >
+              <ArrowRight size={14} />
+              <span>بازگشت به پیشخوان</span>
+            </Link>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
+              تاریخچه محاسبات و تحلیل‌های انرژی
+            </h1>
+          </div>
+          <Link
+            to="/target-select"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 min-h-[44px]"
+          >
+            <Plus size={16} />
+            <span>تحلیل جدید</span>
+          </Link>
+        </div>
+
+        {analysisHistory.length === 0 ? (
+          <EmptyState
+            icon={Clock}
+            title="تاریخچه‌ای از تحلیل‌های قبلی ثبت نشده است"
+            description="شما می‌توانید با انجام تحلیل پتانسیل خورشیدی، محاسبات اولیه را ذخیره یا به پروژه تبدیل نمایید."
+            actionLabel="شروع تحلیل جدید"
+            actionHref="/target-select"
+          />
+        ) : (
+          <div className="space-y-3">
+            {analysisHistory.map((item, idx) => (
+              <div
+                key={idx}
+                className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              >
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100">
+                    {item.title || 'تحلیل پتانسیل خورشیدی'}
+                  </h3>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap gap-4">
+                    <span>{new Date(item.date).toLocaleDateString('fa-IR')}</span>
+                    <span>{item.input?.city || 'مکان نامشخص'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate('/result', { state: { historyResult: item.result, historyResultId: item.id } })}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 min-h-[44px]"
+                  >
+                    مشاهده نتیجه
+                  </button>
+                  {item.id && (
+                    <button
+                      onClick={() => handleConvertAnalysis(item.id)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 min-h-[44px] flex items-center gap-1"
+                    >
+                      <Briefcase size={14} />
+                      <span>تبدیل به پروژه</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </PageContainer>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 3: REQUESTS TAB (Deep link compatibility: ?tab=requests)
+  // -------------------------------------------------------------
+  if (isRequestsTab) {
+    return (
+      <PageContainer maxWidth="wide" className="space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div>
+            <Link
+              to="/dashboard"
+              className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1"
+            >
+              <ArrowRight size={14} />
+              <span>بازگشت به پیشخوان</span>
+            </Link>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 mt-1">
+              درخواست‌های احداث نیروگاه
+            </h1>
+          </div>
+          <Link
+            to="/powerplant-setup"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 min-h-[44px]"
+          >
+            <Plus size={16} />
+            <span>ثبت درخواست</span>
+          </Link>
+        </div>
+
+        {requests.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="درخواستی برای احداث نیروگاه یافت نشد"
+            description="شما می‌توانید درخواست احداث نیروگاه خورشیدی را برای استعلام از پیمانکاران ثبت نمایید."
+            actionLabel="ثبت درخواست احداث"
+            actionHref="/powerplant-setup"
+          />
+        ) : (
+          <div className="space-y-3">
+            {requests.map((req, idx) => (
+              <div
+                key={req.id || idx}
+                className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100">
+                    درخواست احداث نیروگاه در {req.city || 'ایران'}
+                  </h3>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                    {req.replies?.length ? `${req.replies.length} پیشنهاد` : 'در انتظار بررسی'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+                  <div>متراژ: {toPersianDigits(req.area || '—')} متر مربع</div>
+                  <div>اتصال: {req.connectionType === 'on-grid' ? 'متصل به شبکه' : 'منفصل از شبکه'}</div>
+                  <div>نوع سقف: {req.roofType === 'flat' ? 'مسطح' : 'شیب‌دار'}</div>
+                  <div>بودجه: {toPersianDigits(req.budget || '—')} {req.budgetUnit === 'million' ? 'میلیون' : 'میلیارد'} تومان</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </PageContainer>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // PRIMARY ROLE-BASED DASHBOARD (UI-3 ARCHITECTURE)
+  // Attention → Action → Context → Detail
+  // -------------------------------------------------------------
+  const isNewUser = projects.length === 0 && assets.length === 0;
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] font-Vazirmatn flex flex-col md:flex-row pb-20 md:pb-0" dir="rtl">
-      {/* Sidebar Navigation */}
-      <div className="w-full md:w-64 bg-white border-l border-gray-200 p-6 flex flex-col hidden md:flex shrink-0 min-h-screen sticky top-0">
-        <div className="flex flex-col items-center mb-8 border-b border-gray-100 pb-8">
-          <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4 shadow-inner">
-            <User size={40} />
-          </div>
-          <h2 className="text-xl font-bold text-gray-800 text-center">پنل مدیریت کارفرما</h2>
-          <p className="text-xs text-gray-500 mt-1">مدیریت پروژه‌ها و استعلام‌های انرژی</p>
+    <PageContainer maxWidth="wide" className="space-y-8">
+      {/* 1. Greeting & Context Header */}
+      <DashboardHeader
+        user={user}
+        activeRole={activeRole}
+        activeOrganization={activeOrganization}
+      />
+
+      {/* When user is completely new (0 projects & 0 assets), render helpful onboarding first */}
+      {isNewUser ? (
+        <div className="space-y-8">
+          <NewUserOnboarding activeRole={activeRole} />
+          
+          {/* Still render Attention Center (which shows clean empty state: No urgent items) */}
+          <AttentionCenter items={attentionItems} />
+
+          {/* Role Summary */}
+          <RoleSummary
+            activeRole={activeRole}
+            metrics={roleMetrics}
+          />
         </div>
+      ) : (
+        <div className="space-y-8">
+          {/* 2. Attention Center (Highest priority section: «نیازمند توجه شما») */}
+          <AttentionCenter items={attentionItems} />
 
-        <nav className="space-y-2 flex-1">
-          <button 
-            onClick={() => setActiveTab('projects')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'projects' ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            <Briefcase size={20} />
-            پروژه‌های من
-            {projects.length > 0 && (
-              <span className="mr-auto bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-bold">
-                {projects.length}
-              </span>
-            )}
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('requests')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors relative ${activeTab === 'requests' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            <FileText size={20} />
-            درخواست‌های احداث
-            {requests.some(r => r.replies && r.replies.length > 0) && (
-              <span className="absolute left-4 bg-green-500 text-white text-[10px] w-2 h-2 flex items-center justify-center rounded-full"></span>
-            )}
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('history')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'history' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            <Clock size={20} />
-            تاریخچه تحلیل‌ها
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('assets')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'assets' ? 'bg-amber-50 text-amber-600' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            <Sun size={20} />
-            تجهیزات و پنل‌ها
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('settings')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-colors ${activeTab === 'settings' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
-          >
-            <Settings size={20} />
-            تنظیمات پروفایل
-          </button>
-        </nav>
+          {/* 3. Next Actions (Deterministic lifecycle steps: «اقدام‌های بعدی») */}
+          <NextActions actions={nextActions} />
 
-        <div className="pt-4 border-t border-gray-100 space-y-2">
-          <Link 
-            to="/target-select" 
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors text-sm"
-          >
-            <ArrowRight size={16} />
-            تحلیل انرژی جدید
-          </Link>
-          <button 
-            onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-xl font-bold transition-colors text-sm"
-          >
-            <LogOut size={16} />
-            خروج از حساب
-          </button>
+          {/* 4. Active Projects (Compact project cards: «پروژه‌های فعال») */}
+          <ActiveProjects projects={projects} maxDisplay={5} />
+
+          {/* 5. Operational Assets (ONLY rendered if user has operational assets!) */}
+          <OperationalAssets assets={assets} />
+
+          {/* 6. Role-Specific Summary (Max 4 verified metrics: «خلاصه شاخص‌ها») */}
+          <RoleSummary
+            activeRole={activeRole}
+            metrics={roleMetrics}
+          />
+
+          {/* 7. Recent Activity (Real activity logs: «فعالیت‌های اخیر») */}
+          <RecentActivity activities={activities} />
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-800">
-              {activeTab === 'projects' && 'پروژه‌های انرژی من'}
-              {activeTab === 'requests' && 'درخواست‌های احداث من'}
-              {activeTab === 'settings' && 'تنظیمات حساب کاربری'}
-              {activeTab === 'assets' && 'تجهیزات و زمان‌بندی تعویض'}
-              {activeTab === 'history' && 'تاریخچه محاسبات و تحلیل‌ها'}
-            </h1>
-            <p className="text-gray-500 mt-1 text-sm">
-              {activeTab === 'projects' && 'پروژه‌های مرکزی، پیشرفت مراحل فنی، استعلام‌های EPC و انعقاد قرارداد'}
-              {activeTab === 'requests' && 'وضعیت درخواست‌های خود را پیگیری کنید.'}
-              {activeTab === 'history' && 'گزارش‌های شبیه‌سازی و امکان‌سنجی تولید انرژی'}
-              {activeTab === 'assets' && 'اطلاعات شناسنامه تجهیزات و طول عمر مفید قطعات'}
-              {activeTab === 'settings' && 'تنظیمات هویتی و حقوقی سازمان کارفرما'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link to="/target-select" className="bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 font-bold shadow-sm text-sm">
-              <Plus size={16} />
-              تحلیل و ایجاد پروژه جدید
-            </Link>
-            <Link to="/contractors" className="bg-white text-gray-700 border border-gray-200 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors hidden sm:flex items-center gap-2 font-bold shadow-sm text-sm">
-              <Users size={16} />
-              فهرست پیمانکاران EPC
-            </Link>
-          </div>
-        </header>
-
-        {/* PROJECTS TAB */}
-        {activeTab === 'projects' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            {loadingProjects ? (
-              <div className="bg-white p-12 rounded-2xl border border-gray-100 text-center text-gray-500 font-bold">
-                در حال دریافت پروژه‌ها...
-              </div>
-            ) : projects.length === 0 ? (
-              <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm text-center py-16">
-                <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <Briefcase size={40} />
-                </div>
-                <h3 className="text-xl font-black text-gray-800 mb-2">هنوز پروژه‌ای ثبت نکرده‌اید</h3>
-                <p className="text-gray-500 text-sm max-w-md mx-auto mb-6">
-                  برای شروع، یک تحلیل هوشمند انرژی خورشیدی انجام دهید و آن را مستقیماً به پروژه رسمی HSE تبدیل کنید.
-                </p>
-                <Link to="/target-select" className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-md">
-                  <Plus size={18} />
-                  شروع محاسبه و ایجاد پروژه
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {projects.map((proj) => {
-                  const statusLabel = STATUS_LABELS[proj.status] || proj.status;
-                  const statusClass = getStatusColor(proj.status);
-                  const locationText = proj.location ? `${proj.location.province || ''} - ${proj.location.city || ''}` : 'نامشخص';
-
-                  return (
-                    <div 
-                      key={proj.id} 
-                      className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-6"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
-                            {proj.projectCode || 'HSE-IR-000000'}
-                          </span>
-                          <span className={`text-xs px-3 py-1 rounded-full font-bold border ${statusClass}`}>
-                            {statusLabel}
-                          </span>
-                        </div>
-                        <h3 className="text-lg font-black text-gray-900">{proj.title}</h3>
-                        
-                        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 pt-1">
-                          <span className="flex items-center gap-1">
-                            <MapPin size={14} className="text-gray-400" />
-                            {locationText}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Zap size={14} className="text-amber-500" />
-                            ظرفیت هدف: {proj.targetCapacityKw ? `${proj.targetCapacityKw} کیلووات` : 'تعیین نشده'}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar size={14} className="text-gray-400" />
-                            تاریخ ایجاد: {new Date(proj.createdAt).toLocaleDateString('fa-IR')}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <Link 
-                          to={`/projects/${proj.id}`}
-                          className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-colors text-sm flex items-center gap-2 shadow-sm"
-                        >
-                          ورود به فضای کار
-                          <ExternalLink size={16} />
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* REQUESTS TAB */}
-        {activeTab === 'requests' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            {requests.length === 0 ? (
-              <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm text-center py-20">
-                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-400">
-                  <FileText size={48} />
-                </div>
-                <h2 className="text-xl font-bold text-gray-800 mb-2">درخواستی یافت نشد</h2>
-                <p className="text-gray-500 mb-6">شما هنوز هیچ درخواستی برای احداث نیروگاه ثبت نکرده‌اید.</p>
-                <Link to="/powerplant-setup" className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors inline-block font-bold shadow-md">
-                  ثبت اولین درخواست
-                </Link>
-              </div>
-            ) : (
-              requests.map((req) => (
-                <div key={req.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                    <div>
-                      <h3 className="font-bold text-gray-800 text-lg">درخواست احداث نیروگاه در {req.city}</h3>
-                      <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
-                        <Clock size={14} /> ارسال شده در {new Date(req.createdAt).toLocaleDateString('fa-IR')}
-                      </p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${req.replies && req.replies.length > 0 ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-600'}`}>
-                      {req.replies && req.replies.length > 0 ? `${req.replies.length} پیشنهاد جدید` : 'در انتظار بررسی EPC'}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl">
-                    <div>
-                      <span className="text-xs text-gray-500 block mb-1">متراژ</span>
-                      <span className="font-bold text-gray-800">{req.area} متر مربع</span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 block mb-1">نوع اتصال</span>
-                      <span className="font-bold text-gray-800">{req.connectionType === 'on-grid' ? 'متصل به شبکه' : 'منفصل از شبکه'}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 block mb-1">نوع سقف</span>
-                      <span className="font-bold text-gray-800">{req.roofType === 'flat' ? 'مسطح' : req.roofType === 'sloped' ? 'شیب‌دار' : 'زمین مسطح'}</span>
-                    </div>
-                    <div>
-                      <span className="text-xs text-gray-500 block mb-1">بودجه تخمینی</span>
-                      <span className="font-bold text-gray-800">{req.budget} {req.budgetUnit === 'million' ? 'میلیون' : 'میلیارد'} تومان</span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </motion.div>
-        )}
-
-        {/* ASSETS TAB */}
-        {activeTab === 'assets' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
-                  <Sun size={24} />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800">وضعیت پنل‌های خورشیدی</h3>
-                  <p className="text-sm text-gray-500">محاسبه عمر مفید و زمان تعویض تجهیزات</p>
-                </div>
-              </div>
-
-              {projects.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  شما هنوز پروژه عملیاتی یا تایید شده‌ای ندارید.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {projects.map((proj) => (
-                    <div key={proj.id} className="border border-gray-200 rounded-xl p-5 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-2 h-full bg-amber-500"></div>
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h4 className="font-bold text-gray-800">{proj.title}</h4>
-                          <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                            <MapPin size={12} /> {proj.location?.city || 'ایران'}
-                          </div>
-                        </div>
-                        <div className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-xs font-bold border border-green-100">
-                          {STATUS_LABELS[proj.status] || proj.status}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-500">کد پروژه:</span>
-                          <span className="font-mono font-bold text-blue-600">{proj.projectCode}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-gray-500">عمر مفید تخمینی:</span>
-                          <span className="font-bold text-amber-600">۲۵ سال</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-        
-        {/* HISTORY TAB */}
-        {activeTab === 'history' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-800">تاریخچه تحلیل‌های قبلی</h2>
-                <Link to="/target-select" className="text-blue-600 text-sm font-bold flex items-center gap-1 hover:underline">
-                  <Plus size={16} /> تحلیل جدید
-                </Link>
-              </div>
-              {(() => {
-                let history = [];
-                try {
-                  const stored = localStorage.getItem('analysis_history');
-                  history = stored ? JSON.parse(stored) : [];
-                } catch(e) {}
-                
-                if (history.length === 0) {
-                  return (
-                    <div className="text-center py-8 text-gray-500">
-                      تاریخچه‌ای از تحلیل‌های قبلی شما برای نمایش وجود ندارد.
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div className="space-y-4">
-                    {history.map((item, idx) => (
-                      <div key={idx} className="border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50 transition-colors">
-                        <div>
-                          <h4 className="font-bold text-gray-800">{item.title || 'تحلیل پتانسیل خورشیدی'}</h4>
-                          <div className="text-sm text-gray-500 mt-1 flex flex-wrap gap-4">
-                            <span>{new Date(item.date).toLocaleDateString('fa-IR')}</span>
-                            <span>{item.input?.city || 'مکان نامشخص'}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => navigate('/result', { state: { historyResult: item.result, historyResultId: item.id } })}
-                            className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-2 rounded-xl hover:bg-blue-100 transition-colors"
-                          >
-                            مشاهده نتیجه
-                          </button>
-                          {item.id && (
-                            <button 
-                              onClick={() => handleConvertAnalysis(item.id)}
-                              className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl hover:bg-emerald-100 transition-colors flex items-center gap-1"
-                            >
-                              <Briefcase size={14} />
-                              تبدیل به پروژه
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-          </motion.div>
-        )}
-        
-        {/* SETTINGS TAB */}
-        {activeTab === 'settings' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm text-center py-16">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">تنظیمات پروفایل و سازمان</h2>
-            <p className="text-gray-500 max-w-md mx-auto text-sm">
-              اطلاعات حساب کاربری، سازمان حقوقی و دسترسی‌های تیمی شما در این بخش مدیریت می‌شوند.
-            </p>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Mobile Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 flex justify-around items-center z-50">
-        <button onClick={() => setActiveTab('projects')} className={`p-2 rounded-xl flex flex-col items-center gap-1 ${activeTab === 'projects' ? 'text-blue-600' : 'text-gray-500'}`}>
-          <Briefcase size={20} />
-          <span className="text-[10px] font-bold">پروژه‌ها</span>
-        </button>
-        <button onClick={() => setActiveTab('requests')} className={`p-2 rounded-xl flex flex-col items-center gap-1 ${activeTab === 'requests' ? 'text-blue-600' : 'text-gray-500'}`}>
-          <FileText size={20} />
-          <span className="text-[10px] font-bold">درخواست‌ها</span>
-        </button>
-        <button onClick={() => setActiveTab('history')} className={`p-2 rounded-xl flex flex-col items-center gap-1 ${activeTab === 'history' ? 'text-blue-600' : 'text-gray-500'}`}>
-          <Clock size={20} />
-          <span className="text-[10px] font-bold">تاریخچه</span>
-        </button>
-        <button onClick={() => navigate('/target-select')} className="p-2 rounded-xl flex flex-col items-center gap-1 text-gray-500">
-          <Zap size={20} />
-          <span className="text-[10px] font-bold">تحلیل جدید</span>
-        </button>
-        <button onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }} className="p-2 rounded-xl flex flex-col items-center gap-1 text-red-500">
-          <LogOut size={20} />
-          <span className="text-[10px] font-bold">خروج</span>
-        </button>
-      </div>
-    </div>
+      )}
+    </PageContainer>
   );
 }
