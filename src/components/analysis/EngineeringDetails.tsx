@@ -9,32 +9,32 @@ interface TechnicalSpecification {
 }
 
 interface EngineeringDetailsProps {
-  panelWattage?: number;
-  panelCount?: number;
-  panelModel?: string;
-  inverterCount?: number;
-  inverterType?: string;
-  dcCapacityKwp?: number;
-  acCapacityKw?: number;
-  systemLossesPercent?: number;
-  tiltAngle?: number;
-  azimuthAngle?: number;
-  totalAreaM2?: number;
-  usableAreaM2?: number;
+  panelWattage?: number | null;
+  panelCount?: number | null;
+  panelModel?: string | null;
+  inverterCount?: number | null;
+  inverterType?: string | null;
+  dcCapacityKwp?: number | null;
+  acCapacityKw?: number | null;
+  systemLossesPercent?: number | null;
+  tiltAngle?: number | null;
+  azimuthAngle?: number | null;
+  totalAreaM2?: number | null;
+  usableAreaM2?: number | null;
   defaultExpanded?: boolean;
 }
 
 export const EngineeringDetails: React.FC<EngineeringDetailsProps> = ({
-  panelWattage = 550,
+  panelWattage,
   panelCount,
-  panelModel = 'ماژول استاندارد مونوکریستال ۵۵۰ وات Tier-1',
-  inverterCount = 1,
-  inverterType = 'اینورتر متصل به شبکه On-Grid (تک‌فاز/سه‌فاز)',
+  panelModel,
+  inverterCount,
+  inverterType,
   dcCapacityKwp,
   acCapacityKw,
-  systemLossesPercent = 14,
-  tiltAngle = 30,
-  azimuthAngle = 0,
+  systemLossesPercent,
+  tiltAngle,
+  azimuthAngle,
   totalAreaM2,
   usableAreaM2,
   defaultExpanded = false
@@ -44,43 +44,43 @@ export const EngineeringDetails: React.FC<EngineeringDetailsProps> = ({
   const specs: TechnicalSpecification[] = [
     {
       label: 'ظرفیت اسمی DC (مجموع پنل‌ها)',
-      value: dcCapacityKwp ? `${dcCapacityKwp.toLocaleString('fa-IR')} کیلووات‌پیک` : 'محاسبه‌نشده',
+      value: dcCapacityKwp ? `${dcCapacityKwp.toLocaleString('fa-IR')} کیلووات‌پیک` : 'اطلاعات کافی موجود نیست',
       badge: 'CALCULATED'
     },
     {
       label: 'ظرفیت خروجی AC اینورتر',
-      value: acCapacityKw ? `${acCapacityKw.toLocaleString('fa-IR')} کیلووات` : `${(dcCapacityKwp ? (dcCapacityKwp * 0.9).toFixed(1) : '–')} کیلووات`,
+      value: acCapacityKw ? `${acCapacityKw.toLocaleString('fa-IR')} کیلووات` : 'اطلاعات کافی موجود نیست',
       badge: 'CALCULATED'
     },
     {
       label: 'مشخصات ماژول فتوولتائیک',
-      value: panelWattage ? `${panelWattage} وات (${panelModel})` : panelModel,
+      value: panelWattage ? `${panelWattage} وات${panelModel ? ` (${panelModel})` : ''}` : (panelModel || 'اطلاعات کافی موجود نیست'),
       badge: 'REFERENCE_ESTIMATE'
     },
     {
       label: 'تعداد کل پنل‌ها',
-      value: panelCount ? `${panelCount.toLocaleString('fa-IR')} ماژول` : '–',
+      value: panelCount ? `${panelCount.toLocaleString('fa-IR')} ماژول` : 'اطلاعات کافی موجود نیست',
       badge: 'CALCULATED'
     },
     {
       label: 'تجهیزات تبدیل توان (اینورتر)',
-      value: `${inverterCount} دستگاه (${inverterType})`,
+      value: inverterCount ? `${inverterCount} دستگاه${inverterType ? ` (${inverterType})` : ''}` : (inverterType || 'اطلاعات در دسترس نیست'),
       badge: 'REFERENCE_ESTIMATE'
     },
     {
       label: 'مساحت کل محل / فضای مفید',
-      value: totalAreaM2 ? `${totalAreaM2} متر مربع کل / ${usableAreaM2 || Math.round(totalAreaM2 * 0.7)} متر مفید` : '–',
+      value: totalAreaM2 ? `${totalAreaM2} متر مربع کل${usableAreaM2 ? ` / ${usableAreaM2} متر مفید` : ''}` : '–',
       badge: 'USER_PROVIDED'
     },
     {
       label: 'زاویه شیب بهینه (Tilt)',
-      value: `${tiltAngle} درجه رو به جنوب (۰ درجه آزیموت)`,
+      value: tiltAngle !== null && tiltAngle !== undefined ? `${tiltAngle} درجه رو به جنوب (۰ درجه آزیموت)` : 'اطلاعات در دسترس نیست',
       badge: 'REFERENCE_ESTIMATE'
     },
     {
       label: 'ضریب کل تلفات سیستم (Derate Factor)',
-      value: `تقریباً ${systemLossesPercent}٪ (شامل تلفات حرارتی، سیم‌کشی و گرد و غبار)`,
-      badge: 'CALCULATED'
+      value: systemLossesPercent !== null && systemLossesPercent !== undefined ? `تقریباً ${systemLossesPercent}٪ (شامل تلفات حرارتی، سیم‌کشی و گرد و غبار)` : 'اطلاعات در دسترس نیست',
+      badge: 'REFERENCE_ESTIMATE'
     }
   ];
 

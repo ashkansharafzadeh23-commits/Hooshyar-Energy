@@ -67,7 +67,7 @@ export const SolarDataSource: React.FC<SolarDataSourceProps> = ({
         <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800">
           <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-1">میانگین ساعات آفتابی موثر</div>
           <div className="font-bold text-xs text-zinc-800 dark:text-zinc-200">
-            {peakSunHours ? `${peakSunHours.toFixed(1)} ساعت/روز (Peak Sun Hours)` : '۴.۸ الی ۵.۴ ساعت/روز'}
+            {peakSunHours ? `${peakSunHours.toFixed(1)} ساعت/روز (ساعات اوج آفتاب)` : 'داده در دسترس نیست'}
           </div>
         </div>
       </div>
@@ -75,9 +75,9 @@ export const SolarDataSource: React.FC<SolarDataSourceProps> = ({
       {/* Provenance Disclosure */}
       <div className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed bg-zinc-50/50 dark:bg-zinc-800/20 p-2.5 rounded-lg">
         {isDirectNasa ? (
-          <span>داده‌های تابش خورشیدی به طور مستقیم از مدارگردهای ناسا برای مختصات استان {locationLabel} دریافت و با ضرایب آلودگی هوا و دما کالیبره شده است.</span>
+          <span>داده از NASA POWER دریافت شده است.</span>
         ) : (
-          <span>داده‌های تابش بر اساس داده‌های تجمیعی بلندمدت ایستگاه‌های زمینی کشور برای منطقه {locationLabel} شبیه‌سازی شده است.</span>
+          <span>در این تحلیل از داده مرجع استفاده شده است.</span>
         )}
       </div>
     </div>

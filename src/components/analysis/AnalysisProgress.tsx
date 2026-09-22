@@ -4,11 +4,9 @@ import { motion } from 'framer-motion';
 
 export type AnalysisStage = 
   | 'VALIDATING_INPUTS' 
-  | 'FETCHING_SOLAR_RESOURCE' 
-  | 'CALCULATING_CAPACITY' 
-  | 'ESTIMATING_YIELD' 
-  | 'PREPARING_RESULT' 
+  | 'REQUESTING_ENGINE_ANALYSIS' 
   | 'COMPLETED'
+  | 'FAILED'
   | 'DEGRADED_COMPLETED';
 
 interface AnalysisProgressProps {
@@ -27,28 +25,13 @@ interface StepItem {
 const STAGES: StepItem[] = [
   {
     id: 'VALIDATING_INPUTS',
-    label: 'بررسی اطلاعات پروژه',
-    sublabel: 'اعتبارسنجی متراژ، شهر و الگوی مصرف اعلامی'
+    label: 'بررسی ورودی‌ها',
+    sublabel: 'اعتبارسنجی مقادیر موقعیت مکانی، مصرف برق و مساحت'
   },
   {
-    id: 'FETCHING_SOLAR_RESOURCE',
-    label: 'دریافت داده تابش خورشیدی',
-    sublabel: 'استعلام شاخص تابش از ناسا (NASA POWER) یا اطلس مرجع'
-  },
-  {
-    id: 'CALCULATING_CAPACITY',
-    label: 'محاسبه ظرفیت پیشنهادی',
-    sublabel: 'محاسبه توان کیلووات و تعداد ماژول‌های فتوولتائیک'
-  },
-  {
-    id: 'ESTIMATING_YIELD',
-    label: 'برآورد تولید انرژی',
-    sublabel: 'مدل‌سازی تلفات حرارتی، سیم‌کشی و اینورتر'
-  },
-  {
-    id: 'PREPARING_RESULT',
-    label: 'آماده‌سازی نتیجه',
-    sublabel: 'تنظیم گزارش خلاصه اجرایی و برآورد فنی-اقتصادی'
+    id: 'REQUESTING_ENGINE_ANALYSIS',
+    label: 'اجرای تحلیل در موتور مهندسی سامانه',
+    sublabel: 'استعلام داده‌های خورشیدی و محاسبه ظرفیت نیروگاه'
   }
 ];
 
@@ -61,12 +44,9 @@ export const AnalysisProgress: React.FC<AnalysisProgressProps> = ({
   const getStageIndex = (stage: AnalysisStage): number => {
     switch (stage) {
       case 'VALIDATING_INPUTS': return 0;
-      case 'FETCHING_SOLAR_RESOURCE': return 1;
-      case 'CALCULATING_CAPACITY': return 2;
-      case 'ESTIMATING_YIELD': return 3;
-      case 'PREPARING_RESULT': return 4;
+      case 'REQUESTING_ENGINE_ANALYSIS': return 1;
       case 'COMPLETED':
-      case 'DEGRADED_COMPLETED': return 5;
+      case 'DEGRADED_COMPLETED': return 2;
       default: return 0;
     }
   };

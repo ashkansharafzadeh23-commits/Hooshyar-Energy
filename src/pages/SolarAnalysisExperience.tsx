@@ -36,13 +36,13 @@ export default function SolarAnalysisExperience() {
   // Step control: 0 = Welcome, 1 = Usage, 2 = Location, 3 = Consumption, 4 = Site, 5 = Goal, 6 = Progress, 7 = Results
   const [currentStep, setCurrentStep] = useState<StepNumber>(historyResult ? 7 : 0);
 
-  // Form states initialized from AppContext
+  // Form states initialized from AppContext or null/empty
   const [usageType, setUsageType] = useState<LocationType>(state.locationType || 'residential');
-  const [province, setProvince] = useState<string>(state.province || 'تهران');
-  const [city, setCity] = useState<string>(state.city || 'تهران');
-  const [monthlyKwh, setMonthlyKwh] = useState<number>(state.monthlyKwh && state.monthlyKwh > 0 ? state.monthlyKwh : 350);
-  const [area, setArea] = useState<number>(state.area > 0 ? state.area : 100);
-  const [usableArea, setUsableArea] = useState<number>(state.usableArea > 0 ? state.usableArea : 70);
+  const [province, setProvince] = useState<string>(state.province || '');
+  const [city, setCity] = useState<string>(state.city || '');
+  const [monthlyKwh, setMonthlyKwh] = useState<number | null>(state.monthlyKwh && state.monthlyKwh > 0 ? state.monthlyKwh : null);
+  const [area, setArea] = useState<number | null>(state.area && state.area > 0 ? state.area : null);
+  const [usableArea, setUsableArea] = useState<number | null>(state.usableArea && state.usableArea > 0 ? state.usableArea : null);
   const [gridConnected, setGridConnected] = useState<boolean>(state.gridConnected ?? true);
   const [gridStable, setGridStable] = useState<boolean>(state.gridStable ?? true);
   const [goal, setGoal] = useState<UserSolarGoal>('REDUCE_BILL');
@@ -94,9 +94,18 @@ export default function SolarAnalysisExperience() {
 
   // Execution of the real analysis engine
   const executeAnalysis = async () => {
+    // Validate inputs strictly before executing
+    if (!province || !city || !monthlyKwh || monthlyKwh <= 0 || !area || area <= 0) {
+      setErrorMessage('لطفاً کلیه اطلاعات الزامی شامل استان، شهر، میزان مصرف ماهانه و مساحت را تکمیل فرمایید.');
+      setCurrentStep(7);
+      return;
+    }
+
     setCurrentStep(6);
     setProgressStage('VALIDATING_INPUTS');
     setErrorMessage(null);
+
+    const calculatedUsable = usableArea && usableArea > 0 ? usableArea : Math.round(area * 0.7);
 
     // Sync state with AppContext
     updateState({
@@ -106,7 +115,7 @@ export default function SolarAnalysisExperience() {
       city,
       monthlyKwh,
       area,
-      usableArea,
+      usableArea: calculatedUsable,
       gridConnected,
       gridStable
     });
@@ -117,21 +126,26 @@ export default function SolarAnalysisExperience() {
       province,
       city,
       monthlyKwh,
+      actualMonthlyKwh: monthlyKwh,
       area,
-      usableArea,
+      usableArea: calculatedUsable,
       gridConnected,
       gridStable,
       goal
     };
 
     try {
-      // Real stage 1: Validate inputs
-      await new Promise(r => setTimeout(r, 300));
-      setProgressStage('FETCHING_SOLAR_RESOURCE');
+      setProgressStage('REQUESTING_ENGINE_ANALYSIS');
+
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       const response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
 
@@ -140,16 +154,7 @@ export default function SolarAnalysisExperience() {
         throw new Error(errorData.error || 'خطا در ارتباط با موتور محاسباتی. لطفاً مجدداً تلاش کنید.');
       }
 
-      setProgressStage('CALCULATING_CAPACITY');
-      await new Promise(r => setTimeout(r, 350));
-
       const data = await response.json();
-
-      setProgressStage('ESTIMATING_YIELD');
-      await new Promise(r => setTimeout(r, 300));
-
-      setProgressStage('PREPARING_RESULT');
-      await new Promise(r => setTimeout(r, 250));
 
       // Check if external NASA solar data was fallback/degraded
       if (data.dataSource?.isReferenceOnly || data.dataSource?.dataClassification === 'REFERENCE_ESTIMATE') {
@@ -222,10 +227,33 @@ export default function SolarAnalysisExperience() {
       return false;
     }
 
-    // In Hooshyar Energy, /api/analyze automatically logs to history.
-    // If user explicitly saves, we ensure the link or record status is tagged
-    setIsSaved(true);
-    return true;
+    const currentAnalysisId = analysisId || analysisResult?.analysisId;
+    if (!currentAnalysisId) {
+      setErrorMessage('شناسه تحلیل معتبر در سرور یافت نشد. لطفاً در حساب کاربری خود لاگین فرمایید.');
+      return false;
+    }
+
+    try {
+      const res = await fetch('/api/user/history', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        throw new Error('خطا در برقراری ارتباط با تاریخچه سرور');
+      }
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.history || []);
+      const found = list.some((item: any) => item.id === currentAnalysisId);
+      if (found) {
+        setIsSaved(true);
+        return true;
+      } else {
+        setErrorMessage('رکورد تحلیل در تاریخچه حساب کاربری تأیید نشد.');
+        return false;
+      }
+    } catch (e: any) {
+      setErrorMessage(e.message || 'خطا در اعتبارسنجی ثبت تحلیل در سرور');
+      return false;
+    }
   };
 
   // Render Step 0: Welcome
@@ -235,7 +263,7 @@ export default function SolarAnalysisExperience() {
         onStart={handleStart}
         onContinuePrevious={handleContinuePrevious}
         hasPreviousAnalysis={hasPreviousLocal}
-        lastAnalysisSummary={city ? `شهر ${city} - ${monthlyKwh} کیلووات‌ساعت` : undefined}
+        lastAnalysisSummary={city && monthlyKwh ? `شهر ${city} - ${monthlyKwh} کیلووات‌ساعت` : undefined}
       />
     );
   }
@@ -270,6 +298,7 @@ export default function SolarAnalysisExperience() {
         stepDescription="تابش خورشیدی بر اساس استان و شهر تعیین و مبنای تحلیل قرار می‌گیرد."
         onNext={() => setCurrentStep(3)}
         onPrev={() => setCurrentStep(1)}
+        isNextDisabled={!province || !city}
         nextLabel="مرحله بعد: مصرف برق"
       >
         <LocationStep
@@ -299,7 +328,7 @@ export default function SolarAnalysisExperience() {
       >
         <ConsumptionStep
           monthlyKwh={monthlyKwh}
-          area={area}
+          area={area || 0}
           onChange={(kwh) => setMonthlyKwh(kwh)}
           onAnalysisExtracted={(extractedKwh) => {
             if (extractedKwh && extractedKwh > 0) {
@@ -325,8 +354,8 @@ export default function SolarAnalysisExperience() {
         nextLabel="مرحله بعد: هدف اصلی"
       >
         <SiteDetailsStep
-          area={area}
-          usableArea={usableArea}
+          area={area || 0}
+          usableArea={usableArea || 0}
           gridConnected={gridConnected}
           gridStable={gridStable}
           onChange={(details) => {
@@ -383,16 +412,23 @@ export default function SolarAnalysisExperience() {
     );
   }
 
-  // Extract real calculated metrics from deterministic engine result
+  // Extract real calculated metrics from deterministic engine result - strictly no frontend formulas!
   const solar = analysisResult.solar || {};
   const dataSource = analysisResult.dataSource || {};
   const rec = analysisResult.recommendation || {};
 
-  const finalKwp = solar.finalKwp || null;
-  const panelCount = solar.panelOptions?.default?.panelCount || (finalKwp ? Math.ceil((finalKwp * 1000) / 550) : null);
-  const panelWattage = solar.panelOptions?.default?.panelWattage || 550;
-  const estimatedAnnualKwh = finalKwp && dataSource.sunHours ? Math.round(finalKwp * dataSource.sunHours * 365 * 0.8) : null;
-  const requiredAreaM2 = panelCount ? Math.round(panelCount * 2.6) : null;
+  const finalKwp = solar.finalKwp ?? null;
+  const panelCount = solar.panelOptions?.default?.panelCount 
+    ?? solar.panelOptions?.balanced?.panelCount 
+    ?? solar.panelOptions?.economy?.panelCount 
+    ?? solar.panelCount 
+    ?? null;
+  const panelWattage = solar.panelOptions?.default?.panelWattage 
+    ?? solar.panelOptions?.balanced?.panelWattage 
+    ?? solar.panelOptions?.economy?.panelWattage 
+    ?? null;
+  const estimatedAnnualKwh = solar.estimatedAnnualKwh ?? solar.annualGenerationKwh ?? null;
+  const requiredAreaM2 = solar.requiredAreaM2 ?? solar.panelOptions?.default?.requiredAreaM2 ?? null;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6 sm:space-y-8" dir="rtl">

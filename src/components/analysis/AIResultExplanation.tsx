@@ -19,7 +19,7 @@ export const AIResultExplanation: React.FC<AIResultExplanationProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  if (aiStatus === 'UNAVAILABLE' || aiStatus === 'NOT_CONFIGURED') {
+  if (aiStatus === 'UNAVAILABLE' || aiStatus === 'NOT_CONFIGURED' || !summary) {
     return (
       <div className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-500 dark:text-zinc-400 text-right leading-relaxed" dir="rtl">
         <div className="flex items-center gap-2 font-bold text-zinc-700 dark:text-zinc-300 mb-1">
@@ -28,13 +28,11 @@ export const AIResultExplanation: React.FC<AIResultExplanationProps> = ({
           <DataTruthBadge type="AI" size="sm" />
         </div>
         <p>
-          سرویس هوش مصنوعی در این لحظه در دسترس نیست، اما محاسبات مهندسی و پیشنهاد ظرفیت قطعی نیروگاه به طور کامل و دقیق در دسترس شماست.
+          توضیح هوشمند برای این تحلیل در دسترس نیست. نتایج مهندسی بالا همچنان قابل مشاهده هستند.
         </p>
       </div>
     );
   }
-
-  const defaultExplanation = `با توجه به داده‌های اقلیمی و مصرف ماهانه ثبت‌شده، احداث سامانه خورشیدی با ظرفیت ${recommendedCapacityKwp ? recommendedCapacityKwp.toFixed(1) : ''} کیلووات پاسخگوی نیاز شما خواهد بود. این ظرفیت تعادل مناسبی بین هزینه اولیه سرمایه‌گذاری و جبران اوج مصرف برق شبکه در فصول گرم ایجاد می‌کند.`;
 
   return (
     <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm overflow-hidden text-right" dir="rtl">
@@ -74,7 +72,7 @@ export const AIResultExplanation: React.FC<AIResultExplanationProps> = ({
       {isExpanded && (
         <div className="p-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-900/30 space-y-4">
           <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-normal">
-            {summary || defaultExplanation}
+            {summary}
           </p>
 
           {energySavingTips && energySavingTips.length > 0 && (
@@ -102,7 +100,7 @@ export const AIResultExplanation: React.FC<AIResultExplanationProps> = ({
 
           <div className="text-[11px] text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5 pt-1">
             <ShieldCheck size={12} />
-            <span>هوش مصنوعی صرفاً به عنوان مشاور توضیحی عمل می‌کند و محاسبات فیزیکی کاملاً قطعی هستند.</span>
+            <span>مقادیر مهندسی نمایش‌داده‌شده توسط موتور محاسباتی سامانه تولید شده‌اند.</span>
           </div>
         </div>
       )}

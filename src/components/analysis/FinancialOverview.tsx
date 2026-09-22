@@ -86,13 +86,13 @@ export const FinancialOverview: React.FC<FinancialOverviewProps> = ({
         <div className="p-3.5 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-xs font-bold text-amber-900 dark:text-amber-300">
-              مفروضات محاسباتی بازار
+              مفروضات محاسباتی
             </span>
             <DataTruthBadge type="MARKET" size="sm" />
           </div>
           <div className="text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1">
-            <div>• نرخ متوسط تجهیزات و نصب EPC (کیلوواتی حدود ۳۵ الی ۴۰ میلیون تومان)</div>
-            <div>• تعرفه پلکانی برق شبکه و استانداردهای مصوب انرژی</div>
+            <div>• استعلام قیمت نهایی بر اساس کاتالوگ تجهیزات و پیشنهاد پیمانکار انجام می‌شود.</div>
+            <div>• ارزیابی دقیق بازگشت سرمایه نیازمند مشخص بودن تعرفه مصرف و نوع قرارداد است.</div>
           </div>
         </div>
 
@@ -112,8 +112,8 @@ export const FinancialOverview: React.FC<FinancialOverviewProps> = ({
               <span className="text-xs text-zinc-600 dark:text-zinc-400 block mb-1">
                 دوره بازگشت سرمایه برآوردی
               </span>
-              <span className="text-xl font-black text-zinc-900 dark:text-zinc-100">
-                {hasPayback ? `${simplePaybackYears!.toLocaleString('fa-IR')} سال` : '۳ الی ۴ سال (تقریبی)'}
+              <span className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
+                {hasPayback ? `${simplePaybackYears!.toLocaleString('fa-IR')} سال` : 'اطلاعات کافی برای محاسبه دوره بازگشت سرمایه موجود نیست.'}
               </span>
             </div>
           </div>

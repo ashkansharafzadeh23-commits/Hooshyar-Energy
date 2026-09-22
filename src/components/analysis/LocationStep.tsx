@@ -14,28 +14,18 @@ export const LocationStep: React.FC<LocationStepProps> = ({
   city,
   onChange
 }) => {
-  const [selectedProvince, setSelectedProvince] = useState(province || provinces[0].name);
-  const [selectedCity, setSelectedCity] = useState(city || provinces[0].cities[0]);
+  const [selectedProvince, setSelectedProvince] = useState(province || '');
+  const [selectedCity, setSelectedCity] = useState(city || '');
   const [showCoordinates, setShowCoordinates] = useState(false);
   const [customLat, setCustomLat] = useState<string>('');
   const [customLon, setCustomLon] = useState<string>('');
 
-  const currentProvinceData = provinces.find((p) => p.name === selectedProvince) || provinces[0];
-
-  useEffect(() => {
-    if (!currentProvinceData.cities.includes(selectedCity)) {
-      const firstCity = currentProvinceData.cities[0];
-      setSelectedCity(firstCity);
-      onChange({ province: selectedProvince, city: firstCity });
-    }
-  }, [selectedProvince]);
+  const currentProvinceData = provinces.find((p) => p.name === selectedProvince);
 
   const handleProvinceChange = (newProv: string) => {
     setSelectedProvince(newProv);
-    const pData = provinces.find((p) => p.name === newProv) || provinces[0];
-    const newCity = pData.cities[0];
-    setSelectedCity(newCity);
-    onChange({ province: newProv, city: newCity });
+    setSelectedCity('');
+    onChange({ province: newProv, city: '' });
   };
 
   const handleCityChange = (newCity: string) => {
@@ -59,6 +49,7 @@ export const LocationStep: React.FC<LocationStepProps> = ({
               onChange={(e) => handleProvinceChange(e.target.value)}
               className="w-full min-h-[44px] px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors cursor-pointer"
             >
+              <option value="">-- انتخاب استان --</option>
               {provinces.map((prov) => (
                 <option key={prov.name} value={prov.name}>
                   {prov.name}
@@ -77,10 +68,12 @@ export const LocationStep: React.FC<LocationStepProps> = ({
             <select
               id="city-select"
               value={selectedCity}
+              disabled={!selectedProvince}
               onChange={(e) => handleCityChange(e.target.value)}
-              className="w-full min-h-[44px] px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors cursor-pointer"
+              className="w-full min-h-[44px] px-3.5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {currentProvinceData.cities.map((c) => (
+              <option value="">{selectedProvince ? '-- انتخاب شهر --' : '-- ابتدا استان را انتخاب نمایید --'}</option>
+              {currentProvinceData?.cities.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

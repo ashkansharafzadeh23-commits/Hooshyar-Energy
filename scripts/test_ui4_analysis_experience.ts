@@ -305,6 +305,54 @@ async function runTestSuite() {
     // Ensure sticky bottom actions and touch targets of min-h-[44px]
     assert(layoutContent.includes('min-h-[44px]') || layoutContent.includes('py-3') || layoutContent.includes('py-3.5') || layoutContent.includes('py-4'), 'Action buttons satisfy mobile touch-target dimensions');
 
+    // -------------------------------------------------------------
+    // Test 17: UI-4 13-Point Data-Truth & Anti-Fabrication Audits
+    // -------------------------------------------------------------
+    console.log('\n--- Test 17: UI-4 13-Point Data-Truth & Anti-Fabrication Audits ---');
+    const expFilePath = path.resolve(process.cwd(), 'src/pages/SolarAnalysisExperience.tsx');
+    assert(fs.existsSync(expFilePath), 'SolarAnalysisExperience.tsx exists');
+    const expContent = fs.readFileSync(expFilePath, 'utf-8');
+
+    // 1. No silent input defaults in state
+    assert(!expContent.includes("state.province || 'تهران'"), 'Point 1: No silent Tehran province default');
+    assert(!expContent.includes("state.city || 'تهران'"), 'Point 1: No silent Tehran city default');
+    assert(!expContent.includes('state.monthlyKwh : 350'), 'Point 1: No silent 350 kWh consumption default');
+    assert(!expContent.includes('state.area > 0 ? state.area : 100'), 'Point 1: No silent 100 m2 area default');
+    assert(!expContent.includes('state.usableArea > 0 ? state.usableArea : 70'), 'Point 1: No silent 70 m2 usable area default');
+
+    // 2. No processing theater
+    assert(!expContent.includes('setTimeout'), 'Point 7: No artificial delay loops (processing theater) in executeAnalysis');
+
+    // 3. No frontend engineering calculation formulas
+    assert(!expContent.includes('Math.ceil((finalKwp * 1000) / 550)'), 'Point 2: No frontend panelCount formula ceil(finalKwp*1000/550)');
+    assert(!expContent.includes('panelOptions?.default?.panelWattage || 550'), 'Point 2: No frontend panelWattage fallback 550');
+    assert(!expContent.includes('finalKwp * dataSource.sunHours * 365 * 0.8'), 'Point 2: No frontend annual yield formula * 365 * 0.8');
+    assert(!expContent.includes('panelCount * 2.6'), 'Point 2: No frontend requiredArea formula panelCount * 2.6');
+
+    // 4. Persistence verification
+    assert(expContent.includes('/api/user/history'), 'Point 8: handleSaveAnalysis verifies analysis presence in server history before confirming save');
+
+    // 5. EngineeringDetails verification
+    assert(!engDetailsContent.includes('panelWattage = 550'), 'Point 2/9: EngineeringDetails does not default panelWattage to 550');
+    assert(!engDetailsContent.includes('dcCapacityKwp * 0.9'), 'Point 2/9: EngineeringDetails does not calculate inverter AC capacity on frontend');
+    assert(engDetailsContent.includes('اطلاعات کافی موجود نیست'), 'Point 2/9: EngineeringDetails displays missing indicator when specs unavailable');
+
+    // 6. SolarDataSource verification
+    assert(!solarResourceContent.includes('۴.۸') && !solarResourceContent.includes('۵.۴'), 'Point 3: SolarDataSource contains no fabricated 4.8/5.4 sun hours');
+    assert(!solarResourceContent.includes('بیش از ۳۰۰ روز آفتابی'), 'Point 3: SolarDataSource contains no fabricated guaranteed sun days marketing claims');
+
+    // 7. FinancialOverview verification
+    assert(!finOverviewContent.includes('۳۵ تا ۴۰ میلیون تومان') && !finOverviewContent.includes('۳۵-۴۰ میلیون'), 'Point 4: FinancialOverview contains no hardcoded 35-40M Toman assumptions');
+    assert(!finOverviewContent.includes('Math.round(estimatedCostIRR / annualSavingsIRR)'), 'Point 4: FinancialOverview does not calculate unverified payback periods');
+
+    // 8. AnalysisGoalStep verification
+    assert(!goalStepContent.includes('درآمد پایدار تضمین‌شده'), 'Point 5: AnalysisGoalStep does not make false guaranteed revenue promises');
+
+    // 9. AIResultExplanation verification
+    const aiExplanationFilePath = path.resolve(process.cwd(), 'src/components/analysis/AIResultExplanation.tsx');
+    const aiExplanationContent = fs.readFileSync(aiExplanationFilePath, 'utf-8');
+    assert(!aiExplanationContent.includes('اطمینان قطعی') && !aiExplanationContent.includes('قطعاً توصیه می‌شود'), 'Point 6: AIResultExplanation avoids fabricated absolute certainty');
+
     console.log('\n=== ALL TESTS PASSED SUCCESSFULLY! ===');
     console.log(`Passed: ${passed}, Failed: ${failed}`);
   } finally {

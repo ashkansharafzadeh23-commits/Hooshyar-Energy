@@ -28,8 +28,8 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
   onChange
 }) => {
   const [selectedMount, setSelectedMount] = useState<InstallationMountType>(mountType);
-  const [totalArea, setTotalArea] = useState<string>(area > 0 ? String(area) : '100');
-  const [usableAreaVal, setUsableAreaVal] = useState<string>(usableArea > 0 ? String(usableArea) : '70');
+  const [totalArea, setTotalArea] = useState<string>(area && area > 0 ? String(area) : '');
+  const [usableAreaVal, setUsableAreaVal] = useState<string>(usableArea && usableArea > 0 ? String(usableArea) : '');
   const [isGridConnected, setIsGridConnected] = useState<boolean>(gridConnected);
   const [isGridStable, setIsGridStable] = useState<boolean>(gridStable);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
@@ -54,9 +54,11 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
 
   const handleMountSelect = (mType: InstallationMountType) => {
     setSelectedMount(mType);
+    const a = parseFloat(totalArea) || 0;
+    const ua = parseFloat(usableAreaVal) || 0;
     onChange({
-      area: Number(totalArea),
-      usableArea: Number(usableAreaVal),
+      area: a,
+      usableArea: ua,
       gridConnected: isGridConnected,
       gridStable: isGridStable,
       mountType: mType
@@ -66,9 +68,9 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
   const handleAreaChange = (val: string) => {
     setTotalArea(val);
     const num = parseFloat(val) || 0;
-    // Default usable area estimate is ~70% of total
-    const computedUsable = Math.round(num * 0.7);
-    setUsableAreaVal(String(computedUsable));
+    // Estimated usable area is ~70% of total if not manually overridden
+    const computedUsable = num > 0 ? Math.round(num * 0.7) : 0;
+    setUsableAreaVal(computedUsable > 0 ? String(computedUsable) : '');
     onChange({
       area: num,
       usableArea: computedUsable,
@@ -81,8 +83,9 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
   const handleUsableAreaChange = (val: string) => {
     setUsableAreaVal(val);
     const num = parseFloat(val) || 0;
+    const a = parseFloat(totalArea) || 0;
     onChange({
-      area: Number(totalArea),
+      area: a,
       usableArea: num,
       gridConnected: isGridConnected,
       gridStable: isGridStable,
@@ -132,7 +135,7 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
       <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm">
         <div className="flex items-center justify-between gap-2 mb-2">
           <label htmlFor="area-input" className="block text-sm font-bold text-zinc-900 dark:text-zinc-100">
-            مساحت کل در دسترس جهت نصب
+            مساحت کل در دسترس جهت نصب <span className="text-rose-500">*</span>
           </label>
           <DataTruthBadge type="USER_PROVIDED" size="sm" />
         </div>
@@ -145,7 +148,7 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
             max="1000000"
             value={totalArea}
             onChange={(e) => handleAreaChange(e.target.value)}
-            placeholder="مثال: ۱۰۰"
+            placeholder="مساحت به متر مربع"
             className="w-full min-h-[48px] px-4 py-2.5 text-base font-bold bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-300 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors pl-24 text-left"
             dir="ltr"
           />

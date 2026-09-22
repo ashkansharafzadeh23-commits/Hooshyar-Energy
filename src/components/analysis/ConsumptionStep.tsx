@@ -22,15 +22,6 @@ export const ConsumptionStep: React.FC<ConsumptionStepProps> = ({
   const [showBillUpload, setShowBillUpload] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Quick consumption tier presets
-  const presets = [
-    { label: 'کم‌مصرف (مسکونی کوچک)', kwh: 200 },
-    { label: 'متوسط مسکونی (معمول)', kwh: 350 },
-    { label: 'پر‌مصرف یا ویلایی', kwh: 600 },
-    { label: 'تجاری / کارگاهی کوچک', kwh: 1200 },
-    { label: 'صنعتی / پرقدرت', kwh: 3500 }
-  ];
-
   const handleInputChange = (val: string) => {
     setInputValue(val);
     const num = parseFloat(val);
@@ -40,12 +31,6 @@ export const ConsumptionStep: React.FC<ConsumptionStepProps> = ({
       setErrorMsg(null);
       onChange(num);
     }
-  };
-
-  const handleSelectPreset = (kwh: number) => {
-    setInputValue(String(kwh));
-    setErrorMsg(null);
-    onChange(kwh);
   };
 
   return (
@@ -67,7 +52,7 @@ export const ConsumptionStep: React.FC<ConsumptionStepProps> = ({
             max="1000000"
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
-            placeholder="مثال: ۳۵۰"
+            placeholder="میزان مصرف ماهانه بر حسب کیلووات‌ساعت"
             className="w-full min-h-[50px] px-4 py-3 text-lg font-bold bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-300 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-colors pl-28 text-left"
             dir="ltr"
           />
@@ -90,38 +75,6 @@ export const ConsumptionStep: React.FC<ConsumptionStepProps> = ({
           <div>
             <strong>راهنمای یافتن مصرف در قبض:</strong> این مقدار در قبض برق با عنوان <strong>«مصرف دوره»</strong> یا <strong>«کیلووات‌ساعت»</strong> درج شده است. اگر قبض برق دوره ۳۰ روزه دارید، همان مقدار مصرف را وارد نمایید.
           </div>
-        </div>
-      </div>
-
-      {/* Quick Estimator Presets */}
-      <div>
-        <span className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-2">
-          یا از مقادیر تقریبی متداول انتخاب کنید:
-        </span>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {presets.map((preset) => {
-            const isSelected = inputValue === String(preset.kwh);
-            return (
-              <button
-                key={preset.kwh}
-                type="button"
-                onClick={() => handleSelectPreset(preset.kwh)}
-                className={`p-2.5 rounded-xl border text-right transition-all text-xs cursor-pointer ${
-                  isSelected
-                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 font-bold text-amber-950 dark:text-amber-200 ring-1 ring-amber-500'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <span className="font-bold">{preset.kwh.toLocaleString('fa-IR')} kWh</span>
-                  {isSelected && <Check size={12} className="text-amber-600" />}
-                </div>
-                <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
-                  {preset.label}
-                </div>
-              </button>
-            );
-          })}
         </div>
       </div>
 
