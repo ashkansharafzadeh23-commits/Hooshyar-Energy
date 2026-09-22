@@ -6,13 +6,13 @@ export type InstallationMountType = 'rooftop' | 'ground' | 'shed';
 
 interface SiteDetailsStepProps {
   area: number;
-  usableArea: number;
+  usableArea?: number | null;
   gridConnected: boolean;
   gridStable: boolean;
   mountType?: InstallationMountType;
   onChange: (updates: {
     area: number;
-    usableArea: number;
+    usableArea?: number | null;
     gridConnected: boolean;
     gridStable: boolean;
     mountType?: InstallationMountType;
@@ -55,10 +55,10 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
   const handleMountSelect = (mType: InstallationMountType) => {
     setSelectedMount(mType);
     const a = parseFloat(totalArea) || 0;
-    const ua = parseFloat(usableAreaVal) || 0;
+    const ua = usableAreaVal.trim() !== '' ? parseFloat(usableAreaVal) : null;
     onChange({
       area: a,
-      usableArea: ua,
+      usableArea: ua && !isNaN(ua) && ua > 0 ? ua : null,
       gridConnected: isGridConnected,
       gridStable: isGridStable,
       mountType: mType
@@ -68,12 +68,10 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
   const handleAreaChange = (val: string) => {
     setTotalArea(val);
     const num = parseFloat(val) || 0;
-    // Estimated usable area is ~70% of total if not manually overridden
-    const computedUsable = num > 0 ? Math.round(num * 0.7) : 0;
-    setUsableAreaVal(computedUsable > 0 ? String(computedUsable) : '');
+    const ua = usableAreaVal.trim() !== '' ? parseFloat(usableAreaVal) : null;
     onChange({
       area: num,
-      usableArea: computedUsable,
+      usableArea: ua && !isNaN(ua) && ua > 0 ? ua : null,
       gridConnected: isGridConnected,
       gridStable: isGridStable,
       mountType: selectedMount
@@ -82,11 +80,11 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
 
   const handleUsableAreaChange = (val: string) => {
     setUsableAreaVal(val);
-    const num = parseFloat(val) || 0;
+    const num = val.trim() !== '' ? parseFloat(val) : null;
     const a = parseFloat(totalArea) || 0;
     onChange({
       area: a,
-      usableArea: num,
+      usableArea: num && !isNaN(num) && num > 0 ? num : null,
       gridConnected: isGridConnected,
       gridStable: isGridStable,
       mountType: selectedMount
