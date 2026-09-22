@@ -49,6 +49,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           primary: true
         };
       case 'VENDOR':
+      case 'SUPPLIER':
         return {
           label: 'ورود به پرتال تأمین‌کنندگان',
           to: '/vendor-portal',

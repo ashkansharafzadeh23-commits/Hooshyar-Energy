@@ -168,8 +168,50 @@ assert(userDashboardSrc.includes("requestedTab === 'projects'"), 'UserDashboard 
 assert(userDashboardSrc.includes("requestedTab === 'history'"), 'UserDashboard handles ?tab=history deep link');
 assert(userDashboardSrc.includes("requestedTab === 'requests'"), 'UserDashboard handles ?tab=requests deep link');
 
-// 10. DATABASE IMMUTABILITY CHECK
-console.log('\n[10] Verifying db.json Immutability (Byte-for-Byte)...');
+// 10. CLOSURE REGRESSION: VENDOR ROLE, AUTHENTICATION PURITY & DATA-TRUTH
+console.log('\n[10] Testing UI-3 Closure Regression: Vendor Role & Auth Purity...');
+
+// 10.1 VENDOR has explicit role handling in roleMetrics & nextActions
+assert(userDashboardSrc.includes("case 'VENDOR':"), 'UserDashboard roleMetrics explicitly handles VENDOR role');
+assert(userDashboardSrc.includes("case 'SUPPLIER':"), 'UserDashboard roleMetrics explicitly handles SUPPLIER role');
+assert(userDashboardSrc.includes("role === 'VENDOR'"), 'UserDashboard nextActions explicitly handles VENDOR role');
+
+const dashboardHeaderSrc = fs.readFileSync(path.join(dashboardDir, 'DashboardHeader.tsx'), 'utf8');
+assert(dashboardHeaderSrc.includes("case 'VENDOR':"), 'DashboardHeader explicitly handles VENDOR role');
+assert(dashboardHeaderSrc.includes("case 'SUPPLIER':"), 'DashboardHeader explicitly handles SUPPLIER role');
+
+// 10.2 VENDOR cannot fall through to PROJECT_OWNER/default metrics
+const vendorBlockRegex = /case 'VENDOR':\s*case 'SUPPLIER':\s*\{([\s\S]*?)\}\s*case 'PROJECT_OWNER':/;
+const vendorBlockMatch = userDashboardSrc.match(vendorBlockRegex);
+assert(Boolean(vendorBlockMatch), 'VENDOR/SUPPLIER block is distinct and precedes PROJECT_OWNER');
+if (vendorBlockMatch) {
+  const vendorBlockBody = vendorBlockMatch[1];
+  assert(vendorBlockBody.includes('return [];'), 'VENDOR/SUPPLIER terminates with return [] to prevent fall-through');
+  assert(!vendorBlockBody.includes('projects.reduce'), 'VENDOR block does not calculate project owner capacity or budget');
+}
+
+// 10.3 No hardcoded user_1 fallback exists in UserDashboard
+assert(!userDashboardSrc.includes('user_1'), 'UserDashboard contains ZERO occurrences of hardcoded user_1');
+
+// 10.4 No other demo user identifier is used for authorization/filtering
+const demoIdMatches = userDashboardSrc.match(/'(user_[0-9]+|demo_user|test_user|sample_user)'/g);
+assert(!demoIdMatches || demoIdMatches.length === 0, 'No demo user identifiers found for authorization/filtering in UserDashboard');
+assert(userDashboardSrc.includes('user?.id && r.userId && r.userId === user.id'), 'UserDashboard strictly checks authenticated user ownership on legacy requests');
+
+// 10.5 Vendor metrics are omitted when verified vendor data is unavailable
+assert(vendorBlockMatch ? vendorBlockMatch[1].includes('return [];') : false, 'Vendor metrics return empty array when verified vendor data is unavailable');
+assert(roleSummarySrc.includes('validMetrics.length === 0') && roleSummarySrc.includes('return null;'), 'RoleSummary renders null (omits section) when metric array is empty');
+
+// 10.6 Existing UI-3 data-truth requirements remain intact
+assert(!userDashboardSrc.includes('Math.random()'), 'No random/synthetic generation in UserDashboard');
+assert(!assetCardSrc.includes('Math.random()'), 'No random/synthetic telemetry generation in AssetCard');
+
+// 10.7 UI-2 and UI-1 remain intact
+assert(fs.existsSync(path.resolve('scripts/test_ui1_shell.ts')), 'UI-1 shell test script exists and is intact');
+assert(fs.existsSync(path.resolve('scripts/test_ui2_project_workspace.ts')), 'UI-2 workspace test script exists and is intact');
+
+// 11. DATABASE IMMUTABILITY CHECK
+console.log('\n[11] Verifying db.json Immutability (Byte-for-Byte)...');
 const dbPath = path.resolve('db.json');
 const dbContent = fs.readFileSync(dbPath);
 const dbHash = crypto.createHash('sha256').update(dbContent).digest('hex');

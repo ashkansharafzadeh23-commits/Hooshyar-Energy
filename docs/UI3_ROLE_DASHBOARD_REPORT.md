@@ -102,6 +102,10 @@ The dashboard leverages the existing `activeRole` and `activeOrganization` provi
   * CTA: «مشاهده استعلام‌های قیمت (RFQ)» (`/contractors`)
   * Attention items: New open RFQs awaiting proposal submission
   * Summary: Active RFQs and construction-phase projects
+* **Vendor / Equipment Supplier (`VENDOR`, `SUPPLIER`):**
+  * CTA: «ورود به پرتال تأمین‌کنندگان» (`/vendor-portal`)
+  * Next Actions: Deterministic link to equipment management and quotation requests (`/vendor-portal`)
+  * Summary: Explicit role handling preventing fall-through to Owner metrics. Returns empty metrics array (safe null render) when verified vendor quotation/procurement records are unavailable in dashboard view, adhering to data-truth without synthetic zeroes.
 * **Technician (`TECHNICIAN`):**
   * CTA: «سامانه پایش و نگهداری» (`/smart-maintenance`)
   * Attention items: Assets under maintenance, unverified telemetry connections, open alerts
@@ -116,14 +120,16 @@ The dashboard leverages the existing `activeRole` and `activeOrganization` provi
 
 ---
 
-## 5. Data Truth & Anti-Fabrication Guarantees
+## 5. Data Truth, Closure Fixes & Anti-Fabrication Guarantees
 
-In accordance with strict system mandates:
-1. **No Fake Progress Percentages:** Removed arbitrary linear progress bars. Projects display their discrete lifecycle phase index (e.g. «گام ۲: آماده‌سازی پروژه») and status rather than fabricated completion percentages.
-2. **Operational Assets Conditional Gating:** The «نیروگاه‌های در بهره‌برداری» section is **only rendered** when verified assets exist.
-3. **Telemetry Truth:** Devices without verified live telemetry explicitly display `«پایش برخط فعال نیست»` with a `DataTruthBadge` of type `MISSING`, never synthetic charts.
-4. **No Fabricated Zeros:** Metrics with unknown values are omitted or displayed as `«—»`.
-5. **Organization Privacy:** Demo names like «تابان نیرو» are strictly avoided unless present in authenticated user organization claims.
+In accordance with strict system mandates and the UI-3 Final Closure requirements:
+1. **Vendor Role Metric Fall-through Elimination (Closure Fix 1):** An explicit `case 'VENDOR': case 'SUPPLIER':` was introduced in `roleMetrics` of `UserDashboard.tsx`. Previously, unhandled vendor roles fell through to the default Project Owner metrics branch, displaying planned solar capacity and owner budgets. Vendors now have discrete handling: returning an empty metrics array when verified vendor-specific procurement data is not loaded in this view, cleanly triggering `RoleSummary`'s null render with zero fabricated data. In addition, `NextActions` and `DashboardHeader` provide deterministic links to `/vendor-portal`.
+2. **Elimination of `user_1` Fallback Data Leak (Closure Fix 2):** In `UserDashboard.tsx`, the legacy request filtering (`r.userId === user.id || r.userId === 'user_1'`) was refactored to strictly enforce authenticated user association (`Boolean(user?.id && r.userId && r.userId === user.id)`). All hardcoded references to `user_1` or any other demo user identifiers were completely removed, eliminating unauthorized data leakage from localStorage across user sessions.
+3. **No Fake Progress Percentages:** Removed arbitrary linear progress bars. Projects display their discrete lifecycle phase index (e.g. «گام ۲: آماده‌سازی پروژه») and status rather than fabricated completion percentages.
+4. **Operational Assets Conditional Gating:** The «نیروگاه‌های در بهره‌برداری» section is **only rendered** when verified assets exist.
+5. **Telemetry Truth:** Devices without verified live telemetry explicitly display `«پایش برخط فعال نیست»` with a `DataTruthBadge` of type `MISSING`, never synthetic charts.
+6. **No Fabricated Zeros:** Metrics with unknown values are omitted or displayed as `«—»`.
+7. **Organization Privacy:** Demo names like «تابان نیرو» are strictly avoided unless present in authenticated user organization claims.
 
 ---
 
@@ -150,22 +156,23 @@ The refactored `UserDashboard.tsx` maintains full backward compatibility for exi
 
 ### 1. Dedicated UI-3 Verification Suite
 Script: `scripts/test_ui3_role_dashboard.ts`
-* Total Tests: **71**
-* Passed: **71**
+* Total Tests: **88**
+* Passed: **88**
 * Failed: **0**
+* Includes explicit regression assertions for VENDOR role handling, vendor metric omission on unavailable data, complete removal of `user_1`, and data-truth guarantees.
 
 ### 2. Full Regression Suite
 Script: `npm run test:all`
 * Phase 2 through Phase 9 tests: **ALL PASSED (0 failures)**
 * Phase 8 tests: **90 PASSED, 0 FAILED**
 * Phase 9 tests: **91 PASSED, 0 FAILED**
-* UI-1 Shell Suite: **25 PASSED, 0 FAILED**
+* UI-1 Shell Suite: **84 PASSED, 0 FAILED**
 * UI-2 Workspace Suite: **72 PASSED, 0 FAILED**
-* UI-3 Dashboard Suite: **71 PASSED, 0 FAILED**
+* UI-3 Dashboard Suite: **88 PASSED, 0 FAILED**
 
 ### 3. TypeScript & Production Compilation
 * TypeScript check: `tsc --noEmit` passed with 0 errors.
-* Vite production build: `vite build` completed successfully.
+* Vite production build: `vite build` and esbuild server bundle completed successfully.
 
 ### 4. Database Immutability Check
 * Target: `db.json`

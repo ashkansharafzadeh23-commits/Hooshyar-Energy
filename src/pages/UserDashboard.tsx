@@ -115,7 +115,9 @@ export default function UserDashboard() {
         if (storedReqs) {
           const loaded = JSON.parse(storedReqs);
           if (Array.isArray(loaded)) {
-            setRequests(loaded.filter((r: any) => !user?.id || r.userId === user.id || r.userId === 'user_1'));
+            // For authenticated users, legacy records must only be shown when explicitly associated with the authenticated user.
+            // If ownership cannot be verified, omit the record. Never fall back to unverified demo identifiers.
+            setRequests(loaded.filter((r: any) => Boolean(user?.id && r.userId && r.userId === user.id)));
           }
         }
       } catch {
@@ -344,6 +346,18 @@ export default function UserDashboard() {
       }];
     }
 
+    if (role === 'VENDOR' || role === 'SUPPLIER') {
+      return [{
+        id: 'vendor-next',
+        projectOrAssetName: 'پرتال تأمین‌کنندگان',
+        title: 'مدیریت تجهیزات و استعلام‌های خرید',
+        reason: 'بررسی درخواست‌های استعلام کالا و به‌روزرسانی کاتالوگ تجهیزات نیروگاهی',
+        actionText: 'پرتال تأمین‌کنندگان',
+        actionHref: '/vendor-portal',
+        isPrimary: true
+      }];
+    }
+
     return [{
       id: 'owner-next',
       projectOrAssetName: 'پروژه جدید',
@@ -492,6 +506,16 @@ export default function UserDashboard() {
             subtext: 'نیروگاه‌های دارای شناسنامه'
           }
         ];
+      }
+
+      case 'VENDOR':
+      case 'SUPPLIER': {
+        // Vendor dashboard summary must contain ONLY metrics that can be derived
+        // from real authenticated vendor/procurement data already available.
+        // Because verified vendor/procurement metrics (e.g. quotation requests,
+        // purchase orders, delivery milestones) are not currently fetched in this view,
+        // we strictly return an empty array so RoleSummary safely renders nothing (no fake zeros).
+        return [];
       }
 
       case 'PROJECT_OWNER':
