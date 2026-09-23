@@ -101,7 +101,7 @@ export const ProjectToAssetTransition: React.FC<ProjectToAssetTransitionProps> =
               انتقال پروژه به دارایی عملیاتی (Project to Asset Transition)
             </h4>
             <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
-              این پروژه هنوز دارایی عملیاتی نیست. پس از تکمیل آزمون‌های راه‌اندازی و صورت‌جلسه تحویل نهایی، امکان ثبت شناسنامه دیجیتال نیروگاه (Asset Passport) فراهم می‌شود.
+              این پروژه هنوز دارایی عملیاتی نیست. پس از تکمیل آزمون‌های راه‌اندازی و صورت‌جلسه تحویل نهایی، امکان ثبت شناسنامه دارایی (Asset Passport) فراهم می‌شود.
             </p>
           </div>
         </div>

@@ -107,10 +107,10 @@ export const CommissioningReview: React.FC<CommissioningReviewProps> = ({
         <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/60 text-xs text-emerald-900 dark:text-emerald-200 space-y-1.5">
           <div className="flex items-center gap-2 font-bold">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>آماده تأیید رسمی توسط مهندس ناظر یا کارفرما</span>
+            <span>احراز شرایط تأیید راه‌اندازی</span>
           </div>
           <p className="text-[11px] leading-relaxed">
-            با تأیید این پرونده، وضعیت پروژه به «راه‌اندازی شده» ارتقا یافته و مقدمات تحویل قطعی فراهم می‌گردد.
+            با ثبت تأیید، وضعیت راه‌اندازی پروژه به‌روزرسانی شده و فرآیند تحویل آغاز می‌شود.
           </p>
         </div>
       )}
@@ -126,7 +126,7 @@ export const CommissioningReview: React.FC<CommissioningReviewProps> = ({
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="مثال: صورت‌جلسه شماره ۱۴۰۲/ت-۴۵ با حضور نمایندگان کارفرما و دیسپاچینگ"
+              placeholder="توضیحات تکمیلی یا شماره صورت‌جلسه راه‌اندازی..."
               className="w-full p-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-850 text-xs focus:ring-2 focus:ring-blue-500"
             />
           </div>

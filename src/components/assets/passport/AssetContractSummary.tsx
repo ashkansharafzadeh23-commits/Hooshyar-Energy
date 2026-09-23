@@ -4,6 +4,7 @@ import { FileText, Calendar, Building, CreditCard, ShieldCheck } from 'lucide-re
 
 interface AssetContractSummaryProps {
   contract: any | null;
+  parties?: any[];
   loading?: boolean;
   className?: string;
 }

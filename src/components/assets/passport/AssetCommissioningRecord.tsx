@@ -78,7 +78,7 @@ export const AssetCommissioningRecord: React.FC<AssetCommissioningRecordProps> =
 
   const lastUpdatedFormatted = formatDate(commissioningRecord.updatedAt);
 
-  // Approver logic: never invent a fake "ثبت سیستمی ناظر"
+  // Approver logic: only display recorded approver
   const approverDisplay = commissioningRecord.approvedByUserId
     ? `کاربر #${commissioningRecord.approvedByUserId}`
     : 'تأییدکننده ثبت نشده است';

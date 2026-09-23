@@ -58,7 +58,7 @@ export const CommissioningChecklist: React.FC<CommissioningChecklistProps> = ({
             <span>چک‌لیست آزمون‌های راه‌اندازی ({tests.length})</span>
           </h4>
           <p className="text-xs text-slate-500 dark:text-zinc-400">
-            تست‌های الکتریکی، حفاظتی و اتصال به شبکه بر اساس استانداردهای ساتبا و توانیر
+            آزمون‌های الکتریکی، حفاظتی و اتصال به شبکه ثبت‌شده در پرونده پروژه
           </p>
         </div>
       </div>
@@ -71,7 +71,7 @@ export const CommissioningChecklist: React.FC<CommissioningChecklistProps> = ({
         <ExecutionEmptyState
           icon={Settings}
           title="هیچ آزمون راه‌اندازی ثبت نشده است."
-          description="با شروع فرآیند راه‌اندازی، مجموعه آزمون‌های استاندارد الکتریکی پروژه در این بخش قرار می‌گیرند."
+          description="آزمون‌های راه‌اندازی ثبت‌شده برای پروژه در این بخش نمایش داده می‌شوند."
         />
       ) : (
         <div className="space-y-3">

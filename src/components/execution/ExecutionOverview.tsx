@@ -164,7 +164,7 @@ export const ExecutionOverview: React.FC<ExecutionOverviewProps> = ({
             <ShieldCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />
           </div>
           <div className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-            {commApproved ? 'تأیید قطعی شد ✓' : commissioningReadiness?.canApprove ? 'آماده تأیید' : 'در حال انجام آزمون‌ها'}
+            {commApproved ? 'تأیید شده ✓' : commissioningReadiness?.canApprove ? 'آماده تأیید' : 'در حال انجام آزمون‌ها'}
           </div>
           <span className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 block">
             {commissioningReadiness?.passedTests ?? 0} آزمون موفق

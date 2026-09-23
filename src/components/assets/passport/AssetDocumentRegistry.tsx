@@ -1,6 +1,22 @@
 import React, { useState } from 'react';
-import { AssetDocument } from '../../../types/asset';
 import { FileText, Download, ExternalLink, Calendar, Tag, ShieldCheck } from 'lucide-react';
+
+export interface AssetDocument {
+  id: string;
+  name?: string;
+  title?: string;
+  category?: string;
+  documentType?: string;
+  fileUrl?: string;
+  url?: string;
+  createdAt?: string;
+  uploadedAt?: string;
+  uploadDate?: string;
+  fileSizeBytes?: number;
+  fileSize?: string;
+  size?: number;
+  status?: string;
+}
 
 interface AssetDocumentRegistryProps {
   documents: AssetDocument[];

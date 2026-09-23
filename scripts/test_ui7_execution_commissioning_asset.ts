@@ -25,7 +25,7 @@ function getDbHash(): string {
 }
 
 console.log('========================================================');
-console.log('HOOSHYAR ENERGY — UI-7 EXECUTION, COMMISSIONING & ASSET PASSPORT TEST SUITE');
+console.log('HOOSHYAR ENERGY — UI-7 EXECUTION & ASSET PASSPORT DATA-TRUTH TEST SUITE');
 console.log('========================================================');
 
 const initialDbHash = getDbHash();
@@ -112,29 +112,124 @@ assert(fs.existsSync(milestonesTabFile), 'MilestonesTab.tsx exists');
 const milestonesTabContent = fs.readFileSync(milestonesTabFile, 'utf-8');
 assert(milestonesTabContent.includes('MilestoneList'), 'MilestonesTab mounts MilestoneList');
 
-// [4] Data Truthfulness
-console.log('\n[4] Testing Non-Negotiable Data-Truth Rules & Silent Defaults Removal...');
-[...executionFiles.map(f => path.join('src/components/execution', f)), ...passportFiles.map(f => path.join('src/components/assets/passport', f))].forEach(relPath => {
+// [4] Data-Truth Assertions & Closure Gate Requirements
+console.log('\n[4] Testing Strict UI-7 Data-Truth Invariants...');
+
+// 4.1 AssetCommissioningRecord.tsx
+const commRecordPath = path.join(ROOT_DIR, 'src/components/assets/passport/AssetCommissioningRecord.tsx');
+const commRecordCode = fs.readFileSync(commRecordPath, 'utf-8');
+
+assert(!commRecordCode.includes('ثبت سیستمی ناظر'), 'AssetCommissioningRecord: No fake "ثبت سیستمی ناظر" approver invented');
+assert(!commRecordCode.includes('تأیید قطعی شده'), 'AssetCommissioningRecord: No unconditional "تأیید قطعی شده" badge');
+assert(!commRecordCode.includes('تاریخ تأیید رسمی'), 'AssetCommissioningRecord: No misleading "تاریخ تأیید رسمی" label applied to arbitrary dates');
+assert(!commRecordCode.includes('آزمون‌های مصوب'), 'AssetCommissioningRecord: No unverified "آزمون‌های مصوب" wording');
+assert(!commRecordCode.includes('مبنای بهره‌برداری تجاری'), 'AssetCommissioningRecord: No unverified commercial operation claim');
+assert(commRecordCode.includes("commissioningRecord.status === 'APPROVED'"), 'AssetCommissioningRecord: Explicit backend status equality required for approval');
+assert(commRecordCode.includes('تأییدکننده ثبت نشده است'), 'AssetCommissioningRecord: Truthful missing approver fallback present');
+assert(commRecordCode.includes('وضعیت تأیید ثبت نشده است') || commRecordCode.includes('وضعیت:'), 'AssetCommissioningRecord: Neutral missing/actual status badge present');
+assert(commRecordCode.includes('تاریخ تأیید ثبت نشده است'), 'AssetCommissioningRecord: Truthful missing approval date fallback present');
+assert(commRecordCode.includes('نتایج آزمون‌های ثبت‌شده در پرونده'), 'AssetCommissioningRecord: Factual neutral language for recorded tests');
+
+// 4.2 AssetContractSummary.tsx
+const contractSummaryPath = path.join(ROOT_DIR, 'src/components/assets/passport/AssetContractSummary.tsx');
+const contractSummaryCode = fs.readFileSync(contractSummaryPath, 'utf-8');
+
+assert(!contractSummaryCode.includes('قرارداد معتبر و نافذ'), 'AssetContractSummary: No unverified legal claim "قرارداد معتبر و نافذ"');
+assert(!contractSummaryCode.includes('قرارداد مهندسی، تأمین و احداث نیروگاه (EPC)'), 'AssetContractSummary: No fabricated EPC contract title fallback');
+assert(contractSummaryCode.includes('عنوان قرارداد ثبت نشده است'), 'AssetContractSummary: Missing contract title truthfully handled');
+assert(contractSummaryCode.includes('contract.revisedContractValue ?? contract.contractValue'), 'AssetContractSummary: Nullish coalescing preserves numeric zero for contract value');
+assert(contractSummaryCode.includes('پیش‌نویس') && contractSummaryCode.includes('فعال') && contractSummaryCode.includes('تکمیل‌شده'), 'AssetContractSummary: Factual mapped backend status labels');
+
+// 4.3 AssetDocumentRegistry.tsx
+const docRegistryPath = path.join(ROOT_DIR, 'src/components/assets/passport/AssetDocumentRegistry.tsx');
+const docRegistryCode = fs.readFileSync(docRegistryPath, 'utf-8');
+
+assert(!docRegistryCode.includes('اسناد قانونی، نقشه‌های چون‌ساخت، تأییدیه‌های دیسپاچینگ و کتابچه‌های O&M'), 'AssetDocumentRegistry: No fabricated document categories implied in subtitle');
+assert(!docRegistryCode.includes('بایگانی اسناد و مدارک رسمی دارایی'), 'AssetDocumentRegistry: Removed unverified "رسمی" from header');
+assert(docRegistryCode.includes('اسناد و مدارک ثبت‌شده مرتبط با این دارایی'), 'AssetDocumentRegistry: Factual neutral subtitle used');
+assert(docRegistryCode.includes('اسناد و مدارک دارایی'), 'AssetDocumentRegistry: Neutral header title used');
+
+// 4.4 AssetWarrantySummary.tsx
+const warrantySummaryPath = path.join(ROOT_DIR, 'src/components/assets/passport/AssetWarrantySummary.tsx');
+const warrantySummaryCode = fs.readFileSync(warrantySummaryPath, 'utf-8');
+
+assert(!warrantySummaryCode.includes('ضمانت‌نامه‌ها و گارانتی‌های معتبر'), 'AssetWarrantySummary: Removed unverified "معتبر" claim');
+assert(!warrantySummaryCode.includes('ضمانت‌نامه رسمی'), 'AssetWarrantySummary: Removed unverified "رسمی" claim');
+assert(warrantySummaryCode.includes('ضمانت‌نامه‌ها و گارانتی‌های ثبت‌شده'), 'AssetWarrantySummary: Uses factual "ثبت‌شده" phrasing');
+
+// 4.5 AssetIdentity.tsx & AssetEquipmentRegistry.tsx
+const identityPath = path.join(ROOT_DIR, 'src/components/assets/passport/AssetIdentity.tsx');
+const identityCode = fs.readFileSync(identityPath, 'utf-8');
+
+assert(!identityCode.includes("asset.technology || 'خورشیدی متصل به شبکه (Solar PV)'"), 'AssetIdentity: Missing technology is not replaced with fabricated fallback');
+assert(!identityCode.includes('تاریخ راه‌اندازی رسمی (COD)'), 'AssetIdentity: Removed unverified "رسمی" from COD label');
+assert(identityCode.includes('asset.installedCapacityKw !== undefined && asset.installedCapacityKw !== null'), 'AssetIdentity: Preserves numeric zero capacity');
+
+const equipRegistryPath = path.join(ROOT_DIR, 'src/components/assets/passport/AssetEquipmentRegistry.tsx');
+const equipRegistryCode = fs.readFileSync(equipRegistryPath, 'utf-8');
+assert(equipRegistryCode.includes('comp.ratedCapacity !== undefined && comp.ratedCapacity !== null'), 'AssetEquipmentRegistry: Preserves numeric zero ratedCapacity');
+
+// 4.6 AssetMonitoringStatus.tsx
+const monitoringPath = path.join(ROOT_DIR, 'src/components/assets/passport/AssetMonitoringStatus.tsx');
+const monitoringCode = fs.readFileSync(monitoringPath, 'utf-8');
+assert(!monitoringCode.includes('پروتکل Modbus TCP/IP'), 'AssetMonitoringStatus: Removed fabricated fallback Modbus TCP/IP string');
+
+// 4.7 ExecutionOverview.tsx & ProjectToAssetTransition.tsx
+const execOverviewPath = path.join(ROOT_DIR, 'src/components/execution/ExecutionOverview.tsx');
+const execOverviewCode = fs.readFileSync(execOverviewPath, 'utf-8');
+assert(!execOverviewCode.includes('تحویل قطعی'), 'ExecutionOverview: Removed unverified "تحویل قطعی" label');
+assert(!execOverviewCode.includes('تأیید قطعی شد'), 'ExecutionOverview: Removed unverified "تأیید قطعی شد" label');
+assert(execOverviewCode.includes("commApproved ? 'تأیید شده ✓'"), 'ExecutionOverview: Truthful "تأیید شده ✓" used');
+assert(execOverviewCode.includes('project.targetCapacityKw ??'), 'ExecutionOverview: Preserves numeric zero for project capacity');
+
+const transitionPath = path.join(ROOT_DIR, 'src/components/execution/ProjectToAssetTransition.tsx');
+const transitionCode = fs.readFileSync(transitionPath, 'utf-8');
+assert(!transitionCode.includes('شناسنامه دیجیتال نیروگاه'), 'ProjectToAssetTransition: Removed fabricated fallback title');
+assert(transitionCode.includes('existingAsset.installedCapacityKw !== undefined && existingAsset.installedCapacityKw !== null'), 'ProjectToAssetTransition: Preserves numeric zero capacity');
+
+// 4.8 CommissioningChecklist.tsx (No unverified SATBA/Tavanir regulatory claims)
+const commChecklistPath = path.join(ROOT_DIR, 'src/components/execution/CommissioningChecklist.tsx');
+const commChecklistCode = fs.readFileSync(commChecklistPath, 'utf-8');
+assert(!commChecklistCode.includes('استانداردهای ساتبا و توانیر'), 'CommissioningChecklist: Removed unverified SATBA/Tavanir standards claim');
+assert(!commChecklistCode.includes('آزمون‌های استاندارد الکتریکی'), 'CommissioningChecklist: Removed unverified standard electrical test claim');
+assert(commChecklistCode.includes('آزمون‌های الکتریکی، حفاظتی و اتصال به شبکه ثبت‌شده در پرونده پروژه'), 'CommissioningChecklist: Contains factual project tests description');
+assert(commChecklistCode.includes('آزمون‌های راه‌اندازی ثبت‌شده برای پروژه در این بخش نمایش داده می‌شوند'), 'CommissioningChecklist: Contains factual empty state text');
+
+// 4.9 Global UI-7 Forbidden Unsafe/Fabricated Claims Scan
+const forbiddenPhrases = [
+  'استانداردهای ساتبا',
+  'استانداردهای توانیر',
+  'استاندارد الکتریکی',
+  'تأیید رسمی',
+  'تأیید قطعی',
+  'مجوز رسمی',
+  'مورد تأیید کارفرما',
+  'تأیید مهندس ناظر'
+];
+
+const allUI7Files = [
+  ...executionFiles.map(f => path.join('src/components/execution', f)),
+  ...passportFiles.map(f => path.join('src/components/assets/passport', f))
+];
+
+allUI7Files.forEach(relPath => {
+  const fullPath = path.join(ROOT_DIR, relPath);
+  if (fs.existsSync(fullPath)) {
+    const content = fs.readFileSync(fullPath, 'utf-8');
+    forbiddenPhrases.forEach(phrase => {
+      assert(!content.includes(phrase), `No unsupported phrase "${phrase}" in ${path.basename(relPath)}`);
+    });
+  }
+});
+
+// 4.10 Zero Math.random() audit
+allUI7Files.forEach(relPath => {
   const fullPath = path.join(ROOT_DIR, relPath);
   if (fs.existsSync(fullPath)) {
     const content = fs.readFileSync(fullPath, 'utf-8');
     assert(!content.includes('Math.random()'), `No Math.random() in ${path.basename(relPath)}`);
   }
 });
-
-const transitionContent = fs.readFileSync(path.join(ROOT_DIR, 'src/components/execution/ProjectToAssetTransition.tsx'), 'utf-8');
-assert(transitionContent.includes('این پروژه هنوز دارایی عملیاتی نیست'), 'ProjectToAssetTransition contains truthful not-yet-operational statement');
-assert(transitionContent.includes('دارایی عملیاتی ایجاد شد'), 'ProjectToAssetTransition displays confirmed asset state');
-
-const monitoringContent = fs.readFileSync(path.join(ROOT_DIR, 'src/components/assets/passport/AssetMonitoringStatus.tsx'), 'utf-8');
-assert(monitoringContent.includes('پایش برخط هنوز فعال نشده است'), 'AssetMonitoringStatus contains truthful offline/unconnected message');
-
-const equipmentContent = fs.readFileSync(path.join(ROOT_DIR, 'src/components/assets/passport/AssetEquipmentRegistry.tsx'), 'utf-8');
-assert(equipmentContent.includes('اطلاعات تجهیزات این دارایی هنوز ثبت نشده است'), 'AssetEquipmentRegistry contains truthful empty state');
-assert(equipmentContent.includes('شماره سریال ثبت نشده'), 'AssetEquipmentRegistry indicates missing serial number truthfully');
-
-const warrantyContent = fs.readFileSync(path.join(ROOT_DIR, 'src/components/assets/passport/AssetWarrantySummary.tsx'), 'utf-8');
-assert(warrantyContent.includes('اطلاعات گارانتی برای این دارایی ثبت نشده است'), 'AssetWarrantySummary contains truthful empty state');
 
 // [5] Database Byte-for-Byte Immutability Guard
 console.log('\n[5] Testing Database Byte-for-Byte Immutability Guard...');
