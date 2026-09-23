@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ProjectMilestone } from '../../../types/execution';
-import { Loader2, Calendar, CheckCircle2, Clock, PlayCircle, AlertCircle } from 'lucide-react';
+import { Loader2, Flag } from 'lucide-react';
+import { MilestoneList } from '../../../components/execution/MilestoneList';
 
 interface MilestonesTabProps {
   projectId: string;
@@ -9,169 +10,98 @@ interface MilestonesTabProps {
 export const MilestonesTab: React.FC<MilestonesTabProps> = ({ projectId }) => {
   const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchMilestones();
-  }, [projectId]);
-
-  const fetchMilestones = async () => {
+  const fetchMilestones = useCallback(async () => {
     try {
-      const res = await fetch(`/api/execution/${projectId}/milestones`);
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('token') || '';
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const res = await fetch(`/api/execution/${projectId}/milestones`, { headers });
       if (res.ok) {
         const data = await res.json();
-        // Sort by sequence
-        setMilestones(data.sort((a: any, b: any) => a.sequence - b.sequence));
+        setMilestones(Array.isArray(data) ? data.sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0)) : []);
       }
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('Failed to load milestones:', e);
+      setError(e?.message || 'خطا در بارگذاری نقاط عطف پروژه');
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
 
-  const overallProgress = milestones.length > 0 
-    ? milestones.reduce((sum, m) => sum + (m.weightPercent * (m.completionPercent / 100)), 0)
-    : 0;
+  useEffect(() => {
+    fetchMilestones();
+  }, [fetchMilestones]);
 
-  const hasTemplateMilestones = milestones.some(m => m.isTemplate);
-
-  const handleUpdateStatus = async (id: string, status: string, completionPercent: number) => {
-    try {
-      await fetch(`/api/execution/${projectId}/milestones/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, completionPercent })
-      });
-      fetchMilestones();
-    } catch (e) {
-      console.error(e);
+  const handleUpdateStatus = async (milestoneId: string, status: string, notes?: string) => {
+    const token = localStorage.getItem('token') || '';
+    const res = await fetch(`/api/execution/${projectId}/milestones/${milestoneId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ status, notes })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'خطا در به‌روزرسانی نقطه عطف');
     }
+    await fetchMilestones();
   };
 
-  if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
+  const handleSubmitApproval = async (milestoneId: string, notes?: string) => {
+    const token = localStorage.getItem('token') || '';
+    const res = await fetch(`/api/execution/${projectId}/milestones/${milestoneId}/submit-review`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ notes })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'خطا در ارسال جهت بررسی نظارت');
+    }
+    await fetchMilestones();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 font-Vazirmatn">
-      {hasTemplateMilestones && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-amber-900">
-          <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
-          <div>
-            <div className="font-bold text-sm mb-0.5">الگوی پیشنهادی ساختار شکست کار (WBS Template)</div>
-            <p>مایلستون‌ها و اوزان فیزیکی زیر بر مبنای قرارداد استاندارد بارگذاری شده‌اند و نیازمند تطبیق و نظارت مستمر کارگاهی می‌باشند.</p>
-          </div>
-        </div>
-      )}
-      
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">پیشرفت فیزیکی و مایل‌استون‌های اجرایی پروژه</h2>
-        
-        <div className="mb-2 flex justify-between items-center text-sm">
-          <span className="font-bold text-gray-700">پیشرفت کل (موزون بر مبنای اوزان مصوب):</span>
-          <span className="font-black text-blue-600 text-lg">{overallProgress.toFixed(1)}%</span>
-        </div>
-        <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
-          <div 
-            className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-1000" 
-            style={{ width: `${overallProgress}%` }}
-          ></div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-zinc-100 flex items-center gap-2">
+          <Flag className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <span>نقاط عطف اجرایی و ساختار شکست کار (Milestones & WBS)</span>
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-zinc-400">
+          پیگیری پیشرفت فیزیکی واقعی، تحویل مراحل و بازرسی‌های نظارت کارگاهی
+        </p>
       </div>
 
-      {milestones.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-2xl border border-gray-200 shadow-sm">
-          <Calendar size={48} className="mx-auto text-gray-300 mb-4" />
-          <h3 className="text-lg font-bold text-gray-700">مایل‌استون‌ها هنوز ایجاد نشده‌اند</h3>
-          <p className="text-gray-500 text-sm mt-2">ابتدا باید یک قرارداد معتبر تایید و فعال شود تا برنامه زمان‌بندی پروژه شکل بگیرد.</p>
-        </div>
-      ) : (
-        <div className="space-y-4 relative">
-          <div className="absolute top-0 bottom-0 right-8 w-0.5 bg-gray-200 z-0 hidden md:block"></div>
-          
-          {milestones.map((milestone, idx) => (
-            <div key={milestone.id} className="relative z-10 flex flex-col md:flex-row gap-6">
-              
-              <div className="hidden md:flex flex-col items-center justify-start pt-6">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center font-black text-xl shadow-sm border-4 border-white ${
-                  milestone.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-600' :
-                  milestone.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600' :
-                  'bg-gray-100 text-gray-400'
-                }`}>
-                  {idx + 1}
-                </div>
-              </div>
-
-              <div className="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-gray-900 mb-1">{milestone.title}</h3>
-                      {milestone.isTemplate && (
-                        <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">
-                          الگوی پیشنهادی
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                      <span className="bg-gray-100 px-2 py-1 rounded font-mono">{milestone.milestoneCode}</span>
-                      <span>دسته: {milestone.category}</span>
-                      <span className="font-bold text-gray-700">وزن فیزیکی: {milestone.weightPercent}%</span>
-                      {milestone.plannedStartDate && milestone.plannedEndDate && (
-                        <span className="text-gray-400">
-                          بازه زمانی: {milestone.plannedStartDate} الی {milestone.plannedEndDate}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3 md:mt-0 flex items-center gap-2">
-                    <span className="text-xs font-bold text-gray-600 ml-1">پیشرفت: {milestone.completionPercent}%</span>
-                    <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
-                      milestone.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                      milestone.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                      milestone.status === 'SUBMITTED_FOR_REVIEW' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                      'bg-gray-50 text-gray-600 border-gray-200'
-                    }`}>
-                      {milestone.status === 'COMPLETED' ? 'تکمیل شده' :
-                       milestone.status === 'IN_PROGRESS' ? 'در حال انجام' :
-                       milestone.status === 'SUBMITTED_FOR_REVIEW' ? 'ارائه شده جهت بررسی نظارت' : 'شروع نشده'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t border-gray-100">
-                  {milestone.status === 'NOT_STARTED' && (
-                    <button 
-                      onClick={() => handleUpdateStatus(milestone.id, 'IN_PROGRESS', 10)}
-                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-1 transition-colors"
-                    >
-                      <PlayCircle size={16}/> شروع عملیات
-                    </button>
-                  )}
-                  {milestone.status === 'IN_PROGRESS' && (
-                    <button 
-                      onClick={() => handleUpdateStatus(milestone.id, 'SUBMITTED_FOR_REVIEW', 95)}
-                      className="text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-1 transition-colors"
-                    >
-                      <CheckCircle2 size={16}/> ثبت تحویل موقت (نیاز به تایید نظارت)
-                    </button>
-                  )}
-                  {milestone.status === 'SUBMITTED_FOR_REVIEW' && (
-                    <button 
-                      onClick={() => handleUpdateStatus(milestone.id, 'COMPLETED', 100)}
-                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-1 transition-colors"
-                    >
-                      <CheckCircle2 size={16}/> تایید کارفرما و نظارت (اتمام ۱۰۰٪)
-                    </button>
-                  )}
-                  <button className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg transition-colors">
-                    مشاهده مدارک مستند
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+      {error && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+          {error}
         </div>
       )}
+
+      <MilestoneList
+        milestones={milestones}
+        onUpdateStatus={handleUpdateStatus}
+        onSubmitApproval={handleSubmitApproval}
+        canEdit={true}
+      />
     </div>
   );
 };

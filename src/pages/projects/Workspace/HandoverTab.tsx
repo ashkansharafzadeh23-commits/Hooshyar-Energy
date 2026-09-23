@@ -1,134 +1,179 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2, Plus, CheckCircle, Clock, FileText, ArrowRightLeft } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Loader2, ArrowRightLeft, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { ProjectHandover, EnergyAsset } from '../../../types/asset';
+import { HandoverReview, HandoverReadinessData } from '../../../components/execution/HandoverReview';
+import { ProjectToAssetTransition } from '../../../components/execution/ProjectToAssetTransition';
 
 interface HandoverTabProps {
   projectId: string;
+  onNavigateTab?: (tab: string) => void;
 }
 
-export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId }) => {
-  const [loading, setLoading] = useState(false);
-  const [handovers, setHandovers] = useState<any[]>([]);
+export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, onNavigateTab }) => {
+  const [loading, setLoading] = useState(true);
+  const [handover, setHandover] = useState<ProjectHandover | null>(null);
+  const [readiness, setReadiness] = useState<HandoverReadinessData | null>(null);
+  const [asset, setAsset] = useState<EnergyAsset | null>(null);
+  const [commissioningApproved, setCommissioningApproved] = useState(false);
+  const [targetCapacityKw, setTargetCapacityKw] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchHandoverData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('token') || '';
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const [handoverRes, readinessRes, commRes, projectRes, assetsRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}/handover`, { headers }).catch(() => null),
+        fetch(`/api/projects/${projectId}/handover/readiness`, { headers }).catch(() => null),
+        fetch(`/api/projects/${projectId}/commissioning`, { headers }).catch(() => null),
+        fetch(`/api/projects/${projectId}`, { headers }).catch(() => null),
+        fetch(`/api/projects/${projectId}/assets`, { headers }).catch(() => null)
+      ]);
+
+      if (handoverRes && handoverRes.ok) {
+        const hData = await handoverRes.json();
+        setHandover(hData && hData.id ? hData : null);
+      }
+
+      if (readinessRes && readinessRes.ok) {
+        const rData = await readinessRes.json();
+        setReadiness(rData);
+      }
+
+      if (commRes && commRes.ok) {
+        const cData = await commRes.json();
+        setCommissioningApproved(cData?.status === 'APPROVED');
+      }
+
+      if (projectRes && projectRes.ok) {
+        const pData = await projectRes.json();
+        setTargetCapacityKw(pData.targetCapacityKw || pData.capacityKw || 0);
+      }
+
+      if (assetsRes && assetsRes.ok) {
+        const aData = await assetsRes.json();
+        if (Array.isArray(aData) && aData.length > 0) {
+          setAsset(aData[0]);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to load handover tab data:', err);
+      setError(err?.message || 'خطا در بارگذاری اطلاعات تحویل پروژه');
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/projects/${projectId}/handover`);
-        if (res.ok) {
-          const data = await res.json();
-          // The API returns a single handover object if it exists, or undefined. Handle accordingly.
-          if (data && data.id) {
-            setHandovers([data]);
-          } else if (Array.isArray(data)) {
-            setHandovers(data);
-          }
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
+    fetchHandoverData();
+  }, [fetchHandoverData]);
+
+  const handleUpdateChecklist = async (items: Partial<ProjectHandover>) => {
+    const token = localStorage.getItem('token') || '';
+    const res = await fetch(`/api/projects/${projectId}/handover/checklist`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(items)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'خطا در به‌روزرسانی چک‌لیست تحویل');
+    }
+    await fetchHandoverData();
+  };
+
+  const handleApproveHandover = async (notes?: string) => {
+    const token = localStorage.getItem('token') || '';
+    const res = await fetch(`/api/projects/${projectId}/handover/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ notes })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'خطا در ثبت صورت‌جلسه تحویل نهایی');
+    }
+    await fetchHandoverData();
+  };
+
+  const handleCreateAsset = async (): Promise<EnergyAsset> => {
+    const token = localStorage.getItem('token') || '';
+    const res = await fetch(`/api/projects/${projectId}/assets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
-    };
-    fetchData();
-  }, [projectId]);
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'خطا در صدور شناسنامه دارایی');
+    }
+    const created = await res.json();
+    setAsset(created);
+    await fetchHandoverData();
+    return created;
+  };
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
+      <div className="flex justify-center py-16">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
+  const isApproved = handover?.status === 'APPROVED';
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-bold text-gray-900">مدیریت تحویل (Handover)</h3>
-          <p className="text-sm text-gray-500">مستندات نهایی، گارانتی‌ها و انتقال مالکیت عملیاتی</p>
-        </div>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2">
-          <Plus size={16} />
-          ثبت تحویل جدید
-        </button>
+      <div>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-zinc-100 flex items-center gap-2">
+          <ArrowRightLeft className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <span>مدیریت و صورت‌جلسه تحویل نهایی (Handover)</span>
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-zinc-400">
+          انتقال قانونی مالکیت عملیاتی، اسناد چون‌ساخت، آموزش بهره‌بردار و گارانتی‌ها
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-            <FileText size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-900">
-               {handovers.length > 0 && handovers[0].documentsComplete ? 'تکمیل' : 'ناقص'}
-            </div>
-            <div className="text-sm text-gray-500">اسناد As-built</div>
-          </div>
+      {error && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+          {error}
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-green-50 text-green-600 rounded-lg flex items-center justify-center">
-            <CheckCircle size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-900">
-               {handovers.length > 0 && handovers[0].warrantyDelivered ? 'تکمیل' : 'ناقص'}
-            </div>
-            <div className="text-sm text-gray-500">مدارک گارانتی</div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
-            <Clock size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-900">
-               {handovers.length > 0 && handovers[0].trainingComplete ? 'انجام شد' : 'منتظر'}
-            </div>
-            <div className="text-sm text-gray-500">آموزش بهره‌بردار</div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center">
-            <ArrowRightLeft size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-900">
-              {handovers.length > 0 ? handovers[0].status : '--'}
-            </div>
-            <div className="text-sm text-gray-500">وضعیت تحویل</div>
-          </div>
-        </div>
-      </div>
+      )}
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-200 bg-gray-50 font-medium">
-          گزارش تحویل پروژه
-        </div>
-        <div className="p-4">
-          {handovers.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <ArrowRightLeft className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p>فرآیند تحویل (Handover) برای این پروژه آغاز نشده است.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {handovers.map(h => (
-                <div key={h.id} className="flex justify-between items-center border border-gray-100 p-4 rounded-lg">
-                  <div>
-                    <div className="font-bold text-gray-900">صورت‌جلسه تحویل نهایی</div>
-                    <div className="text-sm text-gray-500">{h.handoverDate ? new Date(h.handoverDate).toLocaleDateString('fa-IR') : 'تاریخ ثبت نشده'}</div>
-                  </div>
-                  <div>
-                    <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md">
-                      {h.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Handover Review and Checklist */}
+      <HandoverReview
+        projectId={projectId}
+        handover={handover}
+        readiness={readiness}
+        onUpdateChecklist={handleUpdateChecklist}
+        onApproveHandover={handleApproveHandover}
+        canEdit={!isApproved}
+      />
+
+      {/* Project to Asset Transition */}
+      <ProjectToAssetTransition
+        projectId={projectId}
+        projectCapacityKw={targetCapacityKw}
+        commissioningApproved={commissioningApproved}
+        handoverApproved={isApproved}
+        existingAsset={asset}
+        onCreateAsset={handleCreateAsset}
+        onViewAssetPassport={() => {
+          if (onNavigateTab) onNavigateTab('asset');
+        }}
+      />
     </div>
   );
 };

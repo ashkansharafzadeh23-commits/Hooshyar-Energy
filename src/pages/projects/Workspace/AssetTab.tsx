@@ -1,36 +1,106 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2, Plus, Zap, CheckCircle, Clock, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Loader2, Plus, Zap, CheckCircle2, Clock, ShieldCheck, ExternalLink } from 'lucide-react';
 import { EnergyAsset } from '../../../types/asset';
+import { ProjectToAssetTransition } from '../../../components/execution/ProjectToAssetTransition';
+import { AssetPassport } from '../../../components/assets/passport/AssetPassport';
 
 interface AssetTabProps {
   projectId: string;
 }
 
 export const AssetTab: React.FC<AssetTabProps> = ({ projectId }) => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [assets, setAssets] = useState<EnergyAsset[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+
+  // Gating status
+  const [commissioningApproved, setCommissioningApproved] = useState(false);
+  const [handoverApproved, setHandoverApproved] = useState(false);
+  const [targetCapacityKw, setTargetCapacityKw] = useState<number>(0);
+
+  const fetchAssetTabData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token') || '';
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const [assetsRes, projectRes, commRes, handoverRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}/assets`, { headers }).catch(() => null),
+        fetch(`/api/projects/${projectId}`, { headers }).catch(() => null),
+        fetch(`/api/projects/${projectId}/commissioning`, { headers }).catch(() => null),
+        fetch(`/api/projects/${projectId}/handover`, { headers }).catch(() => null)
+      ]);
+
+      if (assetsRes && assetsRes.ok) {
+        const data = await assetsRes.json();
+        const list = Array.isArray(data) ? data : [];
+        setAssets(list);
+        if (list.length > 0) {
+          setSelectedAssetId(list[0].id);
+        }
+      }
+
+      if (projectRes && projectRes.ok) {
+        const pData = await projectRes.json();
+        setTargetCapacityKw(pData.targetCapacityKw || pData.capacityKw || 0);
+      }
+
+      if (commRes && commRes.ok) {
+        const cData = await commRes.json();
+        setCommissioningApproved(cData?.status === 'APPROVED');
+      }
+
+      if (handoverRes && handoverRes.ok) {
+        const hData = await handoverRes.json();
+        setHandoverApproved(hData?.status === 'APPROVED');
+      }
+    } catch (e) {
+      console.error('Failed to load asset tab data:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/projects/${projectId}/assets`);
-        if (res.ok) {
-          setAssets(await res.json());
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
+    fetchAssetTabData();
+  }, [fetchAssetTabData]);
+
+  const handleCreateAsset = async (): Promise<EnergyAsset> => {
+    const token = localStorage.getItem('token') || '';
+    const res = await fetch(`/api/projects/${projectId}/assets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
-    };
-    fetchData();
-  }, [projectId]);
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'خطا در صدور شناسنامه دارایی');
+    }
+
+    const created = await res.json();
+    await fetchAssetTabData();
+    return created;
+  };
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
+      <div className="flex justify-center py-16">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  // If asset exists and selected, show full AssetPassport
+  if (selectedAssetId) {
+    return (
+      <div className="space-y-6">
+        <AssetPassport
+          assetId={selectedAssetId}
+          onBack={assets.length > 1 ? () => setSelectedAssetId(null) : undefined}
+        />
       </div>
     );
   }
@@ -39,84 +109,52 @@ export const AssetTab: React.FC<AssetTabProps> = ({ projectId }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-bold text-gray-900">دارایی انرژی (Energy Asset)</h3>
-          <p className="text-sm text-gray-500">پاسپورت دارایی و تجهیزات نهایی ثبت‌شده</p>
-        </div>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2">
-          <Plus size={16} />
-          ایجاد دارایی
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-            <Zap size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-900">{assets.length > 0 ? assets[0]?.installedCapacityKw : 0} kW</div>
-            <div className="text-sm text-gray-500">ظرفیت نصب‌شده</div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-green-50 text-green-600 rounded-lg flex items-center justify-center">
-            <CheckCircle size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-900">{assets.length > 0 ? assets[0]?.assetType : '--'}</div>
-            <div className="text-sm text-gray-500">نوع دارایی</div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
-            <Clock size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-900">--</div>
-            <div className="text-sm text-gray-500">تجهیزات ثبت‌شده</div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center">
-            <ShieldCheck size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-900">{assets.length > 0 ? assets[0]?.status : '--'}</div>
-            <div className="text-sm text-gray-500">وضعیت عملیاتی</div>
-          </div>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-zinc-100">
+            دارایی انرژی و شناسنامه دیجیتال (Energy Asset & Passport)
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-zinc-400">
+            شناسنامه دارایی، ادوات و تجهیزات شناسنامه‌دار و وضعیت بهره‌برداری
+          </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-200 bg-gray-50 font-medium">
-          لیست دارایی‌ها (Asset Passport)
-        </div>
-        <div className="p-4">
-          {assets.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <Zap className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p>این پروژه هنوز به یک دارایی انرژی تبدیل نشده است.</p>
-              <p className="text-sm mt-2">پس از تأیید راه‌اندازی و تحویل نهایی، دارایی انرژی ثبت می‌گردد.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {assets.map(asset => (
-                <div key={asset.id} className="flex justify-between items-center border border-gray-100 p-4 rounded-lg">
-                  <div>
-                    <div className="font-bold text-gray-900">{asset.name || asset.assetCode}</div>
-                    <div className="text-sm text-gray-500">تاریخ بهره‌برداری: {asset.commercialOperationDate ? new Date(asset.commercialOperationDate).toLocaleDateString('fa-IR') : 'مشخص نشده'}</div>
-                  </div>
-                  <div>
-                    <span className="inline-block px-2 py-1 bg-green-50 text-green-700 text-xs rounded-md">
-                      {asset.status}
-                    </span>
-                  </div>
+      {/* Project to Asset Transition Gating */}
+      <ProjectToAssetTransition
+        projectId={projectId}
+        projectCapacityKw={targetCapacityKw}
+        commissioningApproved={commissioningApproved}
+        handoverApproved={handoverApproved}
+        existingAsset={assets[0] || null}
+        onCreateAsset={handleCreateAsset}
+        onViewAssetPassport={(assetId) => setSelectedAssetId(assetId)}
+      />
+
+      {/* If multiple assets exist, list them */}
+      {assets.length > 0 && (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-5 shadow-xs space-y-3">
+          <h4 className="text-sm font-bold text-gray-800 dark:text-zinc-200">
+            شناسنامه‌های دارایی ثبت‌شده برای این پروژه:
+          </h4>
+          <div className="space-y-2">
+            {assets.map(a => (
+              <div
+                key={a.id}
+                onClick={() => setSelectedAssetId(a.id)}
+                className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 flex items-center justify-between hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer transition-all"
+              >
+                <div>
+                  <div className="font-bold text-sm text-slate-900 dark:text-zinc-100">{a.name}</div>
+                  <div className="text-xs text-slate-500 font-mono">کد دارایی: {a.assetCode} | ظرفیت: {a.installedCapacityKw} kW</div>
                 </div>
-              ))}
-            </div>
-          )}
+                <button className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 min-h-[44px]">
+                  <span>مشاهده شناسنامه کامل</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
