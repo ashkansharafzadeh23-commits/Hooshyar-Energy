@@ -37,7 +37,7 @@ export const FinancingPartnerMatches: React.FC<FinancingPartnerMatchesProps> = (
   const displayedPartners = partners.filter((p) => {
     if (!filterOnlyEligible) return true;
     const match = matchingResults.find((m) => m.partnerId === p.id);
-    return match ? match.eligibility === 'ELIGIBLE' : true;
+    return match ? (match.eligibilityStatus === 'ELIGIBLE' || (match as any).eligibility === 'ELIGIBLE') : true;
   });
 
   return (

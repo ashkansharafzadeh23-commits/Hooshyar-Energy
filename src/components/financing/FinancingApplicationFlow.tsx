@@ -32,17 +32,29 @@ export const FinancingApplicationFlow: React.FC<FinancingApplicationFlowProps> =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Form State initialized truthfully from real project data if available
-  const [formData, setFormData] = useState({
+  // Form State initialized truthfully without silent defaults or unverified claims
+  const [formData, setFormData] = useState<{
+    totalProjectCostTomans: string | number;
+    ownerEquityTomans: string | number;
+    requestedAmountTomans: string | number;
+    financingType: string;
+    requestedTenorMonths: string | number;
+    preferredGracePeriodMonths: string | number;
+    repaymentPreference: string;
+    collateralStatus: 'AVAILABLE' | 'NOT_AVAILABLE' | 'UNKNOWN';
+    collateralSummary: string;
+    summary: string;
+  }>({
     totalProjectCostTomans: (project.estimatedBudget?.amount ? project.estimatedBudget.amount / 10 : (project.estimatedBudgetIRR ? project.estimatedBudgetIRR / 10 : '')) as any,
-    ownerEquityTomans: '' as any,
-    requestedAmountTomans: '' as any,
+    ownerEquityTomans: '',
+    requestedAmountTomans: '',
     financingType: 'PROJECT_LOAN',
-    requestedTenorMonths: 48,
-    preferredGracePeriodMonths: 6,
+    requestedTenorMonths: '',
+    preferredGracePeriodMonths: '',
     repaymentPreference: 'EQUAL_INSTALLMENT',
-    collateralSummary: 'توثیق سند ساختگاه و قرارداد فروش برق ساتبا',
-    summary: `درخواست تسهیلات جهت احداث نیروگاه خورشیدی ${project.targetCapacityKw || ''} کیلوواتی واقع در ${project.location?.province || ''}`
+    collateralStatus: 'UNKNOWN',
+    collateralSummary: '',
+    summary: ''
   });
 
   if (!isOpen) return null;
@@ -71,11 +83,18 @@ export const FinancingApplicationFlow: React.FC<FinancingApplicationFlowProps> =
         setErrorMessage('لطفاً آورده نقدی یا غیرنقدی کارفرما را تعیین نمایید.');
         return;
       }
-      const total = Number(formData.totalProjectCostTomans);
-      const req = Number(formData.requestedAmountTomans);
-      const eq = Number(formData.ownerEquityTomans);
-      if (req + eq > total * 1.5) {
-        setErrorMessage('مجموع آورده کارفرما و مبلغ تسهیلات بیش از هزینه کل برآورد شده است.');
+    }
+    if (currentStep === 3) {
+      if (formData.requestedTenorMonths === '' || Number(formData.requestedTenorMonths) <= 0) {
+        setErrorMessage('لطفاً مدت بازپرداخت درخواستی را به ماه مشخص نمایید.');
+        return;
+      }
+      if (formData.preferredGracePeriodMonths === '' || Number(formData.preferredGracePeriodMonths) < 0) {
+        setErrorMessage('لطفاً دوره تنفس ترجیحی را مشخص نمایید (در صورت عدم نیاز، عدد ۰ وارد کنید).');
+        return;
+      }
+      if (formData.collateralStatus === 'AVAILABLE' && !formData.collateralSummary.trim()) {
+        setErrorMessage('در صورت در دسترس بودن وثیقه، لطفاً شرح مختصری از نوع وثیقه ارائه دهید.');
         return;
       }
     }
@@ -92,10 +111,13 @@ export const FinancingApplicationFlow: React.FC<FinancingApplicationFlowProps> =
     setErrorMessage(null);
     try {
       const token = localStorage.getItem('token');
-      // Convert Tomans to stored currency (Rials) if backend expects Rials:
-      // In Hooshyar Energy backend, amounts are stored in Rials (IRR) or Tomans. Let's check api/financing.ts:
-      // req.body.requestedAmount, totalProjectCost, ownerEquity
-      const payload = {
+      
+      let collateralAvailableValue: boolean | undefined = undefined;
+      if (formData.collateralStatus === 'AVAILABLE') collateralAvailableValue = true;
+      if (formData.collateralStatus === 'NOT_AVAILABLE') collateralAvailableValue = false;
+      if (formData.collateralStatus === 'UNKNOWN') collateralAvailableValue = undefined;
+
+      const payload: Record<string, any> = {
         projectId: project.id,
         financingType: formData.financingType,
         totalProjectCost: Number(formData.totalProjectCostTomans) * 10, // store in Rials
@@ -104,11 +126,18 @@ export const FinancingApplicationFlow: React.FC<FinancingApplicationFlowProps> =
         currency: 'IRR',
         requestedTenorMonths: Number(formData.requestedTenorMonths),
         preferredGracePeriodMonths: Number(formData.preferredGracePeriodMonths),
-        repaymentPreference: formData.repaymentPreference,
-        collateralAvailable: true,
-        collateralSummary: formData.collateralSummary,
-        summary: formData.summary
+        repaymentPreference: formData.repaymentPreference
       };
+
+      if (collateralAvailableValue !== undefined) {
+        payload.collateralAvailable = collateralAvailableValue;
+      }
+      if (formData.collateralStatus === 'AVAILABLE' && formData.collateralSummary.trim()) {
+        payload.collateralSummary = formData.collateralSummary.trim();
+      }
+      if (formData.summary.trim()) {
+        payload.summary = formData.summary.trim();
+      }
 
       const res = await fetch(`/api/projects/${project.id}/financing-requests`, {
         method: 'POST',
@@ -261,41 +290,103 @@ export const FinancingApplicationFlow: React.FC<FinancingApplicationFlowProps> =
         {/* Step 3: Tenor & Collateral */}
         {currentStep === 3 && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1">
-                  مدت بازپرداخت (ماه)
+                  مدت بازپرداخت درخواستی (ماه) *
                 </label>
                 <input
                   type="number"
                   value={formData.requestedTenorMonths}
-                  onChange={(e) => setFormData({ ...formData, requestedTenorMonths: Number(e.target.value) })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs sm:text-sm font-mono min-h-[44px]"
+                  onChange={(e) => setFormData({ ...formData, requestedTenorMonths: e.target.value })}
+                  placeholder="مثال: ۳۶ یا ۴۸"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs sm:text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden min-h-[44px]"
                 />
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1">
-                  دوره تنفس حین احداث (ماه)
+                  دوره تنفس حین احداث (ماه) *
                 </label>
                 <input
                   type="number"
                   value={formData.preferredGracePeriodMonths}
-                  onChange={(e) => setFormData({ ...formData, preferredGracePeriodMonths: Number(e.target.value) })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs sm:text-sm font-mono min-h-[44px]"
+                  onChange={(e) => setFormData({ ...formData, preferredGracePeriodMonths: e.target.value })}
+                  placeholder="مثال: ۶ (در صورت عدم نیاز: ۰)"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs sm:text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden min-h-[44px]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1">
-                وثایق و تضامین پیشنهادی کارفرما
+              <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-2">
+                وضعیت تودیع وثیقه و تضامین *
               </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, collateralStatus: 'AVAILABLE' })}
+                  className={`p-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer min-h-[44px] ${
+                    formData.collateralStatus === 'AVAILABLE'
+                      ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-500 text-blue-700 dark:text-blue-300'
+                      : 'border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  وثیقه در دسترس است
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, collateralStatus: 'NOT_AVAILABLE', collateralSummary: '' })}
+                  className={`p-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer min-h-[44px] ${
+                    formData.collateralStatus === 'NOT_AVAILABLE'
+                      ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-700 dark:text-rose-300'
+                      : 'border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  وثیقه در دسترس نیست
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, collateralStatus: 'UNKNOWN', collateralSummary: '' })}
+                  className={`p-3 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer min-h-[44px] ${
+                    formData.collateralStatus === 'UNKNOWN'
+                      ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-500 text-amber-700 dark:text-amber-300'
+                      : 'border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  هنوز مشخص نشده
+                </button>
+              </div>
+            </div>
+
+            {formData.collateralStatus === 'AVAILABLE' && (
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 block mb-1">
+                  شرح و مشخصات وثایق پیشنهادی *
+                </label>
+                <textarea
+                  rows={2}
+                  value={formData.collateralSummary}
+                  onChange={(e) => setFormData({ ...formData, collateralSummary: e.target.value })}
+                  placeholder="نوع وثیقه واقعی (مانند سند ملکی، ضمانت‌نامه، چک یا سفته) را ذکر کنید..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs leading-relaxed focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                />
+              </div>
+            )}
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-zinc-300">
+                  توضیحات تکمیلی متقاضی (اختیاری)
+                </label>
+                <span className="text-[11px] text-slate-400">فقط در صورت اظهار صریح ثبت می‌شود</span>
+              </div>
               <textarea
                 rows={2}
-                value={formData.collateralSummary}
-                onChange={(e) => setFormData({ ...formData, collateralSummary: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs leading-relaxed"
+                value={formData.summary}
+                onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                placeholder="در صورت تمایل، هرگونه توضیح مالی یا فنی مرتبط را وارد نمایید..."
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs leading-relaxed focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
           </div>
@@ -325,10 +416,28 @@ export const FinancingApplicationFlow: React.FC<FinancingApplicationFlowProps> =
               </span>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-zinc-700">
               <span className="text-slate-500">مدت بازپرداخت و تنفس:</span>
               <span className="font-mono text-slate-800 dark:text-zinc-200">
-                {formData.requestedTenorMonths} ماه ({formData.preferredGracePeriodMonths} ماه تنفس)
+                {formData.requestedTenorMonths} ماه ({formData.preferredGracePeriodMonths !== '' ? formData.preferredGracePeriodMonths : 0} ماه تنفس)
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-zinc-700">
+              <span className="text-slate-500">وضعیت وثایق و تضامین:</span>
+              <span className="font-bold text-slate-800 dark:text-zinc-200">
+                {formData.collateralStatus === 'AVAILABLE'
+                  ? (formData.collateralSummary ? `وثیقه در دسترس است (${formData.collateralSummary})` : 'وثیقه در دسترس است')
+                  : formData.collateralStatus === 'NOT_AVAILABLE'
+                  ? 'فاقد وثیقه اعلام شده'
+                  : 'هنوز مشخص نشده'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">توضیحات تکمیلی:</span>
+              <span className="text-slate-800 dark:text-zinc-200">
+                {formData.summary ? formData.summary : 'توضیحات تکمیلی ثبت نشده است'}
               </span>
             </div>
           </div>

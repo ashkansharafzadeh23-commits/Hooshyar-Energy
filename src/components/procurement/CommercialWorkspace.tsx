@@ -389,7 +389,7 @@ export const CommercialWorkspace: React.FC<CommercialWorkspaceProps> = ({
     let delivCount = deliveries.length > 0 ? `${deliveries.length} محموله` : undefined;
 
     if (deliveries.length > 0) {
-      const allDelivered = deliveries.every(d => d.status === 'ACCEPTED' || d.status === 'INSPECTED');
+      const allDelivered = deliveries.every(d => (d.status as string) === 'ACCEPTED' || (d.status as string) === 'INSPECTED' || d.status === 'RECEIVED');
       if (allDelivered) {
         delivStatus = 'DELIVERED';
         delivStatusLabel = 'تحویل کارگاه شد';

@@ -96,14 +96,14 @@ router.post('/projects/:projectId/financing-requests', (req: Request, res: Respo
     securedCapital,
     existingDebt,
     fundingGap,
-    requestedTenorMonths: Number(req.body.requestedTenorMonths) || 48,
-    preferredGracePeriodMonths: Number(req.body.preferredGracePeriodMonths) || 6,
+    requestedTenorMonths: req.body.requestedTenorMonths !== undefined && req.body.requestedTenorMonths !== null && req.body.requestedTenorMonths !== '' ? Number(req.body.requestedTenorMonths) : undefined,
+    preferredGracePeriodMonths: req.body.preferredGracePeriodMonths !== undefined && req.body.preferredGracePeriodMonths !== null && req.body.preferredGracePeriodMonths !== '' ? Number(req.body.preferredGracePeriodMonths) : undefined,
     repaymentPreference: req.body.repaymentPreference || 'EQUAL_INSTALLMENT',
-    collateralAvailable: req.body.collateralAvailable !== undefined ? req.body.collateralAvailable : true,
+    collateralAvailable: typeof req.body.collateralAvailable === 'boolean' ? req.body.collateralAvailable : (req.body.collateralAvailable === 'true' ? true : (req.body.collateralAvailable === 'false' ? false : undefined)),
     collateralSummary: req.body.collateralSummary || '',
     projectRevenueModel: req.body.projectRevenueModel || 'PPA',
-    summary: req.body.summary || `درخواست تأمین مالی ساخت نیروگاه خورشیدی ${project.title}`,
-    targetFinancingDate: req.body.targetFinancingDate || new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString()
+    summary: req.body.summary || '',
+    targetFinancingDate: req.body.targetFinancingDate || undefined
   });
 
   // Automatically calculate initial readiness

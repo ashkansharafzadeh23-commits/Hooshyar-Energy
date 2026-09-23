@@ -137,7 +137,9 @@ export const BidCard: React.FC<BidCardProps> = ({
       {(bid.equipmentSummary || bid.technicalProposalNotes) && (
         <div className="mt-2 text-xs text-slate-600 dark:text-zinc-300 bg-slate-50/50 dark:bg-zinc-800/30 p-2.5 rounded-lg border border-slate-100 dark:border-zinc-800">
           <span className="font-semibold text-slate-800 dark:text-zinc-200">خلاصه فنی و تجهیزات: </span>
-          {bid.equipmentSummary || bid.technicalProposalNotes}
+          {typeof bid.equipmentSummary === 'string'
+            ? bid.equipmentSummary
+            : (bid.equipmentSummary ? Object.entries(bid.equipmentSummary).map(([k, v]) => `${k}: ${v}`).join('، ') : bid.technicalProposalNotes)}
         </div>
       )}
 

@@ -164,7 +164,7 @@ export const RFQReadiness: React.FC<RFQReadinessProps> = ({
                 </div>
               </div>
 
-              <DataTruthBadge type={check.provenance} size="sm" />
+              <DataTruthBadge type={check.provenance as any} size="sm" />
             </div>
           ))}
         </div>

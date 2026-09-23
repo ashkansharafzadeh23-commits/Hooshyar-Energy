@@ -160,7 +160,7 @@ export const FinancingWorkspace: React.FC<FinancingWorkspaceProps> = ({
       await loadData();
       if (onProjectUpdate) onProjectUpdate();
     } catch (err: any) {
-      alert(err.message || 'خطا در ارسال پرونده');
+      setError(err.message || 'خطا در ارسال پرونده');
     }
   };
 
@@ -187,7 +187,7 @@ export const FinancingWorkspace: React.FC<FinancingWorkspaceProps> = ({
       await loadData();
       if (onProjectUpdate) onProjectUpdate();
     } catch (err: any) {
-      alert(err.message || 'خطا در ثبت انتخاب');
+      setError(err.message || 'خطا در ثبت انتخاب');
     } finally {
       setIsProcessingSelection(false);
     }

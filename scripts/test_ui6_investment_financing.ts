@@ -119,8 +119,8 @@ assert(fs.existsSync(investmentHubPagePath), 'InvestmentHub.tsx page exists');
 const investmentHubPageContent = fs.readFileSync(investmentHubPagePath, 'utf8');
 assert(investmentHubPageContent.includes('InvestmentHubComponent'), 'InvestmentHub page uses InvestmentHub component');
 
-// [4] Verify Non-Negotiable Data-Truth Rules (Zero Math.random())
-console.log('\n[4] Testing Non-Negotiable Data-Truth Rules...');
+// [4] Verify Non-Negotiable Data-Truth Rules (Zero Math.random() & No Silent Defaults)
+console.log('\n[4] Testing Non-Negotiable Data-Truth Rules & Silent Defaults Removal...');
 
 const allComponents = [
   ...requiredInvestmentFiles.map(f => path.join(investmentDir, f)),
@@ -131,6 +131,43 @@ for (const compPath of allComponents) {
   const content = fs.readFileSync(compPath, 'utf8');
   assert(!content.includes('Math.random()'), `No Math.random() in ${path.basename(compPath)}`);
 }
+
+// 4.1 Strict audit of FinancingApplicationFlow.tsx
+const appFlowPath = path.join(financingDir, 'FinancingApplicationFlow.tsx');
+const appFlowContent = fs.readFileSync(appFlowPath, 'utf8');
+assert(!appFlowContent.includes('requestedTenorMonths: 48'), 'FinancingApplicationFlow removed default 48-month tenor');
+assert(!appFlowContent.includes('preferredGracePeriodMonths: 6'), 'FinancingApplicationFlow removed default 6-month grace period');
+assert(!appFlowContent.includes("collateralSummary: 'توثیق سند ساختگاه و قرارداد فروش برق ساتبا'"), 'FinancingApplicationFlow removed fabricated collateral claim');
+assert(!appFlowContent.includes('collateralAvailable: true'), 'FinancingApplicationFlow removed automatic collateralAvailable: true default');
+assert(!appFlowContent.includes('* 1.5'), 'FinancingApplicationFlow removed invented 1.5 multiplier rule');
+assert(appFlowContent.includes('وثیقه در دسترس است'), 'FinancingApplicationFlow includes explicit option for available collateral');
+assert(appFlowContent.includes('وثیقه در دسترس نیست'), 'FinancingApplicationFlow includes explicit option for unavailable collateral');
+assert(appFlowContent.includes('هنوز مشخص نشده'), 'FinancingApplicationFlow includes explicit option for unknown collateral');
+
+// 4.2 Strict audit of FinancingNeedSummary.tsx
+const needSummaryPath = path.join(financingDir, 'FinancingNeedSummary.tsx');
+const needSummaryContent = fs.readFileSync(needSummaryPath, 'utf8');
+assert(!needSummaryContent.includes(": 'اقساط مساوی'"), 'FinancingNeedSummary does not default to equal installments when unspecified');
+assert(needSummaryContent.includes(": 'ثبت نشده'"), 'FinancingNeedSummary displays "ثبت نشده" when repayment preference is missing');
+
+// 4.3 Strict audit of InvestmentTab.tsx
+const invTabContent = fs.readFileSync(investmentTabPath, 'utf8');
+assert(!invTabContent.includes('useState<number>(70)'), 'InvestmentTab removed silent 70% partner equity assumption');
+assert(!invTabContent.includes('useState<number>(500)'), 'InvestmentTab removed silent 500M min capital assumption');
+assert(!invTabContent.includes('پروژه خورشیدی دارای زمین و مطالعات امکان‌سنجی'), 'InvestmentTab removed unverified automatic summary claims');
+
+// 4.4 Strict audit of InvestorProfileSetup.tsx
+const profileSetupPath = path.join(ROOT_DIR, 'src', 'pages', 'investment', 'InvestorProfileSetup.tsx');
+const profileSetupContent = fs.readFileSync(profileSetupPath, 'utf8');
+assert(!profileSetupContent.includes('capitalMin: 1000000000'), 'InvestorProfileSetup removed hardcoded 1B capitalMin default');
+assert(!profileSetupContent.includes('capitalMax: 10000000000'), 'InvestorProfileSetup removed hardcoded 10B capitalMax default');
+
+// 4.5 Strict audit of src/api/financing.ts
+const apiFinancingPath = path.join(ROOT_DIR, 'src', 'api', 'financing.ts');
+const apiFinancingContent = fs.readFileSync(apiFinancingPath, 'utf8');
+assert(!apiFinancingContent.includes('Number(req.body.requestedTenorMonths) || 48'), 'api/financing.ts removed silent 48-month fallback');
+assert(!apiFinancingContent.includes('Number(req.body.preferredGracePeriodMonths) || 6'), 'api/financing.ts removed silent 6-month fallback');
+assert(!apiFinancingContent.includes('req.body.collateralAvailable !== undefined ? req.body.collateralAvailable : true'), 'api/financing.ts removed silent collateralAvailable: true fallback');
 
 // [5] Backend Service Compatibility & Logic Validation
 console.log('\n[5] Testing Backend Service Compatibility & Logic...');
@@ -161,7 +198,7 @@ const sampleRequest = {
   updatedAt: new Date().toISOString()
 };
 
-const readinessResult = financeReadinessService.evaluateReadiness(sampleProject as any, sampleRequest);
+const readinessResult = financeReadinessService.evaluateReadiness(sampleRequest, sampleProject as any);
 assert(readinessResult !== null && typeof readinessResult.status === 'string', 'financeReadinessService returns valid evaluation result');
 assert(Array.isArray(readinessResult.missingRequirements), 'readinessResult contains missingRequirements array');
 assert(Array.isArray(readinessResult.recommendedActions), 'readinessResult contains recommendedActions array');
@@ -226,7 +263,7 @@ const sampleOffer2 = {
   updatedAt: new Date().toISOString()
 };
 
-const multiComparison = financingOfferComparisonService.compareOffers([sampleOffer1, sampleOffer2], sampleRequest);
+const multiComparison = financingOfferComparisonService.compareOffers([sampleOffer1 as any, sampleOffer2 as any], sampleRequest as any);
 assert(multiComparison.offersCount === 2, 'financingOfferComparisonService computes valid comparison metrics');
 assert(multiComparison.comparisons[0].repaymentStructure.monthlyPayment > 0, 'Estimated monthly payment calculated accurately');
 assert(typeof multiComparison.disclaimer === 'string', 'Mandatory disclaimer present in comparison result');

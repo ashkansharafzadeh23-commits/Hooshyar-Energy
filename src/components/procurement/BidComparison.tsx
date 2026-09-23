@@ -177,7 +177,11 @@ export const BidComparison: React.FC<BidComparisonProps> = ({
               <td className="p-3 font-semibold text-slate-600 dark:text-zinc-400 bg-slate-50/40 dark:bg-zinc-850/30">تجهیزات پیشنهادی</td>
               {bids.map(bid => (
                 <td key={bid.id} className="p-3 text-slate-700 dark:text-zinc-300 leading-relaxed">
-                  {bid.equipmentSummary || 'ارائه نشده'}
+                  {typeof bid.equipmentSummary === 'string'
+                    ? bid.equipmentSummary
+                    : bid.equipmentSummary
+                    ? Object.entries(bid.equipmentSummary).map(([k, v]) => `${k}: ${v}`).join('، ')
+                    : 'ارائه نشده'}
                 </td>
               ))}
             </tr>
@@ -205,17 +209,20 @@ export const BidComparison: React.FC<BidComparisonProps> = ({
             {/* Deterministic Backend Score (if existing) */}
             <tr>
               <td className="p-3 font-semibold text-slate-600 dark:text-zinc-400 bg-slate-50/40 dark:bg-zinc-850/30">امتیاز فنی سامانه</td>
-              {bids.map(bid => (
-                <td key={bid.id} className="p-3">
-                  {bid.score !== undefined ? (
-                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
-                      {bid.score} / ۱۰۰
-                    </span>
-                  ) : (
-                    <span className="text-slate-400 dark:text-zinc-500">ارائه نشده</span>
-                  )}
-                </td>
-              ))}
+              {bids.map(bid => {
+                const numericScore = typeof bid.score === 'object' && bid.score !== null ? (bid.score as any).totalScore : bid.score;
+                return (
+                  <td key={bid.id} className="p-3">
+                    {numericScore !== undefined ? (
+                      <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                        {numericScore} / ۱۰۰
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 dark:text-zinc-500">ارائه نشده</span>
+                    )}
+                  </td>
+                );
+              })}
             </tr>
 
             {/* Selection CTA row */}
@@ -309,7 +316,9 @@ export const BidComparison: React.FC<BidComparisonProps> = ({
               {bid.equipmentSummary && (
                 <div className="text-xs text-slate-600 dark:text-zinc-400 pt-2 border-t border-slate-200 dark:border-zinc-700">
                   <span className="font-semibold text-slate-700 dark:text-zinc-300">تجهیزات: </span>
-                  {bid.equipmentSummary}
+                  {typeof bid.equipmentSummary === 'string'
+                    ? bid.equipmentSummary
+                    : Object.entries(bid.equipmentSummary).map(([k, v]) => `${k}: ${v}`).join('، ')}
                 </div>
               )}
 

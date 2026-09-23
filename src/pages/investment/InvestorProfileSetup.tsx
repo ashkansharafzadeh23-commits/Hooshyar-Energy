@@ -4,17 +4,37 @@ import { useNavigate } from 'react-router-dom';
 export default function InvestorProfileSetup() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    investorType: string;
+    capitalMin: number | '';
+    capitalMax: number | '';
+    preferredProvinces: string[];
+    riskPreference: string;
+    targetReturnPreference: string;
+  }>({
     investorType: 'INDIVIDUAL',
-    capitalMin: 1000000000,
-    capitalMax: 10000000000,
+    capitalMin: '',
+    capitalMax: '',
     preferredProvinces: ['ALL'],
     riskPreference: 'BALANCED',
     targetReturnPreference: ''
   });
 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    if (formData.capitalMin === '' || Number(formData.capitalMin) <= 0) {
+      setErrorMessage('لطفاً حداقل سرمایه مدنظر را به تومان وارد نمایید.');
+      return;
+    }
+    if (formData.capitalMax === '' || Number(formData.capitalMax) < Number(formData.capitalMin)) {
+      setErrorMessage('حداکثر سرمایه باید بزرگتر یا مساوی حداقل سرمایه باشد.');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch('/api/investment/investor-profile', {
@@ -25,6 +45,8 @@ export default function InvestorProfileSetup() {
         },
         body: JSON.stringify({
           ...formData,
+          capitalMin: Number(formData.capitalMin),
+          capitalMax: Number(formData.capitalMax),
           currency: 'IRR',
           preferredProjectStages: ['ALL'],
           preferredTechnologies: ['SOLAR'],
@@ -36,9 +58,13 @@ export default function InvestorProfileSetup() {
       });
       if (res.ok) {
         navigate('/investment-hub/matches');
+      } else {
+        const err = await res.json();
+        setErrorMessage(err.error || 'خطا در ثبت پروفایل سرمایه‌گذار');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setErrorMessage(err.message || 'خطا در اتصال به سرور');
     } finally {
       setLoading(false);
     }
@@ -51,6 +77,12 @@ export default function InvestorProfileSetup() {
         <p className="text-gray-500 mb-8 text-sm">
           این اطلاعات به موتور تطابق هوشیار کمک می‌کند تا بهترین فرصت‌های سرمایه‌گذاری را متناسب با ترجیحات شما پیشنهاد دهد. اطلاعات مالی شما محرمانه باقی می‌ماند.
         </p>
+
+        {errorMessage && (
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+            {errorMessage}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -69,21 +101,23 @@ export default function InvestorProfileSetup() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">حداقل سرمایه (تومان)</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">حداقل سرمایه (تومان) *</label>
               <input 
                 type="number" 
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                placeholder="مثال: ۵۰۰،۰۰۰،۰۰۰"
+                className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm"
                 value={formData.capitalMin}
-                onChange={e => setFormData({...formData, capitalMin: Number(e.target.value)})}
+                onChange={e => setFormData({...formData, capitalMin: e.target.value === '' ? '' : Number(e.target.value)})}
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">حداکثر سرمایه (تومان)</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">حداکثر سرمایه (تومان) *</label>
               <input 
                 type="number" 
-                className="w-full p-3 border border-gray-300 rounded-lg"
+                placeholder="مثال: ۵،۰۰۰،۰۰۰،۰۰۰"
+                className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm"
                 value={formData.capitalMax}
-                onChange={e => setFormData({...formData, capitalMax: Number(e.target.value)})}
+                onChange={e => setFormData({...formData, capitalMax: e.target.value === '' ? '' : Number(e.target.value)})}
               />
             </div>
           </div>

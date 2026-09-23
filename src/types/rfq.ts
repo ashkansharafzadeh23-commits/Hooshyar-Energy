@@ -1,5 +1,8 @@
 export type RFQStatus = 'DRAFT' | 'PUBLISHED' | 'OPEN' | 'CLOSED' | 'CANCELLED' | 'AWARDED';
 
+export type RFQ = ProjectRFQ;
+export type EpcBid = EPCBid;
+
 export type RFQVisibility = 'INVITED_ONLY' | 'VERIFIED_EPCS';
 
 export interface ProjectRFQ {
@@ -106,6 +109,14 @@ export interface EPCBid {
   status: EPCBidStatus;
   currency: string;
   totalPrice: number;
+  totalPriceIRR?: number;
+  downPaymentPercent?: number;
+  validUntil?: string;
+  warrantyTerms?: string;
+  epcOrganizationName?: string;
+  epcCompanyName?: string;
+  technicalProposalNotes?: string;
+  technicalDeviations?: string;
   engineeringPrice: number;
   equipmentPrice: number;
   installationPrice: number;

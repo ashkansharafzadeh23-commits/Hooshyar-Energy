@@ -159,6 +159,7 @@ export type PurchaseOrderStatus = 'DRAFT' | 'ISSUED' | 'ACKNOWLEDGED' | 'IN_PROD
 export interface PurchaseOrder {
   id: string;
   poCode: string;
+  orderNumber?: string;
   projectId: string;
   contractId?: string;
   vendorId: string;
@@ -166,8 +167,10 @@ export interface PurchaseOrder {
   status: PurchaseOrderStatus;
   currency: string;
   totalValue: number;
+  totalAmount?: number;
   issueDate: string;
   expectedDeliveryDate: string;
+  deliveryExpectedDate?: string;
   deliveryLocation: string;
   paymentTermsSummary: string;
   warrantySummary: string;
@@ -177,6 +180,8 @@ export interface PurchaseOrder {
   updatedAt: string;
 }
 
+export type Delivery = DeliveryRecord;
+
 export type DeliveryRecordStatus = 'EXPECTED' | 'PARTIAL' | 'RECEIVED' | 'REJECTED' | 'DAMAGED';
 
 export interface DeliveryRecord {
@@ -184,6 +189,11 @@ export interface DeliveryRecord {
   purchaseOrderId: string;
   projectId: string;
   deliveryNumber: string;
+  waybillNumber?: string;
+  carrierName?: string;
+  dispatchDate?: string;
+  actualArrivalDate?: string;
+  receivedBy?: string;
   status: DeliveryRecordStatus;
   deliveryDate: string;
   receivedByUserId: string;

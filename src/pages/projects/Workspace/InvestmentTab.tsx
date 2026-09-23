@@ -30,9 +30,12 @@ export const InvestmentTab: React.FC<InvestmentTabProps> = ({ project }) => {
   const [showSetupModal, setShowSetupModal] = useState(false);
 
   // Form states - strictly user entered or prefilled from genuine sources, no fake numbers
-  const [partnerEquityGapPercent, setPartnerEquityGapPercent] = useState<number>(70);
-  const [minCapitalMillionToman, setMinCapitalMillionToman] = useState<number>(500);
+  const [partnerEquityGapPercent, setPartnerEquityGapPercent] = useState<number | ''>('');
+  const [minCapitalMillionToman, setMinCapitalMillionToman] = useState<number | ''>('');
   const [partnerType, setPartnerType] = useState<string>('شرکت سرمایه‌گذاری یا شریک صنعتی');
+  const [oppTitle, setOppTitle] = useState<string>(project.title ? `فرصت سرمایه‌گذاری: ${project.title}` : '');
+  const [oppSummary, setOppSummary] = useState<string>('');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchInvestmentData = async () => {
     setLoading(true);
@@ -44,7 +47,10 @@ export const InvestmentTab: React.FC<InvestmentTabProps> = ({ project }) => {
       // 1. Fetch opportunity
       const oppRes = await fetch(`/api/investment/projects/${project.id}/opportunity`, { headers });
       if (oppRes.ok) {
-        setOpportunity(await oppRes.json());
+        const oppData = await oppRes.json();
+        setOpportunity(oppData);
+        if (oppData.title) setOppTitle(oppData.title);
+        if (oppData.summary) setOppSummary(oppData.summary);
       }
 
       // 2. Fetch readiness
@@ -73,18 +79,32 @@ export const InvestmentTab: React.FC<InvestmentTabProps> = ({ project }) => {
   }, [project.id]);
 
   const handlePublishOpportunity = async () => {
+    setFormError(null);
+    if (!oppTitle.trim()) {
+      setFormError('لطفاً عنوان فرصت سرمایه‌گذاری را وارد نمایید.');
+      return;
+    }
+    if (partnerEquityGapPercent === '' || Number(partnerEquityGapPercent) <= 0 || Number(partnerEquityGapPercent) > 100) {
+      setFormError('لطفاً درصد تأمین سرمایه از شریک را به درستی تعیین نمایید (بین ۱ تا ۱۰۰).');
+      return;
+    }
+    if (minCapitalMillionToman === '' || Number(minCapitalMillionToman) <= 0) {
+      setFormError('لطفاً حداقل سرمایه پذیرفته‌شده از هر شریک را مشخص نمایید.');
+      return;
+    }
+
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
       const totalCapexToman = financialModel?.results?.totalCapex?.amount 
         || (project.estimatedBudget?.amount ? project.estimatedBudget.amount / 10 : (project.estimatedBudgetIRR ? project.estimatedBudgetIRR / 10 : undefined));
       
-      const capitalRequired = totalCapexToman ? Math.round(totalCapexToman * (partnerEquityGapPercent / 100)) : undefined;
+      const capitalRequired = totalCapexToman ? Math.round(totalCapexToman * (Number(partnerEquityGapPercent) / 100)) : undefined;
       const ownerEquity = (totalCapexToman && capitalRequired) ? totalCapexToman - capitalRequired : undefined;
 
-      const oppPayload = {
-        title: `فرصت مشارکت و سرمایه‌گذاری: احداث نیروگاه ${project.targetCapacityKw || ''} کیلوواتی ${project.location?.city || ''}`,
-        summary: `پروژه خورشیدی دارای زمین و مطالعات امکان‌سنجی در استان ${project.location?.province || ''} نیازمند شریک سرمایه‌گذار جهت احداث و بهره‌برداری تجاری`,
+      const oppPayload: Record<string, any> = {
+        title: oppTitle.trim(),
+        summary: oppSummary.trim() || undefined,
         type: 'PROJECT_SEEKING_CAPITAL',
         status: 'PUBLISHED',
         visibility: 'PUBLIC_SUMMARY',
@@ -105,7 +125,7 @@ export const InvestmentTab: React.FC<InvestmentTabProps> = ({ project }) => {
           ownerEquity: ownerEquity,
           capitalRequired: capitalRequired
         } : undefined,
-        minimumPartnerCapital: minCapitalMillionToman ? minCapitalMillionToman * 1000000 : undefined,
+        minimumPartnerCapital: Number(minCapitalMillionToman) ? Number(minCapitalMillionToman) * 1000000 : undefined,
         preferredPartnerType: partnerType
       };
 
@@ -256,35 +276,66 @@ export const InvestmentTab: React.FC<InvestmentTabProps> = ({ project }) => {
               </button>
             </div>
 
+            {formError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold">
+                {formError}
+              </div>
+            )}
+
             <div className="space-y-4 text-xs">
               <div>
                 <label className="font-bold text-slate-700 dark:text-zinc-300 block mb-1">
-                  درصد تأمین سرمایه از شریک (از کل CAPEX)
+                  عنوان فرصت سرمایه‌گذاری *
+                </label>
+                <input
+                  type="text"
+                  value={oppTitle}
+                  onChange={(e) => setOppTitle(e.target.value)}
+                  placeholder="مثال: فرصت مشارکت در احداث نیروگاه خورشیدی ۱۰ مگاواتی"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-zinc-300 block mb-1">
+                  شرح و خلاصه طرح (اختیاری)
+                </label>
+                <textarea
+                  rows={2}
+                  value={oppSummary}
+                  onChange={(e) => setOppSummary(e.target.value)}
+                  placeholder="توضیحات تکمیلی پیرامون وضعیت و جذابیت‌های طرح..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs leading-relaxed"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 dark:text-zinc-300 block mb-1">
+                  درصد تأمین سرمایه از شریک (از کل CAPEX) *
                 </label>
                 <div className="flex items-center gap-3">
                   <input
-                    type="range"
-                    min="10"
-                    max="90"
-                    step="5"
+                    type="number"
+                    min="1"
+                    max="100"
+                    placeholder="مثال: ۶۰"
                     value={partnerEquityGapPercent}
-                    onChange={(e) => setPartnerEquityGapPercent(Number(e.target.value))}
-                    className="flex-1 accent-blue-600"
+                    onChange={(e) => setPartnerEquityGapPercent(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 font-mono text-xs"
                   />
-                  <span className="font-mono font-bold text-sm w-12 text-center text-blue-600">
-                    {partnerEquityGapPercent}٪
-                  </span>
+                  <span className="font-mono font-bold text-sm text-slate-600 dark:text-zinc-400">٪</span>
                 </div>
               </div>
 
               <div>
                 <label className="font-bold text-slate-700 dark:text-zinc-300 block mb-1">
-                  حداقل سرمایه پذیرفته‌شده از هر شریک (میلیون تومان)
+                  حداقل سرمایه پذیرفته‌شده از هر شریک (میلیون تومان) *
                 </label>
                 <input
                   type="number"
+                  placeholder="مثال: ۵۰۰"
                   value={minCapitalMillionToman}
-                  onChange={(e) => setMinCapitalMillionToman(Number(e.target.value))}
+                  onChange={(e) => setMinCapitalMillionToman(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 font-mono text-xs"
                 />
               </div>

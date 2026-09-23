@@ -14,7 +14,8 @@ export type DataProvenanceType =
   | 'MISSING';
 
 interface DataTruthBadgeProps {
-  type: DataProvenanceType;
+  type?: DataProvenanceType;
+  provenance?: DataProvenanceType | string;
   customLabel?: string;
   className?: string;
   size?: 'sm' | 'md';
@@ -91,11 +92,13 @@ const BADGE_CONFIG: Record<DataProvenanceType, { label: string; bg: string; text
 
 export const DataTruthBadge: React.FC<DataTruthBadgeProps> = ({ 
   type, 
+  provenance,
   customLabel,
   className = '',
   size = 'sm' 
 }) => {
-  const config = BADGE_CONFIG[type] || BADGE_CONFIG.USER_PROVIDED;
+  const resolvedType = (type || (provenance as DataProvenanceType) || 'USER_PROVIDED') as DataProvenanceType;
+  const config = BADGE_CONFIG[resolvedType] || BADGE_CONFIG.USER_PROVIDED;
   const displayText = customLabel || config.label;
   const sizeClasses = size === 'sm' 
     ? 'text-[11px] px-2 py-0.5' 

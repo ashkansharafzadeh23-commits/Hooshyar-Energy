@@ -65,6 +65,8 @@ export interface EnergyProject {
     currency: string;
   };
   sourceAnalysisId?: string;
+  contractId?: string;
+  engineeringDesignId?: string;
   createdAt: string;
   updatedAt: string;
 }

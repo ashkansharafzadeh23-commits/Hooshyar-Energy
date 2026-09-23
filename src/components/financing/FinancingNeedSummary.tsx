@@ -183,7 +183,7 @@ export const FinancingNeedSummary: React.FC<FinancingNeedSummaryProps> = ({
         <div>
           <span className="text-slate-400 block mb-0.5">شیوه ترجیحی تسویه:</span>
           <span className="font-bold text-slate-800 dark:text-zinc-200">
-            {request?.repaymentPreference ? repaymentLabels[request.repaymentPreference] || request.repaymentPreference : 'اقساط مساوی'}
+            {request?.repaymentPreference ? repaymentLabels[request.repaymentPreference] || request.repaymentPreference : 'ثبت نشده'}
           </span>
         </div>
       </div>

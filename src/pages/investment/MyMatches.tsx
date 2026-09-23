@@ -98,7 +98,7 @@ export default function MyMatches() {
                 </div>
 
                 <div className="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg flex gap-2">
-                  <strong>هوش مصنوعی:</strong>
+                  <strong>تحلیل انطباق معیارها:</strong>
                   این فرصت به دلیل هماهنگی بالا با محدوده سرمایه و تحمل ریسک شما پیشنهاد شده است.
                 </div>
               </div>

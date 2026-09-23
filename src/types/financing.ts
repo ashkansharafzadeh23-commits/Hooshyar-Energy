@@ -229,6 +229,7 @@ export interface FinancialPartnerProfile {
   organizationId?: string;
   partnerType: FinancialPartnerType;
   displayName: string;
+  name?: string;
   status: 'ACTIVE' | 'INACTIVE';
   verificationStatus: PartnerVerificationStatus;
   supportedFinancingProducts: FinancingProductType[];
