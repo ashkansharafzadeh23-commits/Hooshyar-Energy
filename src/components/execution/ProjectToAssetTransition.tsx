@@ -67,10 +67,10 @@ export const ProjectToAssetTransition: React.FC<ProjectToAssetTransitionProps> =
               </span>
             </div>
             <h4 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-              {existingAsset.name || 'شناسنامه دیجیتال نیروگاه'}
+              {existingAsset.name || 'شناسنامه دارایی'}
             </h4>
             <p className="text-xs text-slate-600 dark:text-zinc-400 mt-0.5">
-              ظرفیت اسمی: {existingAsset.installedCapacityKw} کیلووات | تاریخ راه‌اندازی: {existingAsset.commissioningDate ? new Date(existingAsset.commissioningDate).toLocaleDateString('fa-IR') : 'ثبت نشده'}
+              ظرفیت: {existingAsset.installedCapacityKw !== undefined && existingAsset.installedCapacityKw !== null ? `${existingAsset.installedCapacityKw} کیلووات` : 'ثبت نشده'} | تاریخ راه‌اندازی: {existingAsset.commissioningDate ? new Date(existingAsset.commissioningDate).toLocaleDateString('fa-IR') : 'ثبت نشده'}
             </p>
           </div>
         </div>

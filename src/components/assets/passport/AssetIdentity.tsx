@@ -74,7 +74,7 @@ export const AssetIdentity: React.FC<AssetIdentityProps> = ({
             <span>ظرفیت نامی نصب‌شده</span>
           </div>
           <p className="text-sm font-bold font-mono text-slate-900 dark:text-zinc-100">
-            {asset.installedCapacityKw ? `${asset.installedCapacityKw} کیلووات` : 'ثبت نشده'}
+            {asset.installedCapacityKw !== undefined && asset.installedCapacityKw !== null ? `${asset.installedCapacityKw} کیلووات` : 'ثبت نشده'}
           </p>
         </div>
 
@@ -84,14 +84,14 @@ export const AssetIdentity: React.FC<AssetIdentityProps> = ({
             <span>فناوری سامانه</span>
           </div>
           <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-            {asset.technology || 'خورشیدی متصل به شبکه (Solar PV)'}
+            {asset.technology || 'ثبت نشده'}
           </p>
         </div>
 
         <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-zinc-800/40 border border-slate-100 dark:border-zinc-800 space-y-1">
           <div className="flex items-center gap-1.5 text-slate-400 dark:text-zinc-500">
             <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-            <span>تاریخ راه‌اندازی رسمی (COD)</span>
+            <span>تاریخ بهره‌برداری تجاری (COD)</span>
           </div>
           <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">
             {formatDate(asset.commercialOperationDate || asset.commissioningDate)}

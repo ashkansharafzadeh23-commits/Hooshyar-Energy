@@ -235,7 +235,7 @@ export const HandoverReview: React.FC<HandoverReviewProps> = ({
             {approving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>در حال ثبت تحویل قطعی...</span>
+                <span>در حال ثبت صورت‌جلسه تحویل...</span>
               </>
             ) : (
               <>

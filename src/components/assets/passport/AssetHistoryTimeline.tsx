@@ -39,7 +39,7 @@ export const AssetHistoryTimeline: React.FC<AssetHistoryTimelineProps> = ({
           <span>تاریخچه چرخه عمر دارایی (Asset Lifecycle Timeline)</span>
         </h3>
         <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-          سلسله رویدادهای رسمی از آغاز احداث تا راه‌اندازی و بهره‌برداری
+          رویدادهای ثبت‌شده دارایی از آغاز احداث تا بهره‌برداری
         </p>
       </div>
 

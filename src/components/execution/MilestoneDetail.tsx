@@ -133,7 +133,7 @@ export const MilestoneDetail: React.FC<MilestoneDetailProps> = ({
             </div>
             <ul className="space-y-1 text-blue-800 dark:text-blue-400 list-disc list-inside text-[11px]">
               <li>{milestone.evidenceRequired ? 'ارائه تصویر یا صورت‌جلسه کارگاهی الزامی است.' : 'ارائه مستند پیوست اختیاری است.'}</li>
-              <li>{milestone.requiresApproval ? 'تأیید مهندس ناظر یا کارفرما الزامی است.' : 'بدون نیاز به تأیید ناظر.'}</li>
+              <li>{milestone.requiresApproval ? 'نیاز به بررسی و تأیید دارد.' : 'بدون نیاز به تأیید ناظر.'}</li>
             </ul>
           </div>
 
@@ -174,7 +174,7 @@ export const MilestoneDetail: React.FC<MilestoneDetailProps> = ({
                 className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs min-h-[44px] flex items-center gap-1.5"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>ارسال جهت تأیید کارفرما</span>
+                <span>ارسال جهت بررسی و تأیید</span>
               </button>
             )}
 

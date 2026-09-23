@@ -23,7 +23,7 @@ export const MilestoneCard: React.FC<MilestoneCardProps> = ({
         };
       case 'SUBMITTED_FOR_REVIEW':
         return {
-          label: 'در انتظار تأیید کارفرما',
+          label: 'ارائه‌شده جهت بررسی',
           icon: ShieldCheck,
           className: 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
         };

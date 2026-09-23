@@ -15,7 +15,7 @@ export const CommissioningTestResult: React.FC<CommissioningTestResultProps> = (
     switch (status) {
       case 'PASSED':
         return {
-          label: 'مورد تأیید (Passed)',
+          label: 'قبول (Passed)',
           icon: CheckCircle2,
           className: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
         };

@@ -30,7 +30,7 @@ export const CommissioningReview: React.FC<CommissioningReviewProps> = ({
     try {
       await onApproveCommissioning(notes);
     } catch (err: any) {
-      setError(err?.message || 'خطا در ثبت تأیید رسمی راه‌اندازی');
+      setError(err?.message || 'خطا در ثبت تأیید پرونده راه‌اندازی');
     } finally {
       setApproving(false);
     }
@@ -45,10 +45,10 @@ export const CommissioningReview: React.FC<CommissioningReviewProps> = ({
           </div>
           <div>
             <h4 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
-              ارزیابی نهایی پرونده راه‌اندازی (Commissioning Sign-Off)
+              ارزیابی پرونده راه‌اندازی (Commissioning Sign-Off)
             </h4>
             <p className="text-xs text-slate-500 dark:text-zinc-400">
-              بررسی انطباق فنی پیش از صدور مجوز اتصال دائم و تحویل نیروگاه
+              بررسی آزمون‌های فنی و مستندات راه‌اندازی پروژه
             </p>
           </div>
         </div>

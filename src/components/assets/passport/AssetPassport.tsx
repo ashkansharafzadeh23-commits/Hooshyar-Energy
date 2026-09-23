@@ -131,7 +131,7 @@ export const AssetPassport: React.FC<AssetPassportProps> = ({
               setHistoryEvents(
                 actData.map((a: any) => ({
                   id: a.id,
-                  title: a.eventType === 'ASSET_GENERATED' ? 'صدور شناسنامه دیجیتال دارایی' : a.eventType === 'COMMISSIONING_APPROVED' ? 'تأیید رسمی راه‌اندازی' : a.eventType === 'HANDOVER_APPROVED' ? 'تحویل قطعی نیروگاه' : a.eventType,
+                  title: a.eventType === 'ASSET_GENERATED' ? 'ایجاد شناسنامه دارایی' : a.eventType === 'COMMISSIONING_APPROVED' ? 'تأیید راه‌اندازی' : a.eventType === 'HANDOVER_APPROVED' ? 'تحویل پروژه به بهره‌بردار' : a.eventType,
                   date: a.timestamp || a.createdAt,
                   category: 'LIFECYCLE',
                   description: a.metadata?.description || a.metadata?.notes,
@@ -157,7 +157,7 @@ export const AssetPassport: React.FC<AssetPassportProps> = ({
     return (
       <div className="py-20 text-center space-y-3">
         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs font-semibold text-slate-500">در حال بارگذاری شناسنامه دیجیتال دارایی (Asset Passport)...</p>
+        <p className="text-xs font-semibold text-slate-500">در حال بارگذاری شناسنامه دارایی (Asset Passport)...</p>
       </div>
     );
   }

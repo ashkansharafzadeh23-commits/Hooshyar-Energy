@@ -41,7 +41,7 @@ export const CommissioningReadiness: React.FC<CommissioningReadinessProps> = ({
           <div>
             <h4 className="font-bold mb-0.5">اطلاعات راه‌اندازی ثبت نشده است</h4>
             <p className="opacity-90 leading-relaxed text-[11px]">
-              برای بررسی آمادگی راه‌اندازی، ابتدا پرونده راه‌اندازی و آزمون‌های استاندارد الکتریکی را ثبت نمایید.
+              برای بررسی آمادگی راه‌اندازی، ابتدا پرونده راه‌اندازی و آزمون‌های الکتریکی را ثبت نمایید.
             </p>
           </div>
         </div>
@@ -75,7 +75,7 @@ export const CommissioningReadiness: React.FC<CommissioningReadinessProps> = ({
           )}
           <div>
             <h4 className={`text-sm font-bold ${canApprove ? 'text-emerald-950 dark:text-emerald-200' : 'text-amber-950 dark:text-amber-200'}`}>
-              {canApprove ? 'آماده تأیید رسمی راه‌اندازی (Commissioning Approved)' : 'شرایط راه‌اندازی هنوز احراز نشده است'}
+              {canApprove ? 'احراز شروط تأیید راه‌اندازی (Commissioning Ready)' : 'شرایط راه‌اندازی هنوز احراز نشده است'}
             </h4>
             <p className={`text-[11px] ${canApprove ? 'text-emerald-800 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-400'}`}>
               {canApprove

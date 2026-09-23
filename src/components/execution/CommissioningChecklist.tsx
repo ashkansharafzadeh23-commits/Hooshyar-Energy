@@ -55,7 +55,7 @@ export const CommissioningChecklist: React.FC<CommissioningChecklistProps> = ({
         <div>
           <h4 className="text-sm font-bold text-slate-900 dark:text-zinc-100 flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span>چک‌لیست آزمون‌های استاندارد راه‌اندازی ({tests.length})</span>
+            <span>چک‌لیست آزمون‌های راه‌اندازی ({tests.length})</span>
           </h4>
           <p className="text-xs text-slate-500 dark:text-zinc-400">
             تست‌های الکتریکی، حفاظتی و اتصال به شبکه بر اساس استانداردهای ساتبا و توانیر

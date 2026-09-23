@@ -84,7 +84,7 @@ export const ExecutionDocuments: React.FC<ExecutionDocumentsProps> = ({
             <span>مدارک و اسناد کارگاهی و اجرایی ({documents.length})</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-            نقشه‌های چون‌ساخت (As-Built)، صورت‌جلسات، گواهی‌های تست و ضمانت‌نامه‌ها
+            اسناد و مدارک ثبت‌شده کارگاهی و فنی پروژه
           </p>
         </div>
 

@@ -36,7 +36,7 @@ export const AssetMonitoringStatus: React.FC<AssetMonitoringStatusProps> = ({
           <span>وضعیت اتصال و مانیتورینگ برخط (Online Telemetry)</span>
         </h3>
         <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-          ارتباط با اینورترها، دیتالاگر، سنسورهای تابش و کنتور دیجیتال
+          وضعیت دریافت داده‌های مانیتورینگ دارایی
         </p>
       </div>
 
@@ -49,7 +49,7 @@ export const AssetMonitoringStatus: React.FC<AssetMonitoringStatusProps> = ({
             پایش برخط هنوز فعال نشده است.
           </h4>
           <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-md leading-relaxed">
-            مودم صنعتی، سیم‌کارت یا اتصال مودباس اینورترها به سامانه مرکزی مانیتورینگ متصل نگردیده است. داده‌های تولید لحظه‌ای پس از برقراری لینک مخابراتی دریافت خواهد شد.
+            ارتباط مخابراتی یا دیتالاگر برای این دارایی برقرار نشده است.
           </p>
         </div>
       ) : (
@@ -63,7 +63,7 @@ export const AssetMonitoringStatus: React.FC<AssetMonitoringStatusProps> = ({
                 سیستم دیتالاگر متصل و برخط است
               </h4>
               <p className="text-[11px] text-emerald-800 dark:text-emerald-400">
-                منبع مخابراتی: {telemetrySource || 'پروتکل Modbus TCP/IP'} | آخرین تبادل داده: {formatDate(lastTelemetryTimestamp)}
+                منبع مخابراتی: {telemetrySource || 'ثبت نشده'} | آخرین تبادل داده: {formatDate(lastTelemetryTimestamp)}
               </p>
             </div>
           </div>

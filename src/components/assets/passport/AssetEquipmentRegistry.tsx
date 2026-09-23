@@ -106,7 +106,7 @@ export const AssetEquipmentRegistry: React.FC<AssetEquipmentRegistryProps> = ({
                   </span>
                 </div>
 
-                {comp.ratedCapacity && (
+                {comp.ratedCapacity !== undefined && comp.ratedCapacity !== null && (
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-slate-500 dark:text-zinc-400">ظرفیت / توان نامی:</span>
                     <span className="font-mono font-bold text-slate-800 dark:text-zinc-200">

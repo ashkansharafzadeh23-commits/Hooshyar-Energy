@@ -80,7 +80,7 @@ export const ExecutionOverview: React.FC<ExecutionOverviewProps> = ({
       id: 'handover-pending',
       severity: 'MEDIUM',
       category: 'HANDOVER',
-      title: 'تکمیل مدارک و چک‌لیست تحویل قطعی',
+      title: 'تکمیل مدارک و چک‌لیست تحویل پروژه',
       description: 'راه‌اندازی فنی تأیید گردیده و اکنون تحویل اسناد چون‌ساخت و آموزش در جریان است.',
       targetTab: 'commissioning',
       actionLabel: 'مشاهده تحویل'
@@ -90,7 +90,7 @@ export const ExecutionOverview: React.FC<ExecutionOverviewProps> = ({
   // Key factual status counts (strictly maximum 4, no fake percentage progress!)
   const completedMilestones = milestones.filter(m => m.status === 'COMPLETED').length;
   const inProgressMilestones = milestones.filter(m => m.status === 'IN_PROGRESS' || m.status === 'SUBMITTED_FOR_REVIEW').length;
-  const capacityKw = project.targetCapacityKw || (project as any).capacityKw || (project as any).systemCapacityKw || 0;
+  const capacityKw = project.targetCapacityKw ?? (project as any).capacityKw ?? (project as any).systemCapacityKw ?? 0;
 
   const nextActiveMilestone = milestones.find(m => m.status === 'IN_PROGRESS' || m.status === 'SUBMITTED_FOR_REVIEW' || m.status === 'NOT_STARTED');
 

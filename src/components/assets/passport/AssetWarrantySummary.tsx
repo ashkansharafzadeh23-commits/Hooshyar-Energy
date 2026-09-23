@@ -43,15 +43,15 @@ export const AssetWarrantySummary: React.FC<AssetWarrantySummaryProps> = ({
       case 'PRODUCT':
         return 'گارانتی سلامت فیزیکی محصول (Product Warranty)';
       case 'PERFORMANCE':
-        return 'ضمانت راندمان و عملکرد خطی (Linear Performance Guarantee)';
+        return 'ضمانت راندمان و عملکرد (Performance Guarantee)';
       case 'INVERTER':
-        return 'ضمانت کارکرد اینورتر (Inverter Standard Warranty)';
+        return 'ضمانت کارکرد اینورتر (Inverter Warranty)';
       case 'EPC':
         return 'تضمین حسن انجام کار پیمانکار (EPC Workmanship)';
       case 'O_AND_M':
         return 'تعهدات قرارداد بهره‌برداری و نگهداری';
       default:
-        return type || 'ضمانت‌نامه رسمی';
+        return type || 'ضمانت‌نامه';
     }
   };
 
@@ -70,7 +70,7 @@ export const AssetWarrantySummary: React.FC<AssetWarrantySummaryProps> = ({
         <div>
           <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>ضمانت‌نامه‌ها و گارانتی‌های معتبر ({warranties.length})</span>
+            <span>ضمانت‌نامه‌ها و گارانتی‌های ثبت‌شده ({warranties.length})</span>
           </h3>
           <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
             سوابق ضمانت تجهیزات و تعهدات تولیدکننده و پیمانکار مجری

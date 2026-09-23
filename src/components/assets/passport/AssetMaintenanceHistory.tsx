@@ -40,7 +40,7 @@ export const AssetMaintenanceHistory: React.FC<AssetMaintenanceHistoryProps> = (
       case 'CORRECTIVE':
         return 'تعمیرات اصلاحی (CM)';
       case 'INSPECTION':
-        return 'بازرسی دوره‌ای و حرارت‌نگاری (Thermography)';
+        return 'بازرسی دوره‌ای (Inspection)';
       default:
         return type || 'سرویس دوره‌ای';
     }
@@ -54,7 +54,7 @@ export const AssetMaintenanceHistory: React.FC<AssetMaintenanceHistoryProps> = (
           <span>سوابق بهره‌برداری و تعمیرات و نگهداری (O&M Logbook)</span>
         </h3>
         <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-          گزارش اقدامات سرویس دوره‌ای، شستشوی ماژول‌ها و رفع نواقص کارگاهی
+          گزارش اقدامات سرویس و نگهداری ثبت‌شده
         </p>
       </div>
 
