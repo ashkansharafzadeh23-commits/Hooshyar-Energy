@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, GitFork, FolderKanban, History } from 'lucide-react';
+import { LayoutDashboard, GitFork, ShoppingBag, FolderKanban, History } from 'lucide-react';
 
-export type ProjectContextTab = 'overview' | 'process' | 'documents' | 'activity';
+export type ProjectContextTab = 'overview' | 'process' | 'commercial' | 'documents' | 'activity';
 
 interface ProjectContextNavigationProps {
   activeTab: ProjectContextTab;
@@ -24,6 +24,7 @@ export const ProjectContextNavigation: React.FC<ProjectContextNavigationProps> =
   }[] = [
     { id: 'overview', label: 'نمای کلی و کاک‌پیت', icon: LayoutDashboard },
     { id: 'process', label: 'فرایند و چرخه عمر', icon: GitFork },
+    { id: 'commercial', label: 'تأمین و قراردادها', icon: ShoppingBag },
     { id: 'documents', label: 'اسناد پروژه', icon: FolderKanban, badge: documentCount },
     { id: 'activity', label: 'فعالیت‌ها و رویدادها', icon: History, badge: activityCount },
   ];

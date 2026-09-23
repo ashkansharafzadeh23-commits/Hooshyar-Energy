@@ -313,12 +313,23 @@ async function runTestSuite() {
     assert(fs.existsSync(expFilePath), 'SolarAnalysisExperience.tsx exists');
     const expContent = fs.readFileSync(expFilePath, 'utf-8');
 
-    // 1. No silent input defaults in state
+    // 1. No silent input defaults in state or automatic 70% calculations
     assert(!expContent.includes("state.province || 'تهران'"), 'Point 1: No silent Tehran province default');
     assert(!expContent.includes("state.city || 'تهران'"), 'Point 1: No silent Tehran city default');
     assert(!expContent.includes('state.monthlyKwh : 350'), 'Point 1: No silent 350 kWh consumption default');
     assert(!expContent.includes('state.area > 0 ? state.area : 100'), 'Point 1: No silent 100 m2 area default');
     assert(!expContent.includes('state.usableArea > 0 ? state.usableArea : 70'), 'Point 1: No silent 70 m2 usable area default');
+
+    // Usable Area Data-Truth: No automatic 70% formula
+    const siteDetailsPath = path.resolve(process.cwd(), 'src/components/analysis/SiteDetailsStep.tsx');
+    assert(fs.existsSync(siteDetailsPath), 'SiteDetailsStep.tsx exists');
+    const siteDetailsContent = fs.readFileSync(siteDetailsPath, 'utf-8');
+    assert(!siteDetailsContent.includes('Math.round(num * 0.7)'), 'SiteDetailsStep does not calculate Math.round(num * 0.7)');
+    assert(!siteDetailsContent.includes('Math.round(area * 0.7)'), 'SiteDetailsStep does not calculate Math.round(area * 0.7)');
+    assert(!siteDetailsContent.includes('۷۰٪'), 'SiteDetailsStep does not suggest 70% in text');
+    assert(!expContent.includes('Math.round(area * 0.7)'), 'SolarAnalysisExperience does not calculate Math.round(area * 0.7)');
+    assert(!expContent.includes('Math.round(num * 0.7)'), 'SolarAnalysisExperience does not calculate Math.round(num * 0.7)');
+    assert(!expContent.includes('calculatedUsable'), 'SolarAnalysisExperience does not compute calculatedUsable');
 
     // 2. No processing theater
     assert(!expContent.includes('setTimeout'), 'Point 7: No artificial delay loops (processing theater) in executeAnalysis');

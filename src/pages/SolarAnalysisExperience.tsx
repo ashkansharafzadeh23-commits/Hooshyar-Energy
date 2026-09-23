@@ -105,7 +105,7 @@ export default function SolarAnalysisExperience() {
     setProgressStage('VALIDATING_INPUTS');
     setErrorMessage(null);
 
-    const calculatedUsable = usableArea && usableArea > 0 ? usableArea : Math.round(area * 0.7);
+    const finalUsableArea = usableArea && usableArea > 0 ? usableArea : undefined;
 
     // Sync state with AppContext
     updateState({
@@ -115,7 +115,7 @@ export default function SolarAnalysisExperience() {
       city,
       monthlyKwh,
       area,
-      usableArea: calculatedUsable,
+      usableArea: finalUsableArea,
       gridConnected,
       gridStable
     });
@@ -128,7 +128,7 @@ export default function SolarAnalysisExperience() {
       monthlyKwh,
       actualMonthlyKwh: monthlyKwh,
       area,
-      usableArea: calculatedUsable,
+      usableArea: finalUsableArea,
       gridConnected,
       gridStable,
       goal

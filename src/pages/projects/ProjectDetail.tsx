@@ -10,6 +10,7 @@ import {
   ProjectDocumentCenter, 
   ProjectActivityTimeline 
 } from '../../components/projects';
+import { CommercialWorkspace } from '../../components/procurement';
 import { Loader2 } from 'lucide-react';
 
 export default function ProjectDetail() {
@@ -30,6 +31,7 @@ export default function ProjectDetail() {
     navTab: ProjectContextTab;
     processTab?: string;
   } => {
+    if (paramTab === 'commercial') return { navTab: 'commercial' };
     if (paramTab === 'documents') return { navTab: 'documents' };
     if (paramTab === 'activity') return { navTab: 'activity' };
     if (paramTab === 'process') return { navTab: 'process' };
@@ -96,7 +98,7 @@ export default function ProjectDetail() {
   };
 
   const handleNavigateFromChild = (targetTab: string, targetCap?: string) => {
-    if (targetTab === 'overview' || targetTab === 'documents' || targetTab === 'activity') {
+    if (targetTab === 'overview' || targetTab === 'commercial' || targetTab === 'documents' || targetTab === 'activity') {
       handleTabChange(targetTab as ProjectContextTab);
       return;
     }
@@ -145,7 +147,7 @@ export default function ProjectDetail() {
         refreshing={refreshing}
       />
 
-      {/* 2. Unified 4-Tab Project Context Navigation (Replaces 17-tab sprawl) */}
+      {/* 2. Unified Project Context Navigation */}
       <ProjectContextNavigation
         activeTab={activeTab}
         onChangeTab={handleTabChange}
@@ -169,6 +171,14 @@ export default function ProjectDetail() {
             initialCapability={processTargetCap}
             onProjectUpdate={() => fetchProject(true)}
             onSelectTab={handleNavigateFromChild}
+          />
+        )}
+
+        {activeTab === 'commercial' && (
+          <CommercialWorkspace
+            project={project}
+            onProjectUpdate={() => fetchProject(true)}
+            onNavigateTab={handleNavigateFromChild}
           />
         )}
 

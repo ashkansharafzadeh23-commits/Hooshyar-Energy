@@ -155,7 +155,7 @@ export const SiteDetailsStep: React.FC<SiteDetailsStepProps> = ({
           </div>
         </div>
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          فضای مفید به طور تقریبی ۷۰٪ در نظر گرفته می‌شود تا سایه‌اندازی و حریم عبور رعایت گردد.
+          مساحت مفید قابل نصب را در صورت اطلاع وارد کنید. این مقدار می‌تواند به دلیل سایه، مسیر دسترسی، فاصله‌ها و موانع از مساحت کل کمتر باشد.
         </p>
       </div>
 

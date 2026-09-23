@@ -19,6 +19,7 @@ import { FinancingTab } from '../../pages/projects/Workspace/FinancingTab';
 import { InvestmentTab } from '../../pages/projects/Workspace/InvestmentTab';
 import RFQTab from '../../pages/projects/Workspace/RFQTab';
 import BidsTab from '../../pages/projects/Workspace/BidsTab';
+import { CommercialWorkspace } from '../procurement';
 import { 
   Layers, 
   FileText, 
@@ -95,18 +96,17 @@ export const ProjectProcess: React.FC<ProjectProcessProps> = ({
       // Phase 2
       case 'rfq':
         return (
-          <RFQTab
-            projectId={project.id}
+          <CommercialWorkspace
             project={project}
-            onNavigateToBids={() => setSelectedCapabilityId('bids')}
+            initialStage="epc"
             onProjectUpdate={onProjectUpdate}
           />
         );
       case 'bids':
         return (
-          <BidsTab
-            projectId={project.id}
+          <CommercialWorkspace
             project={project}
+            initialStage="epc"
             onProjectUpdate={onProjectUpdate}
           />
         );
@@ -119,7 +119,13 @@ export const ProjectProcess: React.FC<ProjectProcessProps> = ({
       case 'investment':
         return <InvestmentTab project={project} />;
       case 'procurement':
-        return <ProcurementTab projectId={project.id} />;
+        return (
+          <CommercialWorkspace
+            project={project}
+            initialStage="equipment"
+            onProjectUpdate={onProjectUpdate}
+          />
+        );
 
       // Phase 4
       case 'milestones':
