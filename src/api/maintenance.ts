@@ -463,6 +463,26 @@ maintenanceRouter.post('/assets/:assetId/maintenance', (req: Request, res: Respo
 });
 
 /**
+ * GET /api/technician/cases
+ * Retrieve maintenance cases for technician workspace
+ */
+maintenanceRouter.get('/technician/cases', (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const userRole = req.user?.role?.toLowerCase() || '';
+  const allCases = maintenanceRepository.getAllCases();
+
+  if (['admin', 'manager', 'developer'].includes(userRole)) {
+    return res.json(allCases);
+  }
+
+  // Filter cases assigned to the current technician or reported cases awaiting assignment
+  const relevantCases = allCases.filter(
+    (c) => c.assignedTechnicianId === userId || (!c.assignedTechnicianId && c.status === 'REPORTED')
+  );
+  return res.json(relevantCases);
+});
+
+/**
  * GET /api/maintenance/:maintenanceCaseId
  * Retrieve single maintenance case with actions, history, and diagnosis
  */

@@ -1,273 +1,657 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  UserCircle, Wallet, Calendar, Star, CheckCircle, Clock, MapPin, 
-  Phone, ArrowLeft, LogOut, Activity, Briefcase
+  UserCircle, 
+  Wallet, 
+  Calendar, 
+  CheckCircle2, 
+  Clock, 
+  MapPin, 
+  Phone, 
+  ArrowLeft, 
+  LogOut, 
+  Activity, 
+  Briefcase,
+  Wrench,
+  Play,
+  Check,
+  Send,
+  Plus,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AdBanner } from '../../components/AdBanner';
-
-const mockRequests = [
-  { id: 1, customer: 'شرکت آریان مهر', type: 'نصب پنل خورشیدی ۱۰ کیلووات', date: '۱۴۰۳/۰۸/۱۵', time: '۰۹:۰۰ صبح', address: 'تهران، شهرک صنعتی شمس آباد', status: 'pending', price: 'توافقی' },
-  { id: 2, customer: 'آقای رضایی', type: 'تعمیر و سرویس موتور برق دیزلی', date: '۱۴۰۳/۰۸/۱۶', time: '۱۴:۳۰', address: 'کرج، مهرشهر', status: 'accepted', price: '۱,۵۰۰,۰۰۰ تومان' },
-  { id: 3, customer: 'مجتمع مسکونی گلستان', type: 'تعویض باتری‌های یو‌پی‌اس', date: '۱۴۰۳/۰۸/۱۸', time: '۱۰:۰۰ صبح', address: 'تهران، نیاوران', status: 'completed', price: '۳,۲۰۰,۰۰۰ تومان' },
-];
+import { MaintenanceCase, MaintenanceStatus } from '../../types/maintenance';
+import { 
+  formatCurrencyIRR, 
+  formatPersianNumber, 
+  toPersianDigits 
+} from '../../utils/formatters';
+import { formatPersianDateTime } from '../../components/operations/DataFreshnessIndicator';
+import { 
+  getMaintenancePriorityConfig, 
+  getMaintenanceStatusLabel, 
+  getMaintenanceCategoryLabel 
+} from '../../components/operations/MaintenanceCaseCard';
 
 export default function TechnicianDashboard() {
-  const [activeTab, setActiveTab] = useState('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'in_progress' | 'history' | 'profile'>('requests');
+  const [cases, setCases] = useState<MaintenanceCase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // User info from token or localStorage
+  const [userProfile, setUserProfile] = useState<{ id?: string; name?: string; role?: string; email?: string }>({});
+
+  // Action states
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [selectedCaseForAction, setSelectedCaseForAction] = useState<MaintenanceCase | null>(null);
+  const [actionType, setActionType] = useState('REPAIR');
+  const [actionDesc, setActionDesc] = useState('');
+  const [actionParts, setActionParts] = useState('');
+  const [actionHours, setActionHours] = useState('');
+
+  // Submit completion states
+  const [selectedCaseForSubmit, setSelectedCaseForSubmit] = useState<MaintenanceCase | null>(null);
+  const [resolutionSummary, setResolutionSummary] = useState('');
+  const [partsCost, setPartsCost] = useState('');
+  const [laborCost, setLaborCost] = useState('');
+
+  const getAuthHeaders = useCallback((): HeadersInit => {
+    const token = localStorage.getItem('token') || '';
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    };
+  }, []);
+
+  const fetchCases = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const headers = getAuthHeaders();
+
+      // Read current user
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          setUserProfile(JSON.parse(storedUser));
+        } catch {
+          // Ignore parse error
+        }
+      }
+
+      const res = await fetch('/api/technician/cases', { headers });
+      if (!res.ok) {
+        throw new Error('خطا در دریافت پرونده‌های تعمیراتی تکنسین.');
+      }
+      const data = await res.json();
+      setCases(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error('Failed to load technician cases:', err);
+      setError(err?.message || 'خطا در بارگذاری اطلاعات.');
+    } finally {
+      setLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    fetchCases();
+  }, [fetchCases]);
+
+  // Operational Actions
+  const handleAccept = async (caseId: string) => {
+    try {
+      setActionLoadingId(caseId);
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/maintenance/${caseId}/accept`, {
+        method: 'POST',
+        headers,
+      });
+      if (res.ok) {
+        await fetchCases();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleStart = async (caseId: string) => {
+    try {
+      setActionLoadingId(caseId);
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/maintenance/${caseId}/start`, {
+        method: 'POST',
+        headers,
+      });
+      if (res.ok) {
+        await fetchCases();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleLogActionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCaseForAction) return;
+    try {
+      setActionLoadingId(selectedCaseForAction.id);
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/maintenance/${selectedCaseForAction.id}/actions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          actionType,
+          description: actionDesc,
+          partsReplaced: actionParts ? actionParts.split(',').map(p => p.trim()) : undefined,
+          laborHours: actionHours ? parseFloat(actionHours) : undefined,
+        }),
+      });
+      if (res.ok) {
+        setSelectedCaseForAction(null);
+        setActionDesc('');
+        setActionParts('');
+        setActionHours('');
+        await fetchCases();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleSubmitVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCaseForSubmit) return;
+    try {
+      setActionLoadingId(selectedCaseForSubmit.id);
+      const headers = getAuthHeaders();
+      const res = await fetch(`/api/maintenance/${selectedCaseForSubmit.id}/submit-verification`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          resolutionSummary,
+          partsCost: partsCost ? parseFloat(partsCost) : undefined,
+          laborCost: laborCost ? parseFloat(laborCost) : undefined,
+        }),
+      });
+      if (res.ok) {
+        setSelectedCaseForSubmit(null);
+        setResolutionSummary('');
+        setPartsCost('');
+        setLaborCost('');
+        await fetchCases();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Factual filterings
+  const newRequests = cases.filter(c => ['REPORTED', 'ASSIGNED'].includes(c.status));
+  const inProgressCases = cases.filter(c => ['ACCEPTED', 'SCHEDULED', 'IN_PROGRESS', 'WAITING_PARTS'].includes(c.status));
+  const completedCases = cases.filter(c => ['COMPLETED', 'SUBMITTED_FOR_VERIFICATION', 'VERIFIED', 'CLOSED'].includes(c.status));
+
+  // Compute recorded earnings ONLY from actual cases where laborCost is recorded
+  const recordedEarnings = cases
+    .filter(c => ['COMPLETED', 'VERIFIED', 'CLOSED'].includes(c.status))
+    .reduce((sum, c) => sum + (typeof c.laborCost === 'number' ? c.laborCost : 0), 0);
+  const hasRecordedEarnings = recordedEarnings > 0;
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] font-Vazirmatn pb-24">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-Vazirmatn pb-24 text-right" dir="rtl">
       {/* Header */}
-      <header className="bg-green-600 text-white sticky top-0 z-40 shadow-md">
+      <header className="bg-emerald-600 text-white sticky top-0 z-40 shadow-md">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-              <UserCircle size={24} />
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-xs">
+              <UserCircle className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="font-bold text-sm sm:text-base">پنل کارشناسان و تعمیرکاران</h1>
-              <p className="text-[10px] sm:text-xs text-green-100 font-medium">خوش آمدید، مهندس احمدی</p>
+              <h1 className="font-bold text-sm sm:text-base">میز کار تکنسین‌ها و خدمات فنی O&M</h1>
+              <p className="text-[10px] sm:text-xs text-emerald-100 font-medium">
+                {userProfile.name ? `کاربر: ${userProfile.name}` : 'پنل مدیریت دستورکارهای تعمیراتی'}
+              </p>
             </div>
           </div>
-          <Link to="/" className="text-white/80 hover:text-white flex items-center gap-1 text-sm font-medium transition-colors">
-            خروج
-            <LogOut size={18} />
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={fetchCases}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+              title="به‌روزرسانی"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <Link to="/" className="text-white/80 hover:text-white flex items-center gap-1 text-sm font-medium transition-colors mr-2">
+              خروج
+              <LogOut className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-        
-        {/* Stats Summary */}
+        {/* Real Stats Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm flex flex-col gap-2">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Wallet size={20} />
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col gap-2">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 flex items-center justify-center">
+              <Wallet className="w-5 h-5" />
             </div>
-            <div className="text-xs text-gray-500 font-bold mt-2">درآمد این ماه</div>
-            <div className="text-lg sm:text-xl font-black text-gray-900">۱۲,۵۰۰,۰۰۰ <span className="text-xs font-normal text-gray-500">تومان</span></div>
-          </div>
-          
-          <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm flex flex-col gap-2">
-            <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-              <Clock size={20} />
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-2">دستمزد ثبت‌شده</div>
+            <div className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+              {hasRecordedEarnings ? formatCurrencyIRR(recordedEarnings) : 'ثبت نشده است'}
             </div>
-            <div className="text-xs text-gray-500 font-bold mt-2">درخواست‌های فعال</div>
-            <div className="text-lg sm:text-xl font-black text-gray-900">۳ <span className="text-xs font-normal text-gray-500">مورد</span></div>
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm flex flex-col gap-2">
-            <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
-              <CheckCircle size={20} />
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col gap-2">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300 flex items-center justify-center">
+              <Clock className="w-5 h-5" />
             </div>
-            <div className="text-xs text-gray-500 font-bold mt-2">کارهای انجام شده</div>
-            <div className="text-lg sm:text-xl font-black text-gray-900">۴۸ <span className="text-xs font-normal text-gray-500">مورد</span></div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-2">درخواست‌های جدید</div>
+            <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+              {toPersianDigits(newRequests.length)} <span className="text-xs font-normal text-slate-500">مورد</span>
+            </div>
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm flex flex-col gap-2">
-            <div className="w-10 h-10 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center">
-              <Star size={20} />
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col gap-2">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300 flex items-center justify-center">
+              <Activity className="w-5 h-5" />
             </div>
-            <div className="text-xs text-gray-500 font-bold mt-2">امتیاز مشتریان</div>
-            <div className="text-lg sm:text-xl font-black text-gray-900">۴.۸ <span className="text-xs font-normal text-gray-500">از ۵</span></div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-2">در دست اقدام</div>
+            <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+              {toPersianDigits(inProgressCases.length)} <span className="text-xs font-normal text-slate-500">مورد</span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col gap-2">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-2">پرونده‌های تکمیل‌شده</div>
+            <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+              {toPersianDigits(completedCases.length)} <span className="text-xs font-normal text-slate-500">مورد</span>
+            </div>
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          
-          {activeTab === 'profile' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8">
-              <h2 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-2">
-                <UserCircle className="text-green-600" size={28} />
-                ویرایش اطلاعات و بارگذاری مدارک
-              </h2>
-              <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); alert('اطلاعات با موفقیت ذخیره شد'); }}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">نام و نام خانوادگی</label>
-                    <input type="text" defaultValue="مهندس احمدی" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">تخصص اصلی</label>
-                    <input type="text" defaultValue="متخصص سیستم‌های خورشیدی" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">شماره تماس</label>
-                    <input type="text" defaultValue="09123456789" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">شهر و منطقه فعالیت</label>
-                    <input type="text" defaultValue="تهران، البرز" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all" />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-gray-700 mb-2">درباره من (بیوگرافی)</label>
-                    <textarea rows={3} defaultValue="متخصص در راه‌اندازی و اورهال سیستم‌های آف‌گرید با ۱۰ سال سابقه فعالیت در پروژه‌های صنعتی." className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all resize-none"></textarea>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-gray-700 mb-2">بارگذاری مدارک جدید (رزومه، گواهینامه، نمونه کار)</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-500 transition-colors cursor-pointer bg-gray-50/50">
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setActiveTab('requests')}
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'requests'
+                ? 'bg-amber-500 text-slate-950 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <span>درخواست‌های جدید ({toPersianDigits(newRequests.length)})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('in_progress')}
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'in_progress'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <span>عملیات در حال اجرا ({toPersianDigits(inProgressCases.length)})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'history'
+                ? 'bg-slate-900 text-white dark:bg-slate-800 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <span>سوابق و کارهای پایان‌یافته ({toPersianDigits(completedCases.length)})</span>
+          </button>
+        </div>
+
+        {/* Tab 1: New Requests */}
+        {activeTab === 'requests' && (
+          <div className="space-y-4">
+            {newRequests.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-3xl p-12 text-center">
+                <Briefcase className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  درخواست جدیدی ثبت نشده است
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  کلیه درخواست‌های ارجاع‌شده بررسی شده‌اند یا درخواست معوقه‌ای وجود ندارد.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {newRequests.map((c) => {
+                  const prio = getMaintenancePriorityConfig(c.priority);
+                  const status = getMaintenanceStatusLabel(c.status);
+
+                  return (
+                    <div key={c.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[11px] font-mono text-slate-400">{c.maintenanceCode || ''}</span>
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${prio.className}`}>{prio.label}</span>
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${status.className}`}>{status.label}</span>
+                          </div>
+                          <h4 className="font-bold text-slate-900 dark:text-white text-base">{c.title}</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{c.description}</p>
+                        </div>
                       </div>
-                      <p className="text-sm font-bold text-gray-700 mb-1">فایل‌های خود را اینجا رها کنید یا کلیک کنید</p>
-                      <p className="text-xs text-gray-500">PDF, JPG, PNG (حداکثر ۵ مگابایت)</p>
+
+                      <div className="text-xs text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <span>دسته‌بندی: {getMaintenanceCategoryLabel(c.category)}</span>
+                        <span>{formatPersianDateTime(c.createdAt || c.reportedAt)}</span>
+                      </div>
+
+                      <div className="pt-2 flex items-center gap-2">
+                        {c.status === 'ASSIGNED' && (
+                          <button
+                            type="button"
+                            disabled={actionLoadingId === c.id}
+                            onClick={() => handleAccept(c.id)}
+                            className="min-h-[44px] flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>قبول و پذیرش دستور کار</span>
+                          </button>
+                        )}
+                        <Link
+                          to={`/solar-assets/${c.assetId}?tab=operations`}
+                          className="min-h-[44px] px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center"
+                        >
+                          مشاهده دارایی
+                        </Link>
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: In Progress Cases */}
+        {activeTab === 'in_progress' && (
+          <div className="space-y-4">
+            {inProgressCases.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-3xl p-12 text-center">
+                <Wrench className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  هیچ پرونده‌ای در حال حاضر در دست اقدام نیست
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  پس از پذیرش دستور کارها، عملیات اجرایی در این بخش نمایش می‌یابد.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {inProgressCases.map((c) => {
+                  const prio = getMaintenancePriorityConfig(c.priority);
+                  const status = getMaintenanceStatusLabel(c.status);
+
+                  return (
+                    <div key={c.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[11px] font-mono text-slate-400">{c.maintenanceCode || ''}</span>
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${prio.className}`}>{prio.label}</span>
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${status.className}`}>{status.label}</span>
+                          </div>
+                          <h4 className="font-bold text-slate-900 dark:text-white text-base">{c.title}</h4>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{c.description}</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex flex-wrap items-center gap-2">
+                        {(c.status === 'ACCEPTED' || c.status === 'SCHEDULED') && (
+                          <button
+                            type="button"
+                            disabled={actionLoadingId === c.id}
+                            onClick={() => handleStart(c.id)}
+                            className="min-h-[44px] flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Play className="w-4 h-4" />
+                            <span>شروع عملیات تعمیراتی</span>
+                          </button>
+                        )}
+
+                        {c.status === 'IN_PROGRESS' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedCaseForAction(c)}
+                              className="min-h-[44px] flex-1 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>ثبت اقدام / قطعه</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedCaseForSubmit(c)}
+                              className="min-h-[44px] flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <Send className="w-4 h-4" />
+                              <span>ثبت اتمام کار</span>
+                            </button>
+                          </>
+                        )}
+
+                        <Link
+                          to={`/solar-assets/${c.assetId}?tab=operations`}
+                          className="min-h-[44px] px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center"
+                        >
+                          عملیات دارایی
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 3: History */}
+        {activeTab === 'history' && (
+          <div className="space-y-4">
+            {completedCases.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-300 dark:border-slate-800 rounded-3xl p-12 text-center">
+                <CheckCircle2 className="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  سابقه پرونده‌های خاتمه‌یافته خالی است
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  پرونده‌هایی که تکمیل و راستی‌آزمایی می‌شوند در این بخش بایگانی می‌گردند.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {completedCases.map((c) => {
+                  const status = getMaintenanceStatusLabel(c.status);
+                  const hasCost = typeof c.totalCost === 'number' && !isNaN(c.totalCost);
+
+                  return (
+                    <div key={c.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-mono text-slate-400">{c.maintenanceCode || ''}</span>
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${status.className}`}>{status.label}</span>
+                      </div>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-base">{c.title}</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400">{c.resolutionSummary || 'نتیجه تعمیر ثبت نشده است'}</p>
+                      
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 flex items-center justify-between">
+                        <span>هزینه نهایی: <strong className="text-slate-700 dark:text-slate-200">{hasCost ? formatCurrencyIRR(c.totalCost) : 'هزینه ثبت نشده است'}</strong></span>
+                        <span>{formatPersianDateTime(c.completedAt || c.updatedAt || c.createdAt)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Modal: Log Action */}
+        {selectedCaseForAction && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl space-y-4">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                ثبت اقدام فنی برای پرونده: {selectedCaseForAction.title}
+              </h3>
+
+              <form onSubmit={handleLogActionSubmit} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold mb-1">نوع اقدام:</label>
+                  <select
+                    value={actionType}
+                    onChange={(e) => setActionType(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  >
+                    <option value="REPAIR">تعمیر قطعه</option>
+                    <option value="REPLACE">تعویض قطعه</option>
+                    <option value="CLEANING">شستشو و تنظیف</option>
+                    <option value="CALIBRATION">کالیبراسیون و تنظیم</option>
+                    <option value="INSPECTION">بازرسی فنی</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1">شرح جزئیات اقدام:</label>
+                  <textarea
+                    required
+                    rows={2}
+                    value={actionDesc}
+                    onChange={(e) => setActionDesc(e.target.value)}
+                    placeholder="شرح عملیات انجام‌شده..."
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold mb-1">ساعت کارکرد:</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={actionHours}
+                      onChange={(e) => setActionHours(e.target.value)}
+                      placeholder="اختیاری"
+                      className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold mb-1">قطعات تعویضی:</label>
+                    <input
+                      type="text"
+                      value={actionParts}
+                      onChange={(e) => setActionParts(e.target.value)}
+                      placeholder="اختیاری"
+                      className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
                   </div>
                 </div>
-                <div className="pt-4 border-t border-gray-100 flex gap-4">
-                  <button type="submit" className="bg-green-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-green-700 transition-colors text-sm">
-                    ذخیره تغییرات
-                  </button>
-                  <button type="button" onClick={() => setActiveTab('requests')} className="bg-gray-100 text-gray-700 px-8 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors text-sm">
+
+                <div className="flex items-center justify-end gap-2 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCaseForAction(null)}
+                    className="min-h-[44px] px-4 py-2 text-xs text-slate-500"
+                  >
                     انصراف
+                  </button>
+                  <button
+                    type="submit"
+                    className="min-h-[44px] px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950"
+                  >
+                    ثبت اقدام
                   </button>
                 </div>
               </form>
-            </motion.div>
-          )}
-          
-          {activeTab !== 'profile' && (<div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-gray-100 flex items-center gap-4">
-                <button 
-                  onClick={() => setActiveTab('requests')}
-                  className={`pb-2 px-1 border-b-2 font-bold text-sm transition-colors ${activeTab === 'requests' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                  درخواست‌های جدید و فعال
-                </button>
-                <button 
-                  onClick={() => setActiveTab('history')}
-                  className={`pb-2 px-1 border-b-2 font-bold text-sm transition-colors ${activeTab === 'history' ? 'border-green-600 text-green-700' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
-                >
-                  تاریخچه کارها
-                </button>
-              </div>
-              
-              <div className="p-5 flex flex-col gap-4">
-                {mockRequests.filter(r => activeTab === 'requests' ? r.status !== 'completed' : r.status === 'completed').map(request => (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    key={request.id} 
-                    className="border border-gray-100 rounded-2xl p-4 sm:p-5 hover:border-green-300 transition-colors bg-gray-50/50"
-                  >
-                    <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          {request.status === 'pending' && <span className="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"><Clock size={12}/> در انتظار تایید</span>}
-                          {request.status === 'accepted' && <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"><Activity size={12}/> در حال انجام</span>}
-                          {request.status === 'completed' && <span className="bg-green-100 text-green-700 px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1"><CheckCircle size={12}/> پایان یافته</span>}
-                        </div>
-                        <h3 className="font-black text-gray-900 text-lg mb-1">{request.type}</h3>
-                        <p className="text-sm font-bold text-gray-600 flex items-center gap-1">
-                          <UserCircle size={16} /> {request.customer}
-                        </p>
-                      </div>
-                      <div className="text-right flex flex-col sm:items-end justify-center">
-                        <div className="text-xl font-black text-green-700">{request.price}</div>
-                        <div className="text-xs text-gray-500 mt-1">برآورد هزینه</div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-4 rounded-xl border border-gray-100 mb-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <Calendar size={16} className="text-gray-400" />
-                        <span className="font-medium">تاریخ: {request.date} - {request.time}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <MapPin size={16} className="text-gray-400 shrink-0" />
-                        <span className="font-medium truncate">{request.address}</span>
-                      </div>
-                    </div>
-                    
-                    {activeTab === 'requests' && (
-                      <div className="flex items-center gap-3">
-                        {request.status === 'pending' && (
-                          <>
-                            <button className="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl hover:bg-green-700 transition-colors text-sm">
-                              قبول درخواست
-                            </button>
-                            <button className="flex-1 bg-red-50 text-red-600 font-bold py-2.5 rounded-xl hover:bg-red-100 transition-colors text-sm">
-                              رد درخواست
-                            </button>
-                          </>
-                        )}
-                        {request.status === 'accepted' && (
-                          <>
-                            <button className="flex-1 bg-gray-900 text-white font-bold py-2.5 rounded-xl hover:bg-gray-800 transition-colors text-sm flex items-center justify-center gap-2">
-                              <MapPin size={16} />
-                              مسیریابی به محل
-                            </button>
-                            <button className="flex-1 bg-blue-50 text-blue-600 font-bold py-2.5 rounded-xl hover:bg-blue-100 transition-colors text-sm flex items-center justify-center gap-2">
-                              <Phone size={16} />
-                              تماس با مشتری
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-                
-                {mockRequests.filter(r => activeTab === 'requests' ? r.status !== 'completed' : r.status === 'completed').length === 0 && (
-                  <div className="text-center py-12">
-                    <Briefcase size={48} className="mx-auto text-gray-300 mb-4" />
-                    <h3 className="text-lg font-bold text-gray-700 mb-1">موردی یافت نشد</h3>
-                    <p className="text-sm text-gray-500">در حال حاضر در این بخش موردی وجود ندارد.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Submit Verification */}
+        {selectedCaseForSubmit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl space-y-4">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                ثبت اتمام عملیات و ارسال جهت بررسی کارفرما
+              </h3>
+
+              <form onSubmit={handleSubmitVerification} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold mb-1">خلاصه اقدامات انجام‌شده و نتیجه:</label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={resolutionSummary}
+                    onChange={(e) => setResolutionSummary(e.target.value)}
+                    placeholder="شرح چگونگی رفع عیب و نتیجه آزمون..."
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold mb-1">دستمزد (تومان):</label>
+                    <input
+                      type="number"
+                      value={laborCost}
+                      onChange={(e) => setLaborCost(e.target.value)}
+                      placeholder="اختیاری"
+                      className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-          )}
-          
-          <div className="space-y-6">
-            <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-bl-full -z-0"></div>
-              <div className="relative z-10">
-                <h3 className="font-black text-gray-900 text-lg mb-4 flex items-center gap-2">
-                  <Activity className="text-green-600" />
-                  وضعیت فعالیت شما
-                </h3>
-                
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-gray-700">دریافت درخواست جدید</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                  </label>
+                  <div>
+                    <label className="block font-semibold mb-1">هزینه قطعات (تومان):</label>
+                    <input
+                      type="number"
+                      value={partsCost}
+                      onChange={(e) => setPartsCost(e.target.value)}
+                      placeholder="اختیاری"
+                      className="w-full p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mb-6 leading-relaxed">
-                  با روشن بودن این گزینه، مشتریان می‌توانند برای شما درخواست بازدید ارسال کنند.
-                </p>
-                
-                <div className="space-y-4 pt-4 border-t border-gray-100">
-                  <button onClick={() => setActiveTab('profile')} className="w-full text-right flex items-center justify-between group">
-                    <span className="text-sm font-bold text-gray-700 group-hover:text-green-600 transition-colors">ویرایش پروفایل و تخصص‌ها</span>
-                    <ArrowLeft size={16} className="text-gray-400 group-hover:text-green-600 transition-colors" />
+
+                <div className="flex items-center justify-end gap-2 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCaseForSubmit(null)}
+                    className="min-h-[44px] px-4 py-2 text-xs text-slate-500"
+                  >
+                    انصراف
                   </button>
-                  <button onClick={() => setActiveTab('profile')} className="w-full text-right flex items-center justify-between group">
-                    <span className="text-sm font-bold text-gray-700 group-hover:text-green-600 transition-colors">تنظیم ساعات کاری</span>
-                    <ArrowLeft size={16} className="text-gray-400 group-hover:text-green-600 transition-colors" />
-                  </button>
-                  <button onClick={() => setActiveTab('profile')} className="w-full text-right flex items-center justify-between group">
-                    <span className="text-sm font-bold text-gray-700 group-hover:text-green-600 transition-colors">کیف پول و تسویه حساب</span>
-                    <ArrowLeft size={16} className="text-gray-400 group-hover:text-green-600 transition-colors" />
+                  <button
+                    type="submit"
+                    className="min-h-[44px] px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 text-white"
+                  >
+                    تأیید و ارسال گزارش
                   </button>
                 </div>
-              </div>
-            </div>
-            <div className="mt-6">
-              <AdBanner layout="sidebar" />
+              </form>
             </div>
           </div>
-          
-        </div>
+        )}
       </main>
     </div>
   );
