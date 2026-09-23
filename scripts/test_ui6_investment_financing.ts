@@ -143,6 +143,8 @@ assert(!appFlowContent.includes('* 1.5'), 'FinancingApplicationFlow removed inve
 assert(appFlowContent.includes('وثیقه در دسترس است'), 'FinancingApplicationFlow includes explicit option for available collateral');
 assert(appFlowContent.includes('وثیقه در دسترس نیست'), 'FinancingApplicationFlow includes explicit option for unavailable collateral');
 assert(appFlowContent.includes('هنوز مشخص نشده'), 'FinancingApplicationFlow includes explicit option for unknown collateral');
+assert(!appFlowContent.includes('۲۰٪ تا ۳۰٪') && !appFlowContent.includes('20%') && !appFlowContent.includes('30%'), 'FinancingApplicationFlow removed unsupported 20%-30% equity assumption');
+assert(appFlowContent.includes('میزان آورده موردنظر خود را وارد کنید. شرایط نهایی بر اساس ضوابط شریک تأمین مالی تعیین می‌شود.'), 'FinancingApplicationFlow contains neutral equity copy');
 
 // 4.2 Strict audit of FinancingNeedSummary.tsx
 const needSummaryPath = path.join(financingDir, 'FinancingNeedSummary.tsx');
