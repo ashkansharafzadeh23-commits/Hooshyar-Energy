@@ -51,7 +51,7 @@ export const TechnicianAssignmentReview: React.FC<TechnicianAssignmentReviewProp
           <div className="flex items-center justify-between">
             <span className="text-xs text-slate-500 dark:text-slate-400">تکنسین منتخب:</span>
             <strong className="text-sm font-bold text-slate-900 dark:text-white">
-              {match.technicianName}
+              {match.fullName || (match as any).technicianName}
             </strong>
           </div>
           {match.phone && (

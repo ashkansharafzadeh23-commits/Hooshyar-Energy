@@ -40,7 +40,7 @@ export const TechnicianMatchCard: React.FC<TechnicianMatchCardProps> = ({
 
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-              {match.technicianName}
+              {match.fullName || (match as any).technicianName}
             </h4>
 
             {match.phone && (

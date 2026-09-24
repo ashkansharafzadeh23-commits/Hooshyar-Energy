@@ -165,7 +165,7 @@ async function migrate() {
   }
 
   // Generate Report
-  const reportPath = path.join(process.cwd(), 'docs', 'POSTGRES_MIGRATION_REPORT.md');
+  const reportPath = process.env.MIGRATION_REPORT_PATH || path.join(process.cwd(), 'docs', 'POSTGRES_MIGRATION_REPORT.md');
   const reportContent = `# POSTGRESQL MIGRATION REPORT
   
 ## Summary

@@ -244,9 +244,9 @@ export const MaintenanceCaseDetails: React.FC<MaintenanceCaseDetailsProps> = ({
                 </span>
                 <div className="text-xs text-emerald-800 dark:text-emerald-300">
                   وضعیت سنجش: <strong className="font-bold">{maintenanceCase.postMaintenanceCheck.status}</strong>
-                  {typeof maintenanceCase.postMaintenanceCheck.preGeneration === 'number' && typeof maintenanceCase.postMaintenanceCheck.postGeneration === 'number' && (
+                  {typeof maintenanceCase.postMaintenanceCheck.preGenerationKwh === 'number' && typeof maintenanceCase.postMaintenanceCheck.postGenerationKwh === 'number' && (
                     <span className="mr-2">
-                      (تولید پیشین: {formatPersianNumber(maintenanceCase.postMaintenanceCheck.preGeneration, 1)} kW • تولید پسین: {formatPersianNumber(maintenanceCase.postMaintenanceCheck.postGeneration, 1)} kW)
+                      (تولید پیشین: {formatPersianNumber(maintenanceCase.postMaintenanceCheck.preGenerationKwh, 1)} kWh • تولید پسین: {formatPersianNumber(maintenanceCase.postMaintenanceCheck.postGenerationKwh, 1)} kWh)
                     </span>
                   )}
                 </div>
@@ -255,13 +255,13 @@ export const MaintenanceCaseDetails: React.FC<MaintenanceCaseDetailsProps> = ({
           </div>
 
           {/* Logged Actions */}
-          {maintenanceCase.actions && maintenanceCase.actions.length > 0 && (
+          {((maintenanceCase as any).actions ?? maintenanceCase.actionsTaken) && ((maintenanceCase as any).actions ?? maintenanceCase.actionsTaken).length > 0 && (
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 اقدامات و گزارش‌های میدانی تکنسین:
               </h4>
               <div className="space-y-2">
-                {maintenanceCase.actions.map((act, idx) => (
+                {(((maintenanceCase as any).actions ?? maintenanceCase.actionsTaken) as any[]).map((act, idx) => (
                   <div key={idx} className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-slate-800 dark:text-slate-200">{act.actionType}</span>
@@ -319,7 +319,7 @@ export const MaintenanceCaseDetails: React.FC<MaintenanceCaseDetailsProps> = ({
             </button>
           )}
 
-          {maintenanceCase.status === 'ACCEPTED' && onScheduleCase && (
+          {((maintenanceCase.status as any) === 'ACCEPTED' || maintenanceCase.status === 'ASSIGNED') && onScheduleCase && (
             <button
               type="button"
               onClick={() => setShowScheduleModal(true)}
@@ -330,7 +330,7 @@ export const MaintenanceCaseDetails: React.FC<MaintenanceCaseDetailsProps> = ({
             </button>
           )}
 
-          {(maintenanceCase.status === 'SCHEDULED' || maintenanceCase.status === 'ACCEPTED') && onStartCase && (
+          {(maintenanceCase.status === 'SCHEDULED' || (maintenanceCase.status as any) === 'ACCEPTED' || maintenanceCase.status === 'ASSIGNED') && onStartCase && (
             <button
               type="button"
               disabled={isActionLoading}

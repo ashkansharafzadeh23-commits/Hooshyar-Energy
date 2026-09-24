@@ -21,7 +21,7 @@ import {
 import { 
   AssetAlert, 
   MaintenanceCase, 
-  MaintenanceHistoryItem,
+  AssetMaintenanceHistoryItem,
   MaintenanceDiagnosis,
   TechnicianMatch,
   AlertStatus,
@@ -67,7 +67,7 @@ export const AssetOperationsWorkspace: React.FC<AssetOperationsWorkspaceProps> =
   const [readings, setReadings] = useState<TelemetryReading[]>([]);
   const [alerts, setAlerts] = useState<AssetAlert[]>([]);
   const [cases, setCases] = useState<MaintenanceCase[]>([]);
-  const [historyItems, setHistoryItems] = useState<MaintenanceHistoryItem[]>([]);
+  const [historyItems, setHistoryItems] = useState<AssetMaintenanceHistoryItem[]>([]);
   const [diagnoses, setDiagnoses] = useState<Record<string, MaintenanceDiagnosis>>({});
 
   // Telemetry Filtering
@@ -214,7 +214,7 @@ export const AssetOperationsWorkspace: React.FC<AssetOperationsWorkspaceProps> =
   const componentMap = React.useMemo(() => {
     const map: Record<string, string> = {};
     components.forEach((c) => {
-      map[c.id] = c.name || c.model || c.componentType;
+      map[c.id] = (c as any).name || c.model || c.componentType;
     });
     return map;
   }, [components]);
@@ -524,16 +524,22 @@ export const AssetOperationsWorkspace: React.FC<AssetOperationsWorkspaceProps> =
             </h1>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
-              {typeof asset.nominalCapacityKw === 'number' && (
+              {typeof (asset.installedCapacityKw ?? (asset as any).nominalCapacityKw) === 'number' && (
                 <div className="flex items-center gap-1">
                   <Zap className="w-3.5 h-3.5 text-amber-500" />
-                  <span>ظرفیت نامی: <strong className="text-slate-700 dark:text-slate-200 font-semibold">{formatPersianNumber(asset.nominalCapacityKw)} kW</strong></span>
+                  <span>ظرفیت نامی: <strong className="text-slate-700 dark:text-slate-200 font-semibold">{formatPersianNumber(asset.installedCapacityKw ?? (asset as any).nominalCapacityKw)} kW</strong></span>
                 </div>
               )}
               {asset.location && (
                 <div className="flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{asset.location.city ? `${asset.location.province || ''}، ${asset.location.city}` : asset.location.address || 'موقعیت ثبت نشده است'}</span>
+                  <span>
+                    {typeof asset.location === 'string'
+                      ? asset.location
+                      : (asset.location as any).city
+                      ? `${(asset.location as any).province || ''}، ${(asset.location as any).city}`
+                      : (asset.location as any).address || 'موقعیت ثبت نشده است'}
+                  </span>
                 </div>
               )}
             </div>

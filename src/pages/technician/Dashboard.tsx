@@ -421,7 +421,7 @@ export default function TechnicianDashboard() {
                       </div>
 
                       <div className="pt-2 flex flex-wrap items-center gap-2">
-                        {(c.status === 'ACCEPTED' || c.status === 'SCHEDULED') && (
+                        {((c.status as any) === 'ACCEPTED' || c.status === 'SCHEDULED' || c.status === 'ASSIGNED') && (
                           <button
                             type="button"
                             disabled={actionLoadingId === c.id}

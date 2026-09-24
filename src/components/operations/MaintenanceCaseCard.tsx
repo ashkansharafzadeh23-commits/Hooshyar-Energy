@@ -22,10 +22,11 @@ export interface MaintenanceCaseCardProps {
   onAssignClick?: (c: MaintenanceCase) => void;
 }
 
-export function getMaintenancePriorityConfig(priority: MaintenancePriority) {
+export function getMaintenancePriorityConfig(priority: MaintenancePriority | string) {
   switch (priority) {
-    case 'EMERGENCY':
-      return { label: 'اضطراری', className: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' };
+    case 'CRITICAL':
+    case 'URGENT':
+      return { label: 'اضطراری / بحرانی', className: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' };
     case 'HIGH':
       return { label: 'فوری', className: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' };
     case 'MEDIUM':
@@ -36,31 +37,34 @@ export function getMaintenancePriorityConfig(priority: MaintenancePriority) {
   }
 }
 
-export function getMaintenanceStatusLabel(status: MaintenanceStatus): { label: string; className: string } {
+export function getMaintenanceStatusLabel(status: MaintenanceStatus | string): { label: string; className: string } {
   switch (status) {
-    case 'REPORTED':
+    case 'OPEN':
+    case 'DRAFT':
       return { label: 'ثبت‌شده (جدید)', className: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' };
+    case 'DIAGNOSING':
+      return { label: 'در حال عیب‌یابی', className: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' };
+    case 'AWAITING_ASSIGNMENT':
+      return { label: 'در انتظار تخصیص تکنسین', className: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' };
     case 'ASSIGNED':
       return { label: 'تکنسین تخصیص داده شد', className: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' };
-    case 'ACCEPTED':
-      return { label: 'پذیرفته‌شده توسط تکنسین', className: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300' };
     case 'SCHEDULED':
       return { label: 'برنامه‌ریزی‌شده', className: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300' };
     case 'IN_PROGRESS':
       return { label: 'در حال اجرا', className: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300' };
-    case 'WAITING_PARTS':
-      return { label: 'در انتظار قطعه یدکی', className: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' };
     case 'COMPLETED':
-    case 'SUBMITTED_FOR_VERIFICATION':
+    case 'AWAITING_VERIFICATION':
+    case 'PENDING_VERIFICATION':
       return { label: 'تکمیل‌شده (در انتظار تأیید)', className: 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300' };
     case 'VERIFIED':
+    case 'RESOLVED':
       return { label: 'راستی‌آزمایی‌شده', className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' };
     case 'CLOSED':
       return { label: 'بسته و بایگانی‌شده', className: 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200' };
     case 'CANCELLED':
       return { label: 'لغوشده', className: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300' };
     default:
-      return { label: status, className: 'bg-slate-100 text-slate-700 dark:bg-slate-800' };
+      return { label: String(status), className: 'bg-slate-100 text-slate-700 dark:bg-slate-800' };
   }
 }
 

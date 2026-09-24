@@ -29,22 +29,22 @@ export const MaintenanceTimeline: React.FC<MaintenanceTimelineProps> = ({ mainte
       label: 'ثبت پرونده',
       timestamp: maintenanceCase.createdAt || maintenanceCase.reportedAt,
       isCompleted: true,
-      isCurrent: maintenanceCase.status === 'REPORTED',
+      isCurrent: maintenanceCase.status === 'OPEN' || (maintenanceCase.status as any) === 'REPORTED',
     },
     {
       id: 'ASSIGNED',
       label: 'تخصیص تکنسین',
-      timestamp: maintenanceCase.assignedAt,
-      isCompleted: Boolean(maintenanceCase.assignedTechnicianId || maintenanceCase.assignedAt),
+      timestamp: (maintenanceCase as any).assignedAt,
+      isCompleted: Boolean(maintenanceCase.assignedTechnicianId || (maintenanceCase as any).assignedAt),
       isCurrent: maintenanceCase.status === 'ASSIGNED',
       meta: maintenanceCase.assignedTechnicianName,
     },
     {
       id: 'ACCEPTED',
       label: 'پذیرش تکنسین',
-      timestamp: maintenanceCase.acceptedAt,
-      isCompleted: Boolean(maintenanceCase.acceptedAt),
-      isCurrent: maintenanceCase.status === 'ACCEPTED',
+      timestamp: (maintenanceCase as any).acceptedAt,
+      isCompleted: Boolean((maintenanceCase as any).acceptedAt),
+      isCurrent: (maintenanceCase.status as any) === 'ACCEPTED',
     },
     {
       id: 'SCHEDULED',
@@ -65,14 +65,14 @@ export const MaintenanceTimeline: React.FC<MaintenanceTimelineProps> = ({ mainte
       label: 'انتظار قطعه',
       timestamp: undefined,
       isCompleted: false,
-      isCurrent: maintenanceCase.status === 'WAITING_PARTS',
+      isCurrent: (maintenanceCase.status as any) === 'WAITING_PARTS',
     },
     {
       id: 'COMPLETED',
       label: 'اتمام کار تعمیراتی',
       timestamp: maintenanceCase.completedAt,
       isCompleted: Boolean(maintenanceCase.completedAt),
-      isCurrent: maintenanceCase.status === 'COMPLETED' || maintenanceCase.status === 'SUBMITTED_FOR_VERIFICATION',
+      isCurrent: maintenanceCase.status === 'COMPLETED' || maintenanceCase.status === 'AWAITING_VERIFICATION' || maintenanceCase.status === 'PENDING_VERIFICATION' || (maintenanceCase.status as any) === 'SUBMITTED_FOR_VERIFICATION',
     },
     {
       id: 'VERIFIED',
@@ -92,7 +92,7 @@ export const MaintenanceTimeline: React.FC<MaintenanceTimelineProps> = ({ mainte
 
   // Filter out irrelevant steps (like WAITING_PARTS if it didn't occur)
   const activeSteps = steps.filter((s) => {
-    if (s.id === 'WAITING_PARTS' && maintenanceCase.status !== 'WAITING_PARTS') return false;
+    if (s.id === 'WAITING_PARTS' && (maintenanceCase.status as any) !== 'WAITING_PARTS') return false;
     return true;
   });
 

@@ -468,18 +468,29 @@ maintenanceRouter.post('/assets/:assetId/maintenance', (req: Request, res: Respo
  */
 maintenanceRouter.get('/technician/cases', (req: Request, res: Response) => {
   const userId = req.user?.id;
-  const userRole = req.user?.role?.toLowerCase() || '';
+  if (!userId) {
+    return res.status(401).json({ error: 'احراز هویت الزامی است.' });
+  }
+
+  const roleUpper = req.user?.role?.toUpperCase();
+  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+  const techRoles = ['technician', 'professional', 'expert'];
+  const isTechRole = techRoles.includes(req.user?.role?.toLowerCase() || '');
+
+  // Only authorized technicians or system administrators can use this endpoint
+  if (!isAdmin && !isTechRole) {
+    return res.status(403).json({ error: 'دسترسی غیرمجاز: تنها تکنسین‌های دارای صلاحیت یا مدیران سامانه به این بخش دسترسی دارند.' });
+  }
+
   const allCases = maintenanceRepository.getAllCases();
 
-  if (['admin', 'manager', 'developer'].includes(userRole)) {
+  if (isAdmin) {
     return res.json(allCases);
   }
 
-  // Filter cases assigned to the current technician or reported cases awaiting assignment
-  const relevantCases = allCases.filter(
-    (c) => c.assignedTechnicianId === userId || (!c.assignedTechnicianId && c.status === 'REPORTED')
-  );
-  return res.json(relevantCases);
+  // Technicians can ONLY access cases explicitly assigned to them (strict project/organization boundary preservation)
+  const myAssignedCases = allCases.filter((c) => c.assignedTechnicianId === userId);
+  return res.json(myAssignedCases);
 });
 
 /**

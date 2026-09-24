@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { setupTestDatabaseIsolation } from './test_isolation_guard.js';
 
 async function runNonEmptyMigrationTest() {
@@ -46,17 +47,19 @@ async function runNonEmptyMigrationTest() {
 
   try {
     console.log(`[TEST] Running migration dry-run on isolated non-empty fixture...`);
+    const tempReportPath = path.join(os.tmpdir(), `POSTGRES_MIGRATION_REPORT_TEST_${Date.now()}.md`);
     const output = execSync(`npx tsx scripts/migrate_json_to_postgres.ts --dry-run --source "${isolation.tempDbPath}"`, {
       encoding: 'utf8',
       env: {
         ...process.env,
         TEST_DB_PATH: isolation.tempDbPath,
-        JSON_DB_PATH: isolation.tempDbPath
+        JSON_DB_PATH: isolation.tempDbPath,
+        MIGRATION_REPORT_PATH: tempReportPath
       }
     });
 
     // Validate the report
-    const reportPath = path.join(process.cwd(), 'docs', 'POSTGRES_MIGRATION_REPORT.md');
+    const reportPath = tempReportPath;
     const reportContent = fs.readFileSync(reportPath, 'utf8');
 
     // Assertions

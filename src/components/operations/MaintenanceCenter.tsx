@@ -72,13 +72,13 @@ export const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   // Filter cases strictly
   const filteredCases = cases.filter((c) => {
     if (filterTab === 'ACTIVE') {
-      const activeStatuses: MaintenanceStatus[] = ['REPORTED', 'ASSIGNED', 'ACCEPTED', 'SCHEDULED'];
+      const activeStatuses: string[] = ['OPEN', 'DRAFT', 'DIAGNOSING', 'AWAITING_ASSIGNMENT', 'ASSIGNED', 'SCHEDULED', 'ACCEPTED', 'REPORTED'];
       if (!activeStatuses.includes(c.status)) return false;
     } else if (filterTab === 'IN_PROGRESS') {
-      const inProgStatuses: MaintenanceStatus[] = ['IN_PROGRESS', 'WAITING_PARTS'];
+      const inProgStatuses: string[] = ['IN_PROGRESS', 'WAITING_PARTS'];
       if (!inProgStatuses.includes(c.status)) return false;
     } else if (filterTab === 'COMPLETED') {
-      const compStatuses: MaintenanceStatus[] = ['COMPLETED', 'SUBMITTED_FOR_VERIFICATION', 'VERIFIED'];
+      const compStatuses: string[] = ['COMPLETED', 'AWAITING_VERIFICATION', 'PENDING_VERIFICATION', 'SUBMITTED_FOR_VERIFICATION', 'VERIFIED', 'RESOLVED'];
       if (!compStatuses.includes(c.status)) return false;
     } else if (filterTab === 'CLOSED') {
       if (c.status !== 'CLOSED' && c.status !== 'CANCELLED') return false;

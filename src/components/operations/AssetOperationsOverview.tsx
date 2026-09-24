@@ -85,7 +85,7 @@ export const AssetOperationsOverview: React.FC<AssetOperationsOverviewProps> = (
       buttonText: 'مدیریت پرونده‌ها و تکنسین‌ها',
       tabTarget: 'MAINTENANCE',
     };
-  } else if (activeCases.some((c) => c.status === 'COMPLETED' || c.status === 'SUBMITTED_FOR_VERIFICATION')) {
+  } else if (activeCases.some((c) => c.status === 'COMPLETED' || c.status === 'AWAITING_VERIFICATION' || c.status === 'PENDING_VERIFICATION')) {
     nextAction = {
       title: 'راستی‌آزمایی و تأیید نهایی تعمیرات',
       desc: 'گزارش اتمام کار تکنسین ارسال شده و در انتظار راستی‌آزمایی و ارزیابی کیفیت توسط کارفرما است.',

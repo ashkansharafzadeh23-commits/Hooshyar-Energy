@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { setupTestDatabaseIsolation } from './test_isolation_guard.js';
 
 async function runPH2Tests() {
@@ -15,12 +16,14 @@ async function runPH2Tests() {
 
   try {
     console.log(`[TEST] Running migration dry-run...`);
+    const tempReportPath = path.join(os.tmpdir(), `POSTGRES_MIGRATION_REPORT_PH2_${Date.now()}.md`);
     const output = execSync('npx tsx scripts/migrate_json_to_postgres.ts --dry-run', {
       encoding: 'utf8',
       env: {
         ...process.env,
         TEST_DB_PATH: isolation.tempDbPath,
-        JSON_DB_PATH: isolation.tempDbPath
+        JSON_DB_PATH: isolation.tempDbPath,
+        MIGRATION_REPORT_PATH: tempReportPath
       }
     });
     
@@ -44,7 +47,7 @@ async function runPH2Tests() {
     passed++;
 
     console.log(`[TEST] Verifying report generation...`);
-    const reportPath = path.join(process.cwd(), 'docs', 'POSTGRES_MIGRATION_REPORT.md');
+    const reportPath = tempReportPath;
     if (fs.existsSync(reportPath)) {
       const report = fs.readFileSync(reportPath, 'utf8');
       if (report.includes('DRY RUN') && report.includes('JSON Source Count')) {
