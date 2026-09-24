@@ -157,7 +157,7 @@ export default function ContractorsList() {
 
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-zinc-400">
                         <MapPin size={13} className="text-slate-400" />
-                        <span>{contractor.city || 'سراسری'}</span>
+                        <span>{contractor.city || 'ثبت نشده'}</span>
                       </div>
                     </div>
                   </div>

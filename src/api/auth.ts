@@ -199,13 +199,14 @@ authRouter.post("/partner-register", (req: Request, res: Response) => {
     const existingPros = professionalRepository.getProfessionals?.() || [];
     const found = existingPros.find((p: any) => p.userId === user.id || p.phone === phone);
     if (!found) {
+      const expVal = (experience !== undefined && experience !== null && experience !== '') ? Number(experience) : null;
       profileData = professionalRepository.createProfessional({
         userId: user.id,
-        fullName: name || companyName,
+        fullName: name || companyName || null,
         phone,
-        specialties: Array.isArray(specialties) ? specialties : (specialties ? [specialties] : ['پنل‌های خورشیدی']),
+        specialties: Array.isArray(specialties) ? specialties : (specialties ? [specialties] : []),
         serviceCities: city ? [city] : [],
-        yearsExperience: Number(experience) || 0,
+        yearsExperience: expVal,
         bio: bio || "",
         profileImageUrl: "",
         certifications: [],
@@ -250,7 +251,7 @@ authRouter.post("/partner-register", (req: Request, res: Response) => {
         companyName: companyName || name,
         logoUrl: '',
         aboutUs: bio || '',
-        categories: Array.isArray(specialties) ? specialties : (specialties ? [specialties] : ['تجهیزات خورشیدی']),
+        categories: Array.isArray(specialties) ? specialties : (specialties ? [specialties] : []),
         address: city || '',
         city: city || '',
         phones: [{ label: 'اصلی', number: phone }],
@@ -287,24 +288,23 @@ authRouter.post("/partner-login", (req: Request, res: Response) => {
     return res.status(400).json({ error: "شماره موبایل معتبر الزامی است." });
   }
 
-  const roleUpper = (role || 'PROJECT_OWNER').toUpperCase();
-  let user = userRepository.getUserByPhone(phone);
+  // 1. Authoritative check: User MUST already exist. Login MUST NEVER create a new user.
+  const user = userRepository.getUserByPhone(phone);
   if (!user) {
-    user = userRepository.createUser({
-      phone,
-      name: "کاربر همکار",
-      roles: [roleUpper],
-      activeSubscriptionId: null
-    });
-  } else {
-    const roles = Array.isArray(user.roles) ? [...user.roles] : (user.role ? [user.role] : []);
-    if (!roles.includes(roleUpper)) {
-      roles.push(roleUpper);
-      userRepository.updateUser(user.id, { roles });
-    }
+    return res.status(401).json({ error: "حساب کاربری با این شماره یافت نشد. لطفاً ابتدا ثبت‌نام کنید." });
   }
 
-  const token = jwtService.sign({ userId: user.id, phone: user.phone, role: roleUpper });
+  // 2. Authoritative check: Role MUST already be assigned. Login MUST NEVER add or grant a requested role.
+  const userRoles = Array.isArray(user.roles) ? [...user.roles] : (user.role ? [user.role] : []);
+  const roleUpper = (role || '').toUpperCase();
+
+  if (roleUpper && !userRoles.includes(roleUpper)) {
+    return res.status(403).json({ error: "شما مجوز ورود با این نقش را ندارید." });
+  }
+
+  const activeRole = roleUpper || userRoles[0] || 'CUSTOMER';
+
+  const token = jwtService.sign({ userId: user.id, phone: user.phone, role: activeRole });
   const safeUser = passwordService.sanitizeUser(user);
 
   res.cookie("token", token, {

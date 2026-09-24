@@ -98,21 +98,23 @@ app.use("/health", healthRouter);
 app.use("/api/health", healthRouter);
 
 app.get("/api/vendors", (req, res) => {
-  const vendors = (db.getVendors() || []).map((v: any) => ({
-    id: v.id,
-    companyName: v.companyName,
-    logoUrl: v.logoUrl || "",
-    aboutUs: v.aboutUs || "",
-    categories: v.categories || [],
-    address: v.address || "",
-    city: v.city || "",
-    workingHours: v.workingHours || "",
-    website: v.website || "",
-    status: v.status || "approved",
-    verified: v.status === "approved",
-    phones: v.phones || [],
-    createdAt: v.createdAt || new Date().toISOString()
-  }));
+  const vendors = (db.getVendors() || [])
+    .filter((v: any) => v.status === "approved" || v.isPublished === true)
+    .map((v: any) => ({
+      id: v.id,
+      companyName: v.companyName,
+      logoUrl: v.logoUrl || "",
+      aboutUs: v.aboutUs || "",
+      categories: v.categories || [],
+      address: v.address || "",
+      city: v.city || "",
+      workingHours: v.workingHours || "",
+      website: v.website || "",
+      status: v.status,
+      verified: v.status === "approved",
+      phones: v.phones || [],
+      createdAt: v.createdAt || null
+    }));
   res.json(vendors);
 });
 
@@ -130,10 +132,10 @@ app.get("/api/vendors/:id", (req, res) => {
       city: v.city || "",
       workingHours: v.workingHours || "",
       website: v.website || "",
-      status: v.status || "approved",
+      status: v.status,
       verified: v.status === "approved",
       phones: v.phones || [],
-      createdAt: v.createdAt || new Date().toISOString()
+      createdAt: v.createdAt || null
     }
   });
 });

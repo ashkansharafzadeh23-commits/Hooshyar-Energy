@@ -65,8 +65,7 @@ export const technicianMatchingService = {
       checkKeywords(['خورشیدی', 'solar', 'پنل', 'فتوولتائیک'], 'سیستم‌های خورشیدی');
       checkKeywords(['اینورتر', 'inverter', 'مبدل'], 'اینورتر و ادوات قدرت');
       checkKeywords(['باتری', 'battery', 'bms', 'ذخیره‌ساز'], 'باتری و سیستم‌های ذخیره‌ساز');
-      checkKeywords(['ژنراتور', 'generator', 'دیزل', 'موتور برق'], 'ژنراتور و موتورهای دوگانه‌سوز');
-      checkKeywords(['برق', 'electrical', 'پست', 'فشار متوسط'], 'تاسیسات برق و اتوماسیون');
+      checkKeywords(['برق', 'electrical', 'پست', 'فشار متوسط'], 'تاسیسات برق و اتوماسیون خورشیدی');
 
       if (matchingSpecs.length > 0) {
         const uniqueSpecs = Array.from(new Set(matchingSpecs));
@@ -74,38 +73,41 @@ export const technicianMatchingService = {
         reasons.push(`تخصص مرتبط در ${uniqueSpecs.join('، ')}`);
       }
 
-      // 3. Experience Match (Up to 15 pts)
-      const exp = pro.yearsExperience || 0;
-      const expPoints = Math.min(15, Math.round(exp * 1.5));
-      if (expPoints > 0) {
-        score += expPoints;
-        reasons.push(`${exp} سال سابقه کار تخصصی`);
+      // 3. Experience Match (Up to 15 pts) - Only when authentic experience exists
+      if (typeof pro.yearsExperience === 'number' && pro.yearsExperience > 0) {
+        const exp = pro.yearsExperience;
+        const expPoints = Math.min(15, Math.round(exp * 1.5));
+        if (expPoints > 0) {
+          score += expPoints;
+          reasons.push(`${exp} سال سابقه کار تخصصی`);
+        }
       }
 
       // 4. Rating & Verification (Up to 10 pts)
-      if (pro.rating && pro.rating >= 4.0) {
+      if (typeof pro.rating === 'number' && pro.rating >= 4.0) {
         score += 10;
         reasons.push(`امتیاز کیفیت و رضایت بالا (${pro.rating} از ۵)`);
       }
 
-      if (pro.status === 'approved') {
+      if (pro.status === 'approved' || pro.approvalStatus === 'APPROVED') {
         score += 5;
         reasons.push('احراز هویت و تایید مدارک رسمی');
       }
 
-      const finalScore = Math.min(100, Math.max(20, score));
+      // Data-truth: score is deterministic. Zero relevance remains 0, never boosted to 20%
+      const finalScore = Math.min(100, Math.max(0, score));
 
       return {
         technicianId: pro.id,
-        fullName: pro.fullName,
+        fullName: pro.fullName || pro.name || null,
         phone: pro.phone,
         specialties: pro.specialties || [],
         serviceCities: pro.serviceCities || [],
-        yearsExperience: pro.yearsExperience || 0,
+        yearsExperience: pro.yearsExperience ?? null,
         rating: pro.rating ?? null,
         matchScore: finalScore,
         matchReasons: reasons,
-        status: pro.status,
+        status: pro.status || pro.approvalStatus,
         profile: { userId: (pro as any).userId },
         technician: { userId: (pro as any).userId }
       } as any;

@@ -11,34 +11,34 @@ export interface PublicEpcProfile {
   type: string;
   verificationStatus: string;
   verified: boolean;
-  city?: string;
-  address?: string;
+  city?: string | null;
+  address?: string | null;
   specialties: string[];
-  bio?: string;
-  createdAt: string;
+  bio?: string | null;
+  createdAt: string | null;
 }
 
 export function toPublicEpc(org: any): PublicEpcProfile {
   return {
     id: org.id,
-    name: org.tradeName || org.legalName || "شرکت پیمانکار EPC",
-    tradeName: org.tradeName || org.legalName || "شرکت پیمانکار EPC",
+    name: org.tradeName || org.legalName || "",
+    tradeName: org.tradeName || org.legalName || "",
     legalName: org.legalName || org.tradeName,
     type: org.type || "EPC_CONTRACTOR",
     verificationStatus: org.verificationStatus || "NOT_VERIFIED",
     verified: org.verificationStatus === "VERIFIED",
-    city: org.address || org.city || "سراسری",
-    address: org.address || "",
-    specialties: Array.isArray(org.specialties) ? org.specialties : ["طراحی و احداث نیروگاه خورشیدی"],
-    bio: org.bio || org.description || "",
-    createdAt: org.createdAt || new Date().toISOString(),
+    city: org.city || org.address || null,
+    address: org.address || null,
+    specialties: Array.isArray(org.specialties) ? org.specialties : [],
+    bio: org.bio || org.description || null,
+    createdAt: org.createdAt || null,
   };
 }
 
 contractorsRouter.get("/", (req, res) => {
   const allOrgs = organizationRepository.findAll?.() || [];
   const epcs = allOrgs
-    .filter((o: any) => !o.type || o.type === "EPC_CONTRACTOR")
+    .filter((o: any) => (!o.type || o.type === "EPC_CONTRACTOR") && (o.verificationStatus === "VERIFIED" || o.isPublished === true))
     .map(toPublicEpc);
   res.json({ contractors: epcs });
 });

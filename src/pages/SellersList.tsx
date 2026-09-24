@@ -30,17 +30,6 @@ interface PublicVendor {
   lng?: number;
 }
 
-const CITY_COORDS: Record<string, [number, number]> = {
-  'تهران': [35.6892, 51.3890],
-  'کرج': [35.8327, 50.9915],
-  'اصفهان': [32.6539, 51.6660],
-  'شیراز': [29.6223, 52.5366],
-  'تبریز': [38.0734, 46.2974],
-  'یزد': [31.8974, 54.3569],
-  'مشهد': [36.2972, 59.6067],
-  'کرمان': [30.2839, 57.0834]
-};
-
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371; 
   const dLat = (lat2 - lat1) * (Math.PI / 180);  
@@ -71,11 +60,10 @@ export default function SellersList() {
           setUserLocation([position.coords.latitude, position.coords.longitude]);
         },
         () => {
-          setUserLocation([35.6892, 51.3890]);
+          // Do NOT fabricate user location
+          setUserLocation(null);
         }
       );
-    } else {
-      setUserLocation([35.6892, 51.3890]);
     }
   }, []);
 
@@ -86,16 +74,11 @@ export default function SellersList() {
         const res = await fetch('/api/vendors');
         if (res.ok) {
           const data = await res.json();
-          const items: PublicVendor[] = (Array.isArray(data) ? data : []).map((v: any, idx: number) => {
-            const city = v.city || 'تهران';
-            const baseCoords = CITY_COORDS[city] || [35.6892, 51.3890];
-            // slightly offset markers if multiple in same city
-            const lat = v.lat || (baseCoords[0] + (idx % 5) * 0.012);
-            const lng = v.lng || (baseCoords[1] + ((idx * 3) % 7) * 0.015);
+          const items: PublicVendor[] = (Array.isArray(data) ? data : []).map((v: any) => {
             return {
               ...v,
-              lat,
-              lng
+              lat: typeof v.lat === 'number' ? v.lat : undefined,
+              lng: typeof v.lng === 'number' ? v.lng : undefined
             };
           });
           setVendors(items);
@@ -109,24 +92,26 @@ export default function SellersList() {
     loadVendors();
   }, []);
 
-  if (!userLocation) {
-    return <div className="p-8 text-center text-zinc-500 font-sans">در حال یافتن موقعیت شما...</div>;
-  }
-
   // Calculate distance for all vendors and filter
   const processedVendors = vendors.map(v => {
-    const lat = v.lat || 35.6892;
-    const lng = v.lng || 51.3890;
-    const distance = getDistanceFromLatLonInKm(userLocation[0], userLocation[1], lat, lng);
+    let distance: number | null = null;
+    if (userLocation && typeof v.lat === 'number' && typeof v.lng === 'number') {
+      distance = getDistanceFromLatLonInKm(userLocation[0], userLocation[1], v.lat, v.lng);
+    }
     return { ...v, distance };
   }).filter(v => {
     const matchesSearch = 
       v.companyName.toLowerCase().includes(searchTerm.toLowerCase()) || 
       (v.city && v.city.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (v.categories && v.categories.some(c => c.toLowerCase().includes(searchTerm.toLowerCase())));
-    const matchesDistance = v.distance <= maxDistance;
+    const matchesDistance = v.distance === null || v.distance <= maxDistance;
     return matchesSearch && matchesDistance;
-  }).sort((a, b) => a.distance - b.distance);
+  }).sort((a, b) => {
+    if (a.distance === null && b.distance === null) return 0;
+    if (a.distance === null) return 1;
+    if (b.distance === null) return -1;
+    return a.distance - b.distance;
+  });
 
   const handleToggleCompare = (id: string) => {
     setSelectedForCompare(prev => {
@@ -236,7 +221,11 @@ export default function SellersList() {
                   </div>
                   <div className="flex items-center gap-1.5 font-medium text-blue-600 dark:text-blue-400 text-[11px]">
                     <Navigation size={12} className="shrink-0" />
-                    <span>فاصله تخمینی: {vendor.distance} کیلومتر</span>
+                    <span>
+                      {vendor.distance !== null 
+                        ? `فاصله تخمینی: ${vendor.distance} کیلومتر` 
+                        : 'فاصله قابل محاسبه نیست'}
+                    </span>
                   </div>
                 </div>
                 
@@ -272,8 +261,8 @@ export default function SellersList() {
         
         <div className="w-full sm:w-2/3 h-1/2 sm:h-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden order-1 sm:order-2 z-0 relative">
           <MapContainer 
-            center={userLocation} 
-            zoom={11} 
+            center={userLocation || [32.4279, 53.6880]} 
+            zoom={userLocation ? 11 : 5} 
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer
@@ -281,21 +270,25 @@ export default function SellersList() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             
-            <Marker position={userLocation}>
-              <Popup>موقعیت تقریبی شما</Popup>
-            </Marker>
-            
-            {processedVendors.map(vendor => (
-              <Marker key={vendor.id} position={[vendor.lat || 35.6892, vendor.lng || 51.3890]}>
-                <Popup>
-                  <div className="text-right font-sans" dir="rtl">
-                    <strong className="block mb-1 text-sm">{vendor.companyName}</strong>
-                    <span className="text-xs text-gray-600 block mb-2">{vendor.categories.join('، ')}</span>
-                    <Link to={`/vendor/${vendor.id}`} className="text-blue-600 text-xs font-bold block">مشاهده فروشگاه &larr;</Link>
-                  </div>
-                </Popup>
+            {userLocation && (
+              <Marker position={userLocation}>
+                <Popup>موقعیت تقریبی شما</Popup>
               </Marker>
-            ))}
+            )}
+            
+            {processedVendors
+              .filter(vendor => typeof vendor.lat === 'number' && typeof vendor.lng === 'number')
+              .map(vendor => (
+                <Marker key={vendor.id} position={[vendor.lat!, vendor.lng!]}>
+                  <Popup>
+                    <div className="text-right font-sans" dir="rtl">
+                      <strong className="block mb-1 text-sm">{vendor.companyName}</strong>
+                      <span className="text-xs text-gray-600 block mb-2">{vendor.categories.join('، ')}</span>
+                      <Link to={`/vendor/${vendor.id}`} className="text-blue-600 text-xs font-bold block">مشاهده فروشگاه &larr;</Link>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
           </MapContainer>
         </div>
       </motion.div>
