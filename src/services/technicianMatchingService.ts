@@ -22,8 +22,11 @@ export const technicianMatchingService = {
     const projectCity = (project?.location?.city || (params as any).location || '').toLowerCase();
     
     const allPros = professionalRepository.getProfessionals() || [];
-    // Prioritize approved professionals
-    const candidates = allPros.length > 0 ? allPros : [];
+    // Authoritative candidate filtration: Only approved professionals may enter customer-facing matching.
+    // Pending, draft, rejected, suspended, unverified, or missing-status professionals MUST NOT enter the matching pipeline at all.
+    const candidates = allPros.filter(pro => 
+      pro.status === 'approved' || (pro as any).approvalStatus === 'APPROVED'
+    );
 
     const symptomsJoined = (params.symptoms || (params as any).skillsRequired || []).join(' ').toLowerCase();
     const category = (params.category || '').toLowerCase();

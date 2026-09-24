@@ -5,10 +5,12 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import crypto from 'crypto';
 import { technicianMatchingService } from '../src/services/technicianMatchingService.js';
 import { toPublicProfessional } from '../src/api/professionals.js';
 import { toPublicEpc } from '../src/api/contractors.js';
+import { db, setDBPath } from '../src/db/index.js';
 
 const ROOT_DIR = process.cwd();
 const DB_PATH = path.join(ROOT_DIR, 'db.json');
@@ -72,19 +74,94 @@ assert(!partnerRegisterCode.includes('verificationStatus: \'VERIFIED\''), 'regis
 console.log('\n[4] Technician Matching Eligibility & Solar-Only Rules:');
 const techMatchingCode = fs.readFileSync(path.join(ROOT_DIR, 'src/services/technicianMatchingService.ts'), 'utf8');
 
+assert(techMatchingCode.includes("candidates = allPros.filter"), 'candidates explicitly filtered before scoring');
 assert(techMatchingCode.includes("pro.status === 'approved'"), 'unapproved technician cannot enter maintenance matching');
 assert(!techMatchingCode.includes('Math.max(20, score)'), 'zero relevance is not converted to 20% match');
 
-// Runtime verification of technicianMatchingService
-const matches = technicianMatchingService.matchTechnicians({
-  symptoms: ['خرابی پنل فتوولتائیک و کاهش تولید خورشیدی'],
-  location: 'تهران'
-});
+// Runtime verification with isolated database:
+// Create approved, pending, rejected, and missing-status professionals
+const tempDbPath = path.join(os.tmpdir(), `test_ui10_tech_matching_${Date.now()}.json`);
+fs.copyFileSync(DB_PATH, tempDbPath);
+setDBPath(tempDbPath);
 
-assert(Array.isArray(matches), 'technicianMatchingService returns array of matches');
-assert(matches.every(m => m.status === 'approved' || (m as any).status === 'APPROVED'), 'all matching candidates have approved status');
-if (matches.length > 0) {
-  assert(matches[0].matchScore >= 0, 'approved technician can enter matching with valid score');
+try {
+  const approvedPro = db.createProfessional({
+    fullName: 'تکنسین خورشیدی تایید شده',
+    phone: '09121111111',
+    specialties: ['سیستم‌های خورشیدی', 'پنل‌های خورشیدی', 'خورشیدی'],
+    serviceCities: ['تهران'],
+    yearsExperience: 5,
+    bio: 'تکنسین تایید شده رسمی',
+    profileImageUrl: '',
+    certifications: []
+  });
+  db.updateProfessional(approvedPro.id, { status: 'approved' as any });
+
+  const pendingPro = db.createProfessional({
+    fullName: 'تکنسین خورشیدی در انتظار تایید',
+    phone: '09122222222',
+    specialties: ['سیستم‌های خورشیدی', 'خورشیدی'],
+    serviceCities: ['تهران'],
+    yearsExperience: 4,
+    bio: 'در انتظار تایید',
+    profileImageUrl: '',
+    certifications: []
+  });
+  db.updateProfessional(pendingPro.id, { status: 'pending_review' as any });
+
+  const rejectedPro = db.createProfessional({
+    fullName: 'تکنسین خورشیدی رد صلاحیت شده',
+    phone: '09123333333',
+    specialties: ['سیستم‌های خورشیدی', 'خورشیدی'],
+    serviceCities: ['تهران'],
+    yearsExperience: 6,
+    bio: 'رد صلاحیت شده',
+    profileImageUrl: '',
+    certifications: []
+  });
+  db.updateProfessional(rejectedPro.id, { status: 'rejected' as any });
+
+  const missingStatusPro = db.createProfessional({
+    fullName: 'تکنسین خورشیدی فاقد فیلد وضعیت',
+    phone: '09124444444',
+    specialties: ['سیستم‌های خورشیدی', 'خورشیدی'],
+    serviceCities: ['تهران'],
+    yearsExperience: 3,
+    bio: 'فاقد وضعیت',
+    profileImageUrl: '',
+    certifications: []
+  });
+  // Strip status to ensure missing status
+  const d = JSON.parse(fs.readFileSync(tempDbPath, 'utf8'));
+  const targetIdx = d.professionals.findIndex((p: any) => p.id === missingStatusPro.id);
+  if (targetIdx !== -1) {
+    delete d.professionals[targetIdx].status;
+    delete d.professionals[targetIdx].approvalStatus;
+    fs.writeFileSync(tempDbPath, JSON.stringify(d, null, 2));
+  }
+
+  // Call the REAL technicianMatchingService
+  const realMatches = technicianMatchingService.matchTechnicians({
+    symptoms: ['خرابی پنل فتوولتائیک و کاهش تولید خورشیدی'],
+    location: 'تهران'
+  });
+
+  const matchedIds = realMatches.map(m => m.technicianId);
+
+  // Assertions
+  assert(matchedIds.includes(approvedPro.id), 'approved professional may appear in technician matching');
+  assert(!matchedIds.includes(pendingPro.id), 'pending professional never appears in technician matching');
+  assert(!matchedIds.includes(rejectedPro.id), 'rejected professional never appears in technician matching');
+  assert(!matchedIds.includes(missingStatusPro.id), 'missing-status professional never appears in technician matching');
+  assert(realMatches.every(m => m.status === 'approved' || (m as any).status === 'APPROVED'), 'all matched candidates strictly have approved status');
+  if (realMatches.length > 0) {
+    assert(realMatches[0].matchScore >= 0, 'approved technician can enter matching with valid score');
+  }
+} finally {
+  setDBPath(DB_PATH);
+  try {
+    fs.unlinkSync(tempDbPath);
+  } catch (e) {}
 }
 
 // [5] EPC & VENDOR MARKETPLACE PUBLICATION
