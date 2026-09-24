@@ -43,7 +43,8 @@ export function AILayoutOptimizer() {
             id: p.id || `ai_panel_${idx + 1}`,
             position: [p.x, 0.5, p.z],
             rotation: p.rotation || [0, 0, 0],
-            efficiency: 1
+            efficiency: undefined, // Authoritative engineering efficiency unmeasured/unsupplied
+            renderingCoefficient: 1.0, // Visual layout rendering coefficient
           });
         });
       }

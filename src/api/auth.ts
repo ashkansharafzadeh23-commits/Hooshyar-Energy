@@ -18,6 +18,9 @@ import { mockGuards } from '../security/mockGuard.js';
 import { getSecurityConfig } from '../security/config.js';
 import { validateRequest } from '../security/schemaValidator.js';
 import { securityLogger } from '../security/securityLogger.js';
+import { professionalRepository } from '../repositories/professionalRepository.js';
+import { organizationRepository } from '../repositories/organizationRepository.js';
+import { vendorRepository } from '../repositories/vendorRepository.js';
 
 const authRouter = express.Router();
 
@@ -147,6 +150,176 @@ authRouter.post(
     });
   }
 );
+
+authRouter.post("/partner-register", (req: Request, res: Response) => {
+  const {
+    role,
+    phone,
+    name,
+    companyName,
+    city,
+    specialties,
+    bio,
+    experience,
+    registrationNumber,
+    nationalId,
+  } = req.body;
+
+  if (!phone || phone.length < 10) {
+    return res.status(400).json({ error: "شماره موبایل معتبر الزامی است." });
+  }
+  if (!name && !companyName) {
+    return res.status(400).json({ error: "نام یا نام شرکت الزامی است." });
+  }
+
+  const roleUpper = (role || 'TECHNICIAN').toUpperCase();
+  if (!['TECHNICIAN', 'CONTRACTOR', 'VENDOR'].includes(roleUpper)) {
+    return res.status(400).json({ error: "نقش همکار نامعتبر است." });
+  }
+
+  let user = userRepository.getUserByPhone(phone);
+  if (!user) {
+    user = userRepository.createUser({
+      phone,
+      name: name || companyName || "کاربر همکار",
+      roles: [roleUpper],
+      activeSubscriptionId: null
+    });
+  } else {
+    const roles = Array.isArray(user.roles) ? [...user.roles] : (user.role ? [user.role] : []);
+    if (!roles.includes(roleUpper)) {
+      roles.push(roleUpper);
+      userRepository.updateUser(user.id, { roles });
+    }
+  }
+
+  let profileData: any = null;
+
+  if (roleUpper === 'TECHNICIAN') {
+    const existingPros = professionalRepository.getProfessionals?.() || [];
+    const found = existingPros.find((p: any) => p.userId === user.id || p.phone === phone);
+    if (!found) {
+      profileData = professionalRepository.createProfessional({
+        userId: user.id,
+        fullName: name || companyName,
+        phone,
+        specialties: Array.isArray(specialties) ? specialties : (specialties ? [specialties] : ['پنل‌های خورشیدی']),
+        serviceCities: city ? [city] : [],
+        yearsExperience: Number(experience) || 0,
+        bio: bio || "",
+        profileImageUrl: "",
+        certifications: [],
+        rating: null
+      });
+    } else {
+      profileData = found;
+    }
+  } else if (roleUpper === 'CONTRACTOR') {
+    const orgs = organizationRepository.findAll?.() || [];
+    const found = orgs.find((o: any) => o.createdById === user.id || (o.phone && o.phone === phone));
+    if (!found) {
+      profileData = organizationRepository.create({
+        legalName: companyName || name,
+        tradeName: companyName || name,
+        type: 'EPC_CONTRACTOR',
+        registrationNumber: registrationNumber || '',
+        nationalId: nationalId || '',
+        verificationStatus: 'NOT_VERIFIED',
+        phone,
+        address: city || '',
+        createdById: user.id
+      });
+      try {
+        organizationRepository.addMember?.({
+          organizationId: profileData.id,
+          userId: user.id,
+          role: 'OWNER',
+          status: 'ACTIVE'
+        });
+      } catch (e) {
+        console.error('Failed to create organization member:', e);
+      }
+    } else {
+      profileData = found;
+    }
+  } else if (roleUpper === 'VENDOR') {
+    const vendors = vendorRepository.findAll?.() || [];
+    const found = vendors.find((v: any) => v.companyName === (companyName || name));
+    if (!found) {
+      profileData = vendorRepository.create({
+        companyName: companyName || name,
+        logoUrl: '',
+        aboutUs: bio || '',
+        categories: Array.isArray(specialties) ? specialties : (specialties ? [specialties] : ['تجهیزات خورشیدی']),
+        address: city || '',
+        city: city || '',
+        phones: [{ label: 'اصلی', number: phone }],
+        workingHours: '۸:۰۰ الی ۱۷:۰۰',
+        website: ''
+      });
+    } else {
+      profileData = found;
+    }
+  }
+
+  const token = jwtService.sign({ userId: user.id, phone: user.phone, role: roleUpper });
+  const safeUser = passwordService.sanitizeUser(user);
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
+  return res.json({
+    userId: user.id,
+    token,
+    user: safeUser,
+    profile: profileData,
+    message: "ثبت‌نام با موفقیت انجام شد. حساب کاربری شما ایجاد گردید."
+  });
+});
+
+authRouter.post("/partner-login", (req: Request, res: Response) => {
+  const { phone, role } = req.body;
+  if (!phone || phone.length < 10) {
+    return res.status(400).json({ error: "شماره موبایل معتبر الزامی است." });
+  }
+
+  const roleUpper = (role || 'PROJECT_OWNER').toUpperCase();
+  let user = userRepository.getUserByPhone(phone);
+  if (!user) {
+    user = userRepository.createUser({
+      phone,
+      name: "کاربر همکار",
+      roles: [roleUpper],
+      activeSubscriptionId: null
+    });
+  } else {
+    const roles = Array.isArray(user.roles) ? [...user.roles] : (user.role ? [user.role] : []);
+    if (!roles.includes(roleUpper)) {
+      roles.push(roleUpper);
+      userRepository.updateUser(user.id, { roles });
+    }
+  }
+
+  const token = jwtService.sign({ userId: user.id, phone: user.phone, role: roleUpper });
+  const safeUser = passwordService.sanitizeUser(user);
+
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
+  return res.json({
+    userId: user.id,
+    token,
+    user: safeUser
+  });
+});
 
 authRouter.get("/me", verifyAuthToken, requireAuth, (req: Request, res: Response) => {
   res.json({ user: req.user });

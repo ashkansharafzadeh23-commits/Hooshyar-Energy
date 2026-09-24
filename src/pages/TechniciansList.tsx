@@ -1,101 +1,162 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, UserCircle, MapPin, Phone, Award, ShieldCheck, Briefcase } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { UserCircle, MapPin, Award, ShieldCheck, Clock, ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { AdBanner } from '../components/AdBanner';
 
+interface PublicPro {
+  id: string;
+  fullName: string;
+  specialties: string[];
+  serviceCities: string[];
+  yearsExperience?: number;
+  bio?: string;
+  profileImageUrl?: string;
+  verified: boolean;
+  status: string;
+  createdAt: string;
+}
+
 export default function TechniciansList() {
-  const navigate = useNavigate();
-  const [experts, setExperts] = useState([
-    { id: 1, name: 'مهندس احمدی', profession: 'متخصص سیستم‌های خورشیدی', exp: '۱۰ سال تجربه', city: 'تهران', phone: '09123456789', fee: '500000', bio: 'متخصص در راه‌اندازی و اورهال سیستم‌های آف‌گرید', photo: 'https://i.pravatar.cc/150?u=1' },
-    { id: 2, name: 'علی رضایی', profession: 'تعمیرکار ژنراتور و موتور برق', exp: '۱۵ سال تجربه', city: 'کرج', phone: '09129876543', fee: '450000', bio: 'تعمیرات تخصصی انواع موتورهای دیزلی و بنزینی', photo: 'https://i.pravatar.cc/150?u=2' },
-    { id: 3, name: 'سارا محمدی', profession: 'کارشناس باتری و یو‌پی‌اس', exp: '۸ سال تجربه', city: 'اصفهان', phone: '09131112233', fee: '300000', bio: 'مشاوره و عیب‌یابی انواع باتری‌های لید اسید و لیتیومی', photo: 'https://i.pravatar.cc/150?u=3' }
-  ]);
+  const [experts, setExperts] = useState<PublicPro[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let localTechs = [];
-    try {
-      const raw = localStorage.getItem('registered_technicians');
-      localTechs = raw ? JSON.parse(raw) : [];
-    } catch (e) { console.error(e); }
-    if (localTechs.length > 0) {
-      setExperts(prev => [...localTechs, ...prev]);
+    async function loadExperts() {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/professionals');
+        if (res.ok) {
+          const data = await res.json();
+          setExperts(data.professionals || []);
+        }
+      } catch (err) {
+        console.error('Failed to load professionals:', err);
+      } finally {
+        setLoading(false);
+      }
     }
+    loadExperts();
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] font-Vazirmatn p-4 md:p-6 pb-24">
+    <div className="min-h-screen bg-[#F7F8FA] dark:bg-zinc-950 font-sans p-4 md:p-6 pb-24">
       <div className="max-w-5xl mx-auto space-y-6">
         <AdBanner layout="banner" />
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            
-            <h1 className="text-2xl sm:text-3xl font-black text-[#1A1D23] flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-xl text-green-600">
+            <div className="flex items-center gap-2 mb-2">
+              <Link to="/partners" className="text-xs text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200 inline-flex items-center gap-1">
+                <ArrowLeft size={14} />
+                <span>همکاری با هوشیار انرژی</span>
+              </Link>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-950/50 rounded-xl text-emerald-600 dark:text-emerald-400">
                 <UserCircle size={24} />
               </div>
-              لیست کارشناسان و تعمیرکاران
+              کارشناسان و تعمیرکاران فنی خورشیدی
             </h1>
           </div>
-          <Link to="/technician-auth" className="bg-green-600 text-white font-bold py-2.5 px-5 rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+          <Link to="/technician-auth" className="bg-emerald-600 text-white font-bold py-2.5 px-5 rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm">
              ثبت‌نام به عنوان کارشناس
           </Link>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {experts.map(expert => (
-            <motion.div 
-              key={expert.id} 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white border border-gray-200 rounded-3xl p-6 flex flex-col hover:shadow-lg transition-all group"
+        {loading ? (
+          <div className="text-center py-16 text-slate-400 text-sm">
+            در حال دریافت فهرست کارشناسان معتبر...
+          </div>
+        ) : experts.length === 0 ? (
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl p-12 text-center">
+            <UserCircle size={48} className="mx-auto text-slate-300 dark:text-zinc-600 mb-3" />
+            <h3 className="text-base font-bold text-slate-700 dark:text-zinc-300 mb-1">
+              در حال حاضر هیچ کارشناس فعالی در این بخش ثبت نشده است.
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-md mx-auto mb-6">
+              متخصصان و کارشناسان فنی خورشیدی پس از ثبت اطلاعات و بررسی مدارک در این سامانه نمایش داده می‌شوند.
+            </p>
+            <Link
+              to="/technician-auth"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-colors"
             >
-              <div className="flex items-start gap-4 mb-4">
-                <img src={expert.photo} alt={expert.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-gray-100" />
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-800 text-lg mb-1">{expert.name}</h3>
-                  <p className="text-xs text-green-600 font-bold bg-green-50 px-2.5 py-1 rounded-lg inline-block mb-2">{expert.profession}</p>
-                </div>
-              </div>
-              
-              <div className="space-y-3 flex-1 mb-6">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <ShieldCheck size={16} className="text-gray-400" />
-                  <span>{expert.exp}</span>
-                </div>
-                {expert.city && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin size={16} className="text-gray-400" />
-                    <span>{expert.city}</span>
+              ثبت‌نام اولین کارشناس
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {experts.map(expert => (
+              <motion.div 
+                key={expert.id} 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl p-6 flex flex-col justify-between hover:shadow-lg transition-all group"
+              >
+                <div>
+                  <div className="flex items-start gap-4 mb-4">
+                    {expert.profileImageUrl ? (
+                      <img src={expert.profileImageUrl} alt={expert.fullName} className="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-zinc-700" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-400 shrink-0">
+                        <UserCircle size={32} />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-slate-900 dark:text-white text-base mb-1">{expert.fullName}</h3>
+                        {expert.verified ? (
+                          <span className="text-emerald-600 dark:text-emerald-400" title="کارشناس تأییدشده">
+                            <ShieldCheck size={16} />
+                          </span>
+                        ) : (
+                          <span className="text-slate-400" title="عضو شبکه همکاران">
+                            <Clock size={16} />
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {expert.specialties.slice(0, 2).map((s, idx) => (
+                          <span key={idx} className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-lg">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                )}
-                {expert.fee && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Briefcase size={16} className="text-gray-400" />
-                    <span>هزینه کارشناسی: <strong>{Number(expert.fee).toLocaleString()} تومان</strong></span>
+
+                  {expert.bio && (
+                    <p className="text-xs text-slate-600 dark:text-zinc-400 mb-4 line-clamp-2">
+                      {expert.bio}
+                    </p>
+                  )}
+
+                  <div className="space-y-1.5 text-xs text-slate-500 dark:text-zinc-400 mb-6">
+                    {expert.serviceCities && expert.serviceCities.length > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <MapPin size={14} className="text-slate-400" />
+                        <span>شهرهای خدمت: {expert.serviceCities.join('، ')}</span>
+                      </div>
+                    )}
+                    {typeof expert.yearsExperience === 'number' && expert.yearsExperience > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <Award size={14} className="text-slate-400" />
+                        <span>سابقه: {expert.yearsExperience} سال</span>
+                      </div>
+                    )}
                   </div>
-                )}
-                {expert.bio && (
-                  <p className="text-xs text-gray-500 leading-relaxed bg-gray-50 p-3 rounded-xl mt-3 line-clamp-2">
-                    {expert.bio}
-                  </p>
-                )}
-              </div>
-              
-              <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3 mt-auto">
-                {expert.phone && (
-                   <a href={`tel:${expert.phone}`} className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
-                     <Phone size={16} />
-                     تماس مستقیم
-                   </a>
-                )}
-                <button className="flex-1 bg-green-50 text-green-600 py-2.5 rounded-xl text-sm font-bold hover:bg-green-100 transition-colors">
-                  درخواست بازدید
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+                </div>
+
+                <Link
+                  to={`/professionals/${expert.id}`}
+                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 rounded-xl text-xs font-bold transition-colors"
+                >
+                  <span>مشاهده پروفایل و تخصص‌ها</span>
+                  <ArrowUpRight size={14} />
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

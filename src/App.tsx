@@ -45,6 +45,9 @@ import OpportunityDetail from './pages/investment/OpportunityDetail';
 import InvestorProfileSetup from './pages/investment/InvestorProfileSetup';
 import MyMatches from './pages/investment/MyMatches';
 import PortfolioDashboard from './pages/enterprise/PortfolioDashboard';
+import PartnersHub from './pages/PartnersHub';
+import TechnicianPublicProfile from './pages/technician/PublicProfile';
+import ContractorPublicProfile from './pages/ContractorPublicProfile';
 
 export default function App() {
   return (
@@ -89,14 +92,18 @@ export default function App() {
               <Route path="/vendors" element={<VendorsList />} />
               <Route path="/marketplace" element={<ContractorsList />} />
               <Route path="/contractors" element={<ContractorsList />} />
-            <Route path="/contractor-auth" element={<ContractorAuth />} />
-            <Route path="/contractor-dashboard" element={<ContractorDashboard />} />
-            <Route path="/ads-portal" element={<AdsPortal />} />
-            <Route path="/smart-maintenance" element={<SmartMaintenance />} />
-            <Route path="/technician-auth" element={<TechnicianAuth />} />
-            <Route path="/technician-dashboard" element={<TechnicianDashboard />} />
-            <Route path="/vendor-auth" element={<VendorAuth />} />
-            <Route path="/technicians-list" element={<TechniciansList />} />
+              <Route path="/epc/:id" element={<ContractorPublicProfile />} />
+              <Route path="/partners" element={<PartnersHub />} />
+              <Route path="/contractor-auth" element={<ContractorAuth />} />
+              <Route path="/contractor-dashboard" element={<ContractorDashboard />} />
+              <Route path="/ads-portal" element={<AdsPortal />} />
+              <Route path="/smart-maintenance" element={<SmartMaintenance />} />
+              <Route path="/technicians" element={<TechniciansList />} />
+              <Route path="/technician-auth" element={<TechnicianAuth />} />
+              <Route path="/technician-dashboard" element={<TechnicianDashboard />} />
+              <Route path="/professionals/:id" element={<TechnicianPublicProfile />} />
+              <Route path="/vendor-auth" element={<VendorAuth />} />
+              <Route path="/technicians-list" element={<TechniciansList />} />
             <Route path="/vendor/:id" element={<VendorStorefront />} />
             <Route path="/vendor-portal/*" element={<VendorPortal />} />
           </Route>

@@ -10,5 +10,6 @@ export interface PanelInstance {
   id: string;
   position: [number, number, number];
   rotation: [number, number, number];
-  efficiency: number; // 0 to 1
+  efficiency?: number | null; // Real measured engineering efficiency if known (not fabricated)
+  renderingCoefficient?: number; // Visual layout rendering coefficient
 }

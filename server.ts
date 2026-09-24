@@ -11,6 +11,7 @@ import { requestIdMiddleware } from "./src/middleware/requestId.js";
 import { errorHandler } from "./src/middleware/errorHandler.js";
 import authRouter, { verifyAuthToken } from "./src/api/auth.js";
 import professionalsRouter from "./src/api/professionals.js";
+import contractorsRouter from "./src/api/contractors.js";
 import adsRouter from "./src/api/ads.js";
 import userRouter from "./src/api/user.js";
 import subscriptionRouter from "./src/api/subscription.js";
@@ -76,6 +77,7 @@ app.use("/api", rateLimiters.generalApi.middleware());
 
 app.use("/api/auth", authRouter);
 app.use("/api/professionals", professionalsRouter);
+app.use("/api/contractors", contractorsRouter);
 app.use("/api/ads", adsRouter);
 app.use("/api/user", userRouter);
 app.use("/api/subscription", subscriptionRouter);
@@ -96,7 +98,44 @@ app.use("/health", healthRouter);
 app.use("/api/health", healthRouter);
 
 app.get("/api/vendors", (req, res) => {
-  res.json(db.getVendors());
+  const vendors = (db.getVendors() || []).map((v: any) => ({
+    id: v.id,
+    companyName: v.companyName,
+    logoUrl: v.logoUrl || "",
+    aboutUs: v.aboutUs || "",
+    categories: v.categories || [],
+    address: v.address || "",
+    city: v.city || "",
+    workingHours: v.workingHours || "",
+    website: v.website || "",
+    status: v.status || "approved",
+    verified: v.status === "approved",
+    phones: v.phones || [],
+    createdAt: v.createdAt || new Date().toISOString()
+  }));
+  res.json(vendors);
+});
+
+app.get("/api/vendors/:id", (req, res) => {
+  const v = db.getVendorById?.(req.params.id) || (db.getVendors() || []).find((x: any) => x.id === req.params.id);
+  if (!v) return res.status(404).json({ error: "فروشگاه یافت نشد." });
+  res.json({
+    vendor: {
+      id: v.id,
+      companyName: v.companyName,
+      logoUrl: v.logoUrl || "",
+      aboutUs: v.aboutUs || "",
+      categories: v.categories || [],
+      address: v.address || "",
+      city: v.city || "",
+      workingHours: v.workingHours || "",
+      website: v.website || "",
+      status: v.status || "approved",
+      verified: v.status === "approved",
+      phones: v.phones || [],
+      createdAt: v.createdAt || new Date().toISOString()
+    }
+  });
 });
 
 app.get("/api/products", (req, res) => {

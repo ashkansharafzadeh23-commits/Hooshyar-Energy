@@ -481,10 +481,16 @@ export default function ResultPage() {
           </div>
         )}
         {state.targets.includes('solar') && (
-          <EnergyEfficiencyChart 
-            monthlyConsumption={result?.dailyConsumptionEstimate?.monthlyKwh || 0}
-            monthlyGeneration={result?.solar?.annualGenerationKwh ? Math.round(result.solar.annualGenerationKwh / 12) : 0}
-          />
+          typeof result?.solar?.annualGenerationKwh === 'number' ? (
+            <EnergyEfficiencyChart 
+              monthlyConsumption={result?.dailyConsumptionEstimate?.monthlyKwh || 0}
+              monthlyGeneration={Math.round(result.solar.annualGenerationKwh / 12)}
+            />
+          ) : (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-[#E4E7EC] dark:border-zinc-800 p-6 text-center text-slate-500 dark:text-zinc-400 mt-4">
+              داده تولید سالانه ثبت نشده است
+            </div>
+          )
         )}
       </div>
       

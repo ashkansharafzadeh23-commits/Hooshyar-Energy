@@ -33,7 +33,8 @@ export function PanelPlacementTool({ children }: { children: React.ReactNode }) 
       id: `pnl_${Date.now()}_${Math.round(x * 10)}_${Math.round(z * 10)}`,
       position: [x, y, z],
       rotation: [euler.x, euler.y, euler.z],
-      efficiency: 1.0, // 100% nominal standard efficiency
+      efficiency: undefined, // Authoritative engineering efficiency unmeasured/unsupplied
+      renderingCoefficient: 1.0, // Visual layout rendering coefficient
     });
   };
 

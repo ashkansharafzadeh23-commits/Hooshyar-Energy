@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, UserCircle, Phone, Lock, UserPlus, MapPin, Briefcase, Award, Upload } from 'lucide-react';
+import { ArrowLeft, UserCircle, Phone, Lock, MapPin, Briefcase, Award, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { AdBanner } from '../components/AdBanner';
 
 export default function TechnicianAuth() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     phone: '',
     password: '',
     name: '',
-    profession: 'متخصص سیستم‌های خورشیدی',
+    profession: 'متخصص سیستم‌های فتوولتائیک و پنل',
     experience: '',
-    fee: '',
     city: '',
     bio: ''
   });
@@ -23,156 +27,182 @@ export default function TechnicianAuth() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLogin) {
-      navigate('/technician-dashboard');
-    } else {
-      const newTech = {
-        id: Date.now(),
-        name: formData.name,
-        profession: formData.profession,
-        exp: `${formData.experience} سال تجربه`,
-        city: formData.city,
-        phone: formData.phone,
-        fee: formData.fee,
-        bio: formData.bio,
-        photo: 'https://i.pravatar.cc/150?u=' + Date.now()
-      };
-      
-      let existing = [];
-      try {
-        const raw = localStorage.getItem('registered_technicians');
-        existing = raw ? JSON.parse(raw) : [];
-      } catch (e) { console.error(e); }
-      localStorage.setItem('registered_technicians', JSON.stringify([newTech, ...existing]));
-      
-      navigate('/technician-dashboard');
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        const res = await fetch('/api/auth/partner-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: formData.phone,
+            role: 'TECHNICIAN'
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'خطا در ورود به حساب کاربری');
+        }
+
+        login(data.token, data.user);
+        navigate('/technician-dashboard');
+      } else {
+        const res = await fetch('/api/auth/partner-register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            role: 'TECHNICIAN',
+            phone: formData.phone,
+            name: formData.name,
+            specialties: [formData.profession],
+            experience: Number(formData.experience) || 0,
+            city: formData.city,
+            bio: formData.bio
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'خطا در ثبت‌نام کارشناس');
+        }
+
+        login(data.token, data.user);
+        setSuccessMsg('ثبت‌نام با موفقیت انجام شد. حساب کاربری شما ایجاد گردید و پرونده کارشناسی جهت بررسی در صف ثبت شد.');
+        setTimeout(() => {
+          navigate('/technician-dashboard');
+        }, 1200);
+      }
+    } catch (err: any) {
+      setError(err.message || 'خطایی در ارتباط با سرور رخ داد.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] font-Vazirmatn p-4 md:p-6 pb-24">
+    <div className="min-h-screen bg-[#F7F8FA] dark:bg-zinc-950 font-sans p-4 md:p-6 pb-24">
       <div className="max-w-2xl mx-auto space-y-6 pt-10">
         <header className="flex items-center justify-between mb-8">
-          <Link to="/vendors" className="inline-flex items-center gap-2 text-[#5A6072] hover:text-[#1A1D23] font-medium transition-colors">
+          <Link to="/partners" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white font-medium transition-colors">
             <ArrowLeft size={18} />
-            بازگشت
+            بازگشت به همکاران
           </Link>
-          <h1 className="text-xl sm:text-2xl font-black text-[#1A1D23] flex items-center gap-2">
-            <UserCircle className="text-green-600" />
-            کارشناسان و تعمیرکاران فنی
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <UserCircle className="text-emerald-600" />
+            کارشناسان و تعمیرکاران فنی خورشیدی
           </h1>
         </header>
         
-        <div className="bg-white rounded-3xl shadow-sm border border-[#E4E7EC] overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b border-gray-100">
+          <div className="flex border-b border-slate-100 dark:border-zinc-800">
             <button 
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-4 font-bold text-center transition-colors relative ${isLogin ? 'text-green-600' : 'text-gray-500 hover:text-gray-700'}`}
+              type="button"
+              onClick={() => { setIsLogin(true); setError(null); }}
+              className={`flex-1 py-4 font-bold text-center transition-colors relative ${isLogin ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-400'}`}
             >
               ورود به حساب
-              {isLogin && <motion.div layoutId="tech_tab" className="absolute bottom-0 left-0 right-0 h-1 bg-green-600 rounded-t-full" />}
+              {isLogin && <motion.div layoutId="tech_tab" className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 rounded-t-full" />}
             </button>
             <button 
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-4 font-bold text-center transition-colors relative ${!isLogin ? 'text-green-600' : 'text-gray-500 hover:text-gray-700'}`}
+              type="button"
+              onClick={() => { setIsLogin(false); setError(null); }}
+              className={`flex-1 py-4 font-bold text-center transition-colors relative ${!isLogin ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 hover:text-slate-700 dark:text-zinc-400'}`}
             >
               ثبت‌نام کارشناس
-              {!isLogin && <motion.div layoutId="tech_tab" className="absolute bottom-0 left-0 right-0 h-1 bg-green-600 rounded-t-full" />}
+              {!isLogin && <motion.div layoutId="tech_tab" className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 rounded-t-full" />}
             </button>
           </div>
           
           <div className="p-6 md:p-8">
+            {error && (
+              <div className="mb-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 text-rose-700 dark:text-rose-400 flex items-center gap-2 text-sm">
+                <AlertCircle size={18} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="mb-6 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 flex items-center gap-2 text-sm">
+                <CheckCircle2 size={18} className="shrink-0" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               {!isLogin && (
-                <>
-                  <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-gray-100">
-                    <div className="w-20 h-20 bg-gray-50 border-2 border-dashed border-gray-300 rounded-full flex flex-col items-center justify-center text-gray-400 hover:text-green-500 hover:border-green-300 hover:bg-green-50 transition-colors cursor-pointer group shrink-0">
-                      <Upload size={20} className="mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="text-[9px] font-bold">آپلود عکس</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-zinc-300 mb-2">نام و نام خانوادگی</label>
+                    <input required name="name" value={formData.name} onChange={handleChange} type="text" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-emerald-500 outline-none transition-all font-medium text-slate-800 dark:text-zinc-100" placeholder="مثال: علی احمدی" />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-zinc-300 mb-2">تخصص خورشیدی اصلی</label>
+                    <div className="relative">
+                      <select required name="profession" value={formData.profession} onChange={handleChange} className="w-full px-4 py-3 pr-10 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-emerald-500 outline-none transition-all font-medium text-slate-800 dark:text-zinc-100 appearance-none">
+                        <option value="متخصص سیستم‌های فتوولتائیک و پنل">متخصص سیستم‌های فتوولتائیک و پنل</option>
+                        <option value="اینورتر و سیستم‌های الکترونیک قدرت">اینورتر و سیستم‌های الکترونیک قدرت</option>
+                        <option value="باتری و سیستم‌های ذخیره‌ساز انرژی">باتری و سیستم‌های ذخیره‌ساز انرژی</option>
+                        <option value="تابلو برق، حفاظت و اتوماسیون خورشیدی">تابلو برق، حفاظت و اتوماسیون خورشیدی</option>
+                        <option value="پایش برخط و عیب‌یابی نیروگاهی">پایش برخط و عیب‌یابی نیروگاهی</option>
+                        <option value="سرویس و نگهداری دوره‌ای نیروگاه خورشیدی">سرویس و نگهداری دوره‌ای نیروگاه خورشیدی</option>
+                      </select>
+                      <Briefcase className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                     </div>
-                    <div className="text-center sm:text-right">
-                      <h3 className="font-bold text-gray-800 mb-1">تصویر پروفایل</h3>
-                      <p className="text-sm text-gray-500">ارسال یک عکس حرفه‌ای، اعتماد مشتریان را افزایش می‌دهد.</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-zinc-300 mb-2">سابقه کار در حوزه خورشیدی (سال)</label>
+                    <div className="relative">
+                      <input name="experience" value={formData.experience} onChange={handleChange} type="number" min="0" max="50" className="w-full px-4 py-3 pr-10 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-emerald-500 outline-none transition-all font-medium text-slate-800 dark:text-zinc-100" placeholder="مثال: 5" />
+                      <Award className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">نام و نام خانوادگی</label>
-                      <input required name="name" value={formData.name} onChange={handleChange} type="text" className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all font-medium text-gray-800" placeholder="مثال: علی احمدی" />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">تخصص اصلی</label>
-                      <div className="relative">
-                        <select required name="profession" value={formData.profession} onChange={handleChange} className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all font-medium text-gray-800 appearance-none bg-white">
-                          <option value="متخصص سیستم‌های خورشیدی">متخصص سیستم‌های خورشیدی</option>
-                          <option value="تعمیرکار ژنراتور و موتور برق">تعمیرکار ژنراتور و موتور برق</option>
-                          <option value="کارشناس باتری و یو‌پی‌اس">کارشناس باتری و یو‌پی‌اس</option>
-                          <option value="برقکار ساختمان و صنعتی">برقکار ساختمان و صنعتی</option>
-                        </select>
-                        <Briefcase className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">سابقه کار (سال)</label>
-                      <div className="relative">
-                        <input required name="experience" value={formData.experience} onChange={handleChange} type="number" min="1" max="50" className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all font-medium text-gray-800" placeholder="مثال: 5" />
-                        <Award className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">هزینه پایه کارشناسی (تومان)</label>
-                      <div className="relative">
-                        <input required name="fee" value={formData.fee} onChange={handleChange} type="number" dir="ltr" className="w-full px-4 py-3 pl-12 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all font-medium text-gray-800 text-right" placeholder="500000" />
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs">تومان</span>
-                      </div>
-                    </div>
-                    
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">شهر و استان فعالیت</label>
-                      <div className="relative">
-                        <input required name="city" value={formData.city} onChange={handleChange} type="text" className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all font-medium text-gray-800" placeholder="مثال: تهران" />
-                        <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
-                      </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-zinc-300 mb-2">شهر و استان فعالیت</label>
+                    <div className="relative">
+                      <input required name="city" value={formData.city} onChange={handleChange} type="text" className="w-full px-4 py-3 pr-10 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-emerald-500 outline-none transition-all font-medium text-slate-800 dark:text-zinc-100" placeholder="مثال: تهران" />
+                      <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                     </div>
                   </div>
-                </>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-slate-700 dark:text-zinc-300 mb-2">توضیحات و سوابق کاری</label>
+                    <textarea name="bio" value={formData.bio} onChange={handleChange} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-emerald-500 outline-none transition-all font-medium text-slate-800 dark:text-zinc-100 resize-none" placeholder="توضیحات درباره سوابق، پروژه‌های نصب و گواهینامه‌های حرفه‌ای..."></textarea>
+                  </div>
+                </div>
               )}
               
-              <div className="grid grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">شماره موبایل</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-zinc-300 mb-2">شماره موبایل</label>
                   <div className="relative">
-                    <input required name="phone" value={formData.phone} onChange={handleChange} type="tel" dir="ltr" className="w-full px-4 py-3.5 pl-10 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all font-medium text-gray-800 text-right" placeholder="0912..." />
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                    <input required name="phone" value={formData.phone} onChange={handleChange} type="tel" dir="ltr" className="w-full px-4 py-3 pl-10 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-emerald-500 outline-none transition-all font-medium text-slate-800 dark:text-zinc-100 text-right" placeholder="0912..." />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                   </div>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">رمز عبور</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-zinc-300 mb-2">رمز عبور</label>
                   <div className="relative">
-                    <input required name="password" value={formData.password} onChange={handleChange} type="password" dir="ltr" className="w-full px-4 py-3.5 pl-10 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all font-medium text-gray-800 text-right" placeholder="********" />
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                    <input required name="password" value={formData.password} onChange={handleChange} type="password" dir="ltr" className="w-full px-4 py-3 pl-10 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-emerald-500 outline-none transition-all font-medium text-slate-800 dark:text-zinc-100 text-right" placeholder="********" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                   </div>
                 </div>
               </div>
-              
-              {!isLogin && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">توضیحات و مهارت‌های ویژه</label>
-                  <textarea name="bio" value={formData.bio} onChange={handleChange} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all font-medium text-gray-800 resize-none" placeholder="توضیحات مختصری درباره خود و توانمندی‌هایتان بنویسید..."></textarea>
-                </div>
-              )}
 
               <div className="pt-4">
-                <button type="submit" className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-4 rounded-xl text-lg font-bold hover:bg-green-700 transition-colors shadow-md">
-                  {isLogin ? 'ورود به پنل کارشناسی' : 'ثبت‌نام کارشناس'}
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white py-3.5 rounded-xl text-base font-bold hover:bg-emerald-700 transition-colors shadow-md disabled:opacity-50"
+                >
+                  {loading ? 'در حال پردازش...' : (isLogin ? 'ورود به پنل کارشناسی' : 'ثبت اطلاعات کارشناس')}
                 </button>
               </div>
             </form>

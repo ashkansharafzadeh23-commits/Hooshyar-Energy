@@ -1,210 +1,196 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, MapPin, Star, Building2, Phone, ArrowLeft, CheckCircle, ShieldCheck, Filter } from 'lucide-react';
+import { Search, MapPin, Building2, ShieldCheck, Clock, ArrowUpRight, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const CONTRACTORS = [
-  {
-    id: '1',
-    name: 'توسعه انرژی خورشیدی مهر',
-    rating: 4.8,
-    reviews: 124,
-    city: 'تهران',
-    projectsCompleted: 85,
-    specialty: 'نیروگاه‌های خورشیدی مقیاس بزرگ و صنعتی',
-    type: 'solar',
-    verified: true,
-  },
-  {
-    id: '2',
-    name: 'شرکت مهندسی نیروپژوهان راد',
-    rating: 4.6,
-    reviews: 89,
-    city: 'اصفهان',
-    projectsCompleted: 62,
-    specialty: 'نیروگاه‌های خانگی و سوله صنعتی',
-    type: 'solar',
-    verified: true,
-  },
-  {
-    id: '3',
-    name: 'آفتاب تابان کیش (EPC)',
-    rating: 4.9,
-    reviews: 210,
-    city: 'سراسری',
-    projectsCompleted: 140,
-    specialty: 'طراحی، تامین تجهیزات و اجرای پروژه‌های مگاواتی',
-    type: 'solar',
-    verified: true,
-  },
-  {
-    id: '4',
-    name: 'نورآوران سبز یزد',
-    rating: 4.5,
-    reviews: 45,
-    city: 'یزد',
-    projectsCompleted: 38,
-    specialty: 'احداث مزارع خورشیدی در مناطق خشک',
-    type: 'solar',
-    verified: false,
-  },
-  {
-    id: '5',
-    name: 'نیرومولد پاسارگاد',
-    rating: 4.7,
-    reviews: 156,
-    city: 'تهران',
-    projectsCompleted: 110,
-    specialty: 'تامین و نصب دیزل ژنراتورهای صنعتی و اضطراری',
-    type: 'generator',
-    verified: true,
-  },
-  {
-    id: '6',
-    name: 'پارس ژنراتور نوین',
-    rating: 4.2,
-    reviews: 34,
-    city: 'خراسان رضوی',
-    projectsCompleted: 45,
-    specialty: 'دیزل ژنراتور و موتور برق',
-    type: 'generator',
-    verified: false,
-  },
-  {
-    id: '7',
-    name: 'البرز توان پایا',
-    rating: 4.8,
-    reviews: 210,
-    city: 'البرز',
-    projectsCompleted: 130,
-    specialty: 'نیروگاه‌های خورشیدی و موتوربرق‌های اضطراری',
-    type: 'both',
-    verified: true,
-  }
-];
+interface PublicEpc {
+  id: string;
+  name: string;
+  tradeName: string;
+  legalName?: string;
+  type: string;
+  verificationStatus: string;
+  verified: boolean;
+  city?: string;
+  address?: string;
+  specialties: string[];
+  bio?: string;
+  createdAt: string;
+}
 
 export default function ContractorsList() {
-  const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [minRating, setMinRating] = useState(0);
+  const [contractors, setContractors] = useState<PublicEpc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCity, setFilterCity] = useState('all');
 
-  const filteredContractors = CONTRACTORS.filter(c => 
-    (c.name.includes(search) || c.city.includes(search)) &&
-    (filterType === 'all' || c.type === filterType || c.type === 'both') &&
-    (c.rating >= minRating)
-  );
+  useEffect(() => {
+    async function loadContractors() {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/contractors');
+        if (res.ok) {
+          const data = await res.json();
+          setContractors(data.contractors || []);
+        }
+      } catch (err) {
+        console.error('Failed to load contractors:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadContractors();
+  }, []);
+
+  const filtered = contractors.filter(c => {
+    const matchesSearch = 
+      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.legalName && c.legalName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (c.specialties && c.specialties.some(s => s.toLowerCase().includes(searchTerm.toLowerCase())));
+    const matchesCity = filterCity === 'all' || (c.city && c.city.includes(filterCity));
+    return matchesSearch && matchesCity;
+  });
 
   return (
-    <div className="flex flex-col items-center w-full pb-24 font-Vazirmatn">
-      <div className="w-full bg-white rounded-3xl p-6 shadow-sm border border-gray-100 mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 font-sans p-4 md:p-6 pb-24">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-gray-800 flex items-center gap-2">
-              <Building2 className="text-blue-600" size={32} />
-              شرکت‌های پیمانکار و مجری (EPC)
+            <div className="flex items-center gap-2 mb-2">
+              <Link to="/partners" className="text-xs text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200 inline-flex items-center gap-1">
+                <ArrowLeft size={14} />
+                <span>همکاری با هوشیار انرژی</span>
+              </Link>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+              <div className="p-2 bg-amber-100 dark:bg-amber-950/50 rounded-xl text-amber-600 dark:text-amber-400">
+                <Building2 size={24} />
+              </div>
+              شرکت‌های پیمانکار و مجری EPC خورشیدی
             </h1>
-            <p className="text-gray-500 mt-2">لیست مجریان و پیمانکاران معتبر برای احداث نیروگاه و تامین تجهیزات</p>
           </div>
-        </div>
+          <Link
+            to="/contractor-auth"
+            className="bg-amber-500 text-white font-bold py-2.5 px-5 rounded-xl hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm"
+          >
+            ثبت شرکت مجری
+          </Link>
+        </header>
 
-        <div className="flex flex-col lg:flex-row gap-4 mb-8">
+        {/* Search and Filters */}
+        <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <input 
-              type="text" 
-              placeholder="جستجو نام شرکت یا استان..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-5 py-4 pr-12 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-gray-700 bg-gray-50"
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="جستجوی نام شرکت یا تخصص..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-4 pr-10 py-2.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:border-amber-500 text-slate-900 dark:text-white"
             />
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           </div>
-
-          <div className="flex gap-4 flex-wrap lg:flex-nowrap">
-            <div className="flex-1 lg:w-48">
-              <select 
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-5 py-4 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-gray-700 bg-gray-50 appearance-none"
-              >
-                <option value="all">همه تخصص‌ها</option>
-                <option value="solar">برق خورشیدی</option>
-                <option value="generator">دیزل ژنراتور</option>
-              </select>
-            </div>
-            <div className="flex-1 lg:w-48">
-              <select 
-                value={minRating}
-                onChange={(e) => setMinRating(Number(e.target.value))}
-                className="w-full px-5 py-4 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all font-medium text-gray-700 bg-gray-50 appearance-none"
-              >
-                <option value={0}>امتیاز: همه</option>
-                <option value={4.0}>امتیاز: ۴.۰ به بالا</option>
-                <option value={4.5}>امتیاز: ۴.۵ به بالا</option>
-                <option value={4.8}>امتیاز: ۴.۸ به بالا</option>
-              </select>
-            </div>
+          <div className="sm:w-48">
+            <select
+              value={filterCity}
+              onChange={(e) => setFilterCity(e.target.value)}
+              className="w-full px-3 py-2.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:border-amber-500 text-slate-800 dark:text-zinc-200"
+            >
+              <option value="all">همه شهرها</option>
+              <option value="تهران">تهران</option>
+              <option value="اصفهان">اصفهان</option>
+              <option value="یزد">یزد</option>
+              <option value="شیراز">شیراز</option>
+            </select>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredContractors.map((contractor, index) => (
-            <motion.div 
-              key={contractor.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-shadow bg-white relative overflow-hidden group"
+        {/* Content */}
+        {loading ? (
+          <div className="text-center py-16 text-slate-400 text-sm">
+            در حال بارگذاری اطلاعات پیمانکاران معتبر...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl p-12 text-center">
+            <Building2 size={48} className="mx-auto text-slate-300 dark:text-zinc-600 mb-3" />
+            <h3 className="text-base font-bold text-slate-700 dark:text-zinc-300 mb-1">
+              هیچ شرکت پیمانکاری مطابق با جستجوی شما یافت نشد.
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-md mx-auto mb-6">
+              شرکت‌های مهندسی و پیمانکاران EPC خورشیدی پس از ثبت اطلاعات در این بازارگاه قرار می‌گیرند.
+            </p>
+            <Link
+              to="/contractor-auth"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition-colors"
             >
-              {contractor.verified && (
-                <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg flex items-center gap-1 z-10">
-                  <ShieldCheck size={14} />
-                  شرکت تایید شده
-                </div>
-              )}
-              
-              <div className="flex justify-between items-start mb-4 mt-2">
+              ثبت شرکت در شبکه مجریان
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map(contractor => (
+              <motion.div
+                key={contractor.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl p-6 flex flex-col justify-between hover:shadow-lg transition-all"
+              >
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">{contractor.name}</h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md">
-                      <MapPin size={16} />
-                      {contractor.city}
-                    </span>
-                    <span className="flex items-center gap-1 text-amber-500 font-bold bg-amber-50 px-2 py-1 rounded-md">
-                      <Star size={16} className="fill-amber-500" />
-                      {contractor.rating} ({contractor.reviews} نظر)
-                    </span>
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                      <Building2 size={28} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-slate-900 dark:text-white text-base mb-1">
+                          {contractor.name}
+                        </h3>
+                        {contractor.verified ? (
+                          <span className="text-emerald-600 dark:text-emerald-400" title="پیمانکار احراز هویت شده">
+                            <ShieldCheck size={18} />
+                          </span>
+                        ) : (
+                          <span className="text-slate-400" title="عضو شبکه همکاران">
+                            <Clock size={16} />
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-zinc-400">
+                        <MapPin size={13} className="text-slate-400" />
+                        <span>{contractor.city || 'سراسری'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {contractor.bio && (
+                    <p className="text-xs text-slate-600 dark:text-zinc-400 mb-4 line-clamp-2">
+                      {contractor.bio}
+                    </p>
+                  )}
+
+                  <div className="pt-2 mb-6">
+                    <div className="text-[11px] font-semibold text-slate-500 dark:text-zinc-400 mb-1.5">تخصص‌ها:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {contractor.specialties.map((s, idx) => (
+                        <span key={idx} className="text-[11px] bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 px-2 py-0.5 rounded-lg">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-gray-50 p-4 rounded-xl mb-6">
-                <div className="text-sm text-gray-600 mb-2">
-                  <span className="font-bold text-gray-800">تخصص: </span>
-                  {contractor.specialty}
-                </div>
-                <div className="text-sm text-gray-600 flex items-center gap-1">
-                  <CheckCircle size={16} className="text-green-500" />
-                  <span className="font-bold text-gray-800">پروژه‌های موفق: </span>
-                  {contractor.projectsCompleted} پروژه
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
-                  <Phone size={18} />
-                  تماس و مشاوره
-                </button>
-              </div>
-            </motion.div>
-          ))}
-
-          {filteredContractors.length === 0 && (
-            <div className="col-span-full py-12 text-center text-gray-500">
-              شرکتی با این مشخصات یافت نشد.
-            </div>
-          )}
-        </div>
+                <Link
+                  to={`/epc/${contractor.id}`}
+                  className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 rounded-xl text-xs font-bold transition-colors"
+                >
+                  <span>مشاهده جزئیات شرکت</span>
+                  <ArrowUpRight size={14} />
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

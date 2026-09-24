@@ -28,7 +28,7 @@ export default function EnergyEfficiencyChart({ monthlyConsumption, monthlyGener
     'تولید خورشیدی': Math.round(d['تولید خورشیدی'])
   }));
 
-  const efficiency = Math.min(100, Math.round((monthlyGeneration / monthlyConsumption) * 100));
+  const efficiency = monthlyConsumption > 0 ? Math.min(100, Math.round((monthlyGeneration / monthlyConsumption) * 100)) : 0;
 
   return (
     <section className="col-span-12 bg-white dark:bg-zinc-900 rounded-2xl border border-[#E4E7EC] p-6 shadow-sm flex flex-col mt-4">

@@ -1009,6 +1009,29 @@ maintenanceRouter.get('/maintenance/:maintenanceCaseId/technician-matches', (req
   return res.json(matches);
 });
 
+maintenanceRouter.get('/maintenance/cases/:maintenanceCaseId/match-technicians', (req: Request, res: Response) => {
+  const caseId = getParam(req.params.maintenanceCaseId);
+  const mCase = maintenanceRepository.getCaseById(caseId);
+  if (!mCase) {
+    return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
+  }
+
+  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
+  if (!access.allowed) {
+    return res.status(access.status || 403).json({ error: access.error });
+  }
+
+  const matches = technicianMatchingService.matchTechnicians({
+    projectId: mCase.projectId,
+    assetId: mCase.assetId,
+    symptoms: [mCase.title, mCase.description],
+    category: mCase.category,
+    componentType: mCase.componentId
+  });
+
+  return res.json(matches);
+});
+
 /**
  * GET /api/assets/:assetId/maintenance-history
  * Unified chronological history for an asset (alerts, cases, actions, verifications)
