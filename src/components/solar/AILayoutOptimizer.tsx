@@ -38,9 +38,9 @@ export function AILayoutOptimizer() {
       
       if (data.panels && Array.isArray(data.panels)) {
         clearPanels();
-        data.panels.forEach((p: any) => {
+        data.panels.forEach((p: any, idx: number) => {
           addPanel({
-            id: p.id || `ai_panel_${Math.random().toString(36).substr(2, 9)}`,
+            id: p.id || `ai_panel_${idx + 1}`,
             position: [p.x, 0.5, p.z],
             rotation: p.rotation || [0, 0, 0],
             efficiency: 1

@@ -230,7 +230,9 @@ export default function SmartMaintenance() {
           assetId: alert.assetId,
           alertId: alert.id,
           title: `اقدام اصلاحی: ${alert.title}`,
-          description: `تشخیص ثبت‌شده با سطح اطمینان ${Math.round((diagnosis.confidenceScore || 0.85) * 100)}%`,
+          description: diagnosis.confidenceScore !== undefined && diagnosis.confidenceScore !== null
+            ? `تشخیص ثبت‌شده با سطح اطمینان ${Math.round(diagnosis.confidenceScore * 100)}%`
+            : 'تشخیص ثبت‌شده بر اساس شواهد پایش فنی',
           priority: alert.severity === 'CRITICAL' ? 'URGENT' : 'HIGH',
           rootCause: diagnosis.possibleCauses?.[0] || 'تحلیل قواعد تشخیص'
         })

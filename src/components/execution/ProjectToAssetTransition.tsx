@@ -160,7 +160,9 @@ export const ProjectToAssetTransition: React.FC<ProjectToAssetTransitionProps> =
             ) : (
               <AlertCircle className="w-4 h-4 text-slate-400 shrink-0" />
             )}
-            <span className="text-xs font-bold">ظرفیت نامی معین ({projectCapacityKw || 0} kW)</span>
+            <span className="text-xs font-bold">
+              ظرفیت نامی معین ({projectCapacityKw !== undefined && projectCapacityKw !== null ? `${projectCapacityKw} kW` : 'ثبت نشده'})
+            </span>
           </div>
         </div>
       </div>

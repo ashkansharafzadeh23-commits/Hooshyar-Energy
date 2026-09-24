@@ -30,10 +30,10 @@ export function PanelPlacementTool({ children }: { children: React.ReactNode }) 
     const euler = new THREE.Euler().setFromQuaternion(quaternion);
 
     addPanel({
-      id: Math.random().toString(36).substring(7),
+      id: `pnl_${Date.now()}_${Math.round(x * 10)}_${Math.round(z * 10)}`,
       position: [x, y, z],
       rotation: [euler.x, euler.y, euler.z],
-      efficiency: Math.random() * 0.2 + 0.8, // 80-100%
+      efficiency: 1.0, // 100% nominal standard efficiency
     });
   };
 

@@ -110,7 +110,7 @@ export const FinancingSelectionReview: React.FC<FinancingSelectionReviewProps> =
             <div>
               <span className="text-slate-400 block mb-0.5">دوره تنفس:</span>
               <span className="font-bold text-slate-800 dark:text-zinc-200 font-mono">
-                {offer.gracePeriodMonths || 0} ماه
+                {offer.gracePeriodMonths !== undefined && offer.gracePeriodMonths !== null ? `${offer.gracePeriodMonths} ماه` : 'ثبت نشده'}
               </span>
             </div>
           </div>

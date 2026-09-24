@@ -282,7 +282,9 @@ export const FinancingOfferComparison: React.FC<FinancingOfferComparisonProps> =
                 </div>
                 <div>
                   <span className="text-slate-400 block">دوره تنفس:</span>
-                  <span className="font-bold text-slate-900 font-mono">{offer.gracePeriodMonths || 0} ماه</span>
+                  <span className="font-bold text-slate-900 font-mono">
+                    {offer.gracePeriodMonths !== undefined && offer.gracePeriodMonths !== null ? `${offer.gracePeriodMonths} ماه` : 'ثبت نشده'}
+                  </span>
                 </div>
               </div>
 

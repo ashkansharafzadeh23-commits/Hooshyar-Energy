@@ -483,7 +483,7 @@ export default function ResultPage() {
         {state.targets.includes('solar') && (
           <EnergyEfficiencyChart 
             monthlyConsumption={result?.dailyConsumptionEstimate?.monthlyKwh || 0}
-            monthlyGeneration={(result?.dailyConsumptionEstimate?.monthlyKwh || 0) * 1.15}
+            monthlyGeneration={result?.solar?.annualGenerationKwh ? Math.round(result.solar.annualGenerationKwh / 12) : 0}
           />
         )}
       </div>

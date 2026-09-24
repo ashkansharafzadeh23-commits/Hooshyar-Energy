@@ -15,7 +15,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, onNavigateT
   const [readiness, setReadiness] = useState<HandoverReadinessData | null>(null);
   const [asset, setAsset] = useState<EnergyAsset | null>(null);
   const [commissioningApproved, setCommissioningApproved] = useState(false);
-  const [targetCapacityKw, setTargetCapacityKw] = useState(0);
+  const [targetCapacityKw, setTargetCapacityKw] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
   const fetchHandoverData = useCallback(async () => {
@@ -50,7 +50,7 @@ export const HandoverTab: React.FC<HandoverTabProps> = ({ projectId, onNavigateT
 
       if (projectRes && projectRes.ok) {
         const pData = await projectRes.json();
-        setTargetCapacityKw(pData.targetCapacityKw || pData.capacityKw || 0);
+        setTargetCapacityKw(pData.targetCapacityKw ?? pData.capacityKw ?? undefined);
       }
 
       if (assetsRes && assetsRes.ok) {

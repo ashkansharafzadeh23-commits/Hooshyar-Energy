@@ -16,7 +16,7 @@ export const AssetTab: React.FC<AssetTabProps> = ({ projectId }) => {
   // Gating status
   const [commissioningApproved, setCommissioningApproved] = useState(false);
   const [handoverApproved, setHandoverApproved] = useState(false);
-  const [targetCapacityKw, setTargetCapacityKw] = useState<number>(0);
+  const [targetCapacityKw, setTargetCapacityKw] = useState<number | undefined>(undefined);
 
   const fetchAssetTabData = useCallback(async () => {
     setLoading(true);
@@ -42,7 +42,7 @@ export const AssetTab: React.FC<AssetTabProps> = ({ projectId }) => {
 
       if (projectRes && projectRes.ok) {
         const pData = await projectRes.json();
-        setTargetCapacityKw(pData.targetCapacityKw || pData.capacityKw || 0);
+        setTargetCapacityKw(pData.targetCapacityKw ?? pData.capacityKw ?? undefined);
       }
 
       if (commRes && commRes.ok) {
