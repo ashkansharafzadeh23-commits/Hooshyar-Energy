@@ -37,6 +37,8 @@ export const MobileBottomNav: React.FC = () => {
     if (path === '/solar-assets') {
       return location.pathname === '/solar-assets' || 
              location.pathname.startsWith('/solar-assets/') || 
+             location.pathname === '/assets' || 
+             location.pathname.startsWith('/assets/') || 
              location.pathname.startsWith('/admin/solar-assets');
     }
     return false;

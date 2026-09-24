@@ -73,6 +73,7 @@ export default function App() {
               <Route path="/assets" element={<SolarAssetsList />} />
               <Route path="/solar-assets/my-projects" element={<MyProjects />} />
               <Route path="/solar-assets/:id" element={<SolarAssetDetail />} />
+              <Route path="/assets/:id" element={<SolarAssetDetail />} />
               <Route path="/admin/solar-assets" element={<AdminReview />} />
               <Route path="/solar-planner" element={<SolarPlanner />} />
               <Route path="/target-select" element={<SolarAnalysisExperience />} />

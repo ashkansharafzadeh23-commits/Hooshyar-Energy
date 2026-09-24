@@ -450,7 +450,7 @@ export default function PortfolioDashboard() {
                 <AlertTriangle className="w-5 h-5 text-red-600" />
                 مایلستون‌های اجرایی تاریخ‌گذشته
               </h3>
-              <div className="overflow-x-auto">
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-right text-sm">
                   <thead>
                     <tr className="border-b border-red-100 text-stone-500 text-xs">
@@ -473,6 +473,31 @@ export default function PortfolioDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile stacked comparison cards */}
+              <div className="md:hidden space-y-3">
+                {lifecycle.overdueMilestones.map(om => (
+                  <div key={om.milestoneId} className="p-3.5 rounded-xl border border-red-200 bg-red-50/40 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-mono text-xs font-bold text-stone-600 block">{om.projectCode}</span>
+                        <h4 className="text-sm font-bold text-stone-900">{om.milestoneTitle}</h4>
+                      </div>
+                      <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded font-bold">{om.status}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-red-100">
+                      <div>
+                        <span className="text-stone-500 block">موعد مقرر:</span>
+                        <span className="font-mono text-stone-800">{om.dueDate}</span>
+                      </div>
+                      <div>
+                        <span className="text-stone-500 block">میزان تأخیر:</span>
+                        <span className="font-bold text-red-600">{om.daysOverdue} روز</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -524,64 +549,109 @@ export default function PortfolioDashboard() {
           <div className="bg-white border border-stone-200 rounded-xl p-6">
             <h3 className="text-base font-semibold text-stone-900 mb-4">فهرست و پایش تفصیلی دارایی‌های خورشیدی</h3>
             {assets.assets.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-sm">
-                  <thead>
-                    <tr className="border-b border-stone-200 text-stone-500 text-xs">
-                      <th className="py-2.5">کد دارایی</th>
-                      <th className="py-2.5">نام نیروگاه</th>
-                      <th className="py-2.5">ظرفیت نامی (kW)</th>
-                      <th className="py-2.5">وضعیت عملیاتی</th>
-                      <th className="py-2.5">تله‌متری</th>
-                      <th className="py-2.5">سلامت</th>
-                      <th className="py-2.5">هشدارها</th>
-                      <th className="py-2.5">گارانتی</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {assets.assets.map(a => (
-                      <tr key={a.assetId}>
-                        <td className="py-3 font-semibold text-stone-800">{a.assetCode}</td>
-                        <td className="py-3 text-stone-700">{a.name}</td>
-                        <td className="py-3 text-stone-700">
-                          {a.installedCapacityKw !== null ? `${a.installedCapacityKw} kW` : <span className="text-stone-400">ثبت‌نشده</span>}
-                        </td>
-                        <td className="py-3">
-                          <span className="text-xs px-2 py-0.5 rounded bg-stone-100 text-stone-700">
-                            {a.operationalStatus}
+              <>
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full text-right text-sm">
+                    <thead>
+                      <tr className="border-b border-stone-200 text-stone-500 text-xs">
+                        <th className="py-2.5">کد دارایی</th>
+                        <th className="py-2.5">نام نیروگاه</th>
+                        <th className="py-2.5">ظرفیت نامی (kW)</th>
+                        <th className="py-2.5">وضعیت عملیاتی</th>
+                        <th className="py-2.5">تله‌متری</th>
+                        <th className="py-2.5">سلامت</th>
+                        <th className="py-2.5">هشدارها</th>
+                        <th className="py-2.5">گارانتی</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {assets.assets.map(a => (
+                        <tr key={a.assetId}>
+                          <td className="py-3 font-semibold text-stone-800">{a.assetCode}</td>
+                          <td className="py-3 text-stone-700">{a.name}</td>
+                          <td className="py-3 text-stone-700">
+                            {a.installedCapacityKw !== null ? `${a.installedCapacityKw} kW` : <span className="text-stone-400">ثبت‌نشده</span>}
+                          </td>
+                          <td className="py-3">
+                            <span className="text-xs px-2 py-0.5 rounded bg-stone-100 text-stone-700">
+                              {a.operationalStatus}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                              a.telemetryStatus === 'REPORTING' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'
+                            }`}>
+                              {a.telemetryStatus}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                              a.healthState === 'HEALTHY' ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-500'
+                            }`}>
+                              {a.healthState}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            {a.activeAlertsCount > 0 ? (
+                              <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded font-bold">
+                                {a.activeAlertsCount}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-stone-400">۰</span>
+                            )}
+                          </td>
+                          <td className="py-3 text-xs text-stone-600">
+                            {a.warrantyStatus}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Stacked Asset Cards */}
+                <div className="lg:hidden space-y-3">
+                  {assets.assets.map(a => (
+                    <div key={a.assetId} className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 space-y-2.5">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="font-mono text-xs font-bold text-stone-500 block">{a.assetCode}</span>
+                          <h4 className="text-sm font-bold text-stone-900">{a.name}</h4>
+                        </div>
+                        <span className="text-xs px-2 py-0.5 rounded bg-stone-200 text-stone-700 font-medium">
+                          {a.operationalStatus}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-stone-200">
+                        <div>
+                          <span className="text-stone-500 block">ظرفیت نامی:</span>
+                          <span className="font-bold text-stone-800">
+                            {a.installedCapacityKw !== null ? `${a.installedCapacityKw} kW` : 'ثبت‌نشده'}
                           </span>
-                        </td>
-                        <td className="py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                            a.telemetryStatus === 'REPORTING' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'
-                          }`}>
+                        </div>
+                        <div>
+                          <span className="text-stone-500 block">وضعیت تله‌متری:</span>
+                          <span className={`font-medium ${a.telemetryStatus === 'REPORTING' ? 'text-emerald-700' : 'text-stone-600'}`}>
                             {a.telemetryStatus}
                           </span>
-                        </td>
-                        <td className="py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                            a.healthState === 'HEALTHY' ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-500'
-                          }`}>
+                        </div>
+                        <div>
+                          <span className="text-stone-500 block">وضعیت سلامت:</span>
+                          <span className={a.healthState === 'HEALTHY' ? 'text-emerald-700 font-medium' : 'text-stone-600'}>
                             {a.healthState}
                           </span>
-                        </td>
-                        <td className="py-3">
-                          {a.activeAlertsCount > 0 ? (
-                            <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded font-bold">
-                              {a.activeAlertsCount}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-stone-400">۰</span>
-                          )}
-                        </td>
-                        <td className="py-3 text-xs text-stone-600">
-                          {a.warrantyStatus}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                        <div>
+                          <span className="text-stone-500 block">هشدار فعال:</span>
+                          <span className={`font-bold ${a.activeAlertsCount > 0 ? 'text-red-600' : 'text-stone-500'}`}>
+                            {a.activeAlertsCount}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <p className="text-sm text-stone-400 text-center py-6">هیچ دارایی خورشیدی برای این پرتفوی ثبت نشده است.</p>
             )}
@@ -646,7 +716,7 @@ export default function PortfolioDashboard() {
           {/* Project Financial Breakdown */}
           <div className="bg-white border border-stone-200 rounded-xl p-6">
             <h3 className="text-base font-semibold text-stone-900 mb-4">جزئیات مالی پروژه‌ها</h3>
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-right text-sm">
                 <thead>
                   <tr className="border-b border-stone-200 text-stone-500 text-xs">
@@ -679,6 +749,46 @@ export default function PortfolioDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Stacked Financial Cards */}
+            <div className="md:hidden space-y-3">
+              {financial.projectFinancialDetails.map(p => (
+                <div key={p.projectId} className="p-4 rounded-xl border border-stone-200 bg-stone-50/50 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-mono text-xs font-bold text-stone-500 block">{p.projectCode}</span>
+                      <h4 className="text-sm font-bold text-stone-900">{p.title}</h4>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-stone-200">
+                    <div>
+                      <span className="text-stone-500 block">برآورد CAPEX:</span>
+                      <span className="font-mono font-bold text-stone-800">
+                        {p.capexIRR !== null ? `${p.capexIRR.toLocaleString()} ریال` : 'نامشخص'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500 block">تسهیلات درخواستی:</span>
+                      <span className="font-mono text-stone-800">
+                        {p.financingRequestedIRR !== null ? `${p.financingRequestedIRR.toLocaleString()} ریال` : 'ندارد'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500 block">تسهیلات مصوب:</span>
+                      <span className="font-mono font-bold text-emerald-600">
+                        {p.financingSecuredIRR !== null ? `${p.financingSecuredIRR.toLocaleString()} ریال` : '-'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500 block">آورده نقدی:</span>
+                      <span className="font-mono text-stone-800">
+                        {p.ownerEquityIRR !== null ? `${p.ownerEquityIRR.toLocaleString()} ریال` : 'نامشخص'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

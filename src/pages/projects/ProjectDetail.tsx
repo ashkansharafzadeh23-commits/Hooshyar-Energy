@@ -138,6 +138,14 @@ export default function ProjectDetail() {
     );
   }
 
+  const tabLabels: Record<string, string> = {
+    overview: 'نمای کلی و کاک‌پیت',
+    process: 'فرایند و چرخه عمر',
+    commercial: 'تأمین و قراردادها',
+    documents: 'اسناد پروژه',
+    activity: 'فعالیت‌ها و رویدادها',
+  };
+
   return (
     <div className="min-h-screen bg-slate-50/50 font-Vazirmatn pb-24">
       {/* 1. Project Header (Breadcrumb, Title, Code, Metadata, Status, Refresh) */}
@@ -145,6 +153,7 @@ export default function ProjectDetail() {
         project={project}
         onRefresh={() => fetchProject(true)}
         refreshing={refreshing}
+        activeTabLabel={activeTab !== 'overview' ? tabLabels[activeTab] : undefined}
       />
 
       {/* 2. Unified Project Context Navigation */}

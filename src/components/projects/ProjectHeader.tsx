@@ -13,32 +13,45 @@ import { EnergyProject } from '../../types/project';
 import { formatSolarCapacity, formatJalaliDate } from '../../utils/formatters';
 import { ProjectStatusBadge } from '../ProjectStatusBadge';
 import { DataTruthBadge } from '../common/DataTruthBadge';
+import { AppContextBreadcrumb, BreadcrumbItem } from '../integration';
 
 interface ProjectHeaderProps {
   project: EnergyProject;
   onRefresh?: () => void;
   refreshing?: boolean;
+  activeTabLabel?: string;
 }
 
 export const ProjectHeader: React.FC<ProjectHeaderProps> = ({
   project,
   onRefresh,
   refreshing = false,
+  activeTabLabel,
 }) => {
-  return (
-    <div className="bg-white border-b border-slate-200 py-5">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-        {/* Navigation Breadcrumb / Back button */}
-        <div className="flex items-center justify-between">
-          <Link
-            to="/projects"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors p-1 -mr-1"
-          >
-            <ArrowRight className="w-4 h-4" />
-            <span>بازگشت به فهرست پروژه‌ها</span>
-          </Link>
+  const breadcrumbItems: BreadcrumbItem[] = [
+    { label: 'پروژه‌ها', to: '/projects' },
+    { 
+      label: project.title || 'پروژه بدون عنوان', 
+      to: activeTabLabel ? `/projects/${project.id}` : undefined,
+      active: !activeTabLabel 
+    }
+  ];
 
-          <div className="flex items-center gap-2">
+  if (activeTabLabel) {
+    breadcrumbItems.push({
+      label: activeTabLabel,
+      active: true
+    });
+  }
+
+  return (
+    <div className="bg-white border-b border-slate-200 py-4 sm:py-5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3 sm:space-y-4">
+        {/* Navigation Breadcrumb / Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <AppContextBreadcrumb items={breadcrumbItems} />
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
             {onRefresh && (
               <button
                 type="button"
