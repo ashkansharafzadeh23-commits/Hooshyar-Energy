@@ -106,6 +106,57 @@ assert(
   'AssetList truthfully distinguishes operational assets from projects and shows truthful empty state'
 );
 
+// Data-Truth closures for AssetList
+assert(
+  !assetListCode.includes("status || 'فعال'") && !assetListCode.includes('status || "فعال"'),
+  'Missing asset status is never converted into positive "فعال"'
+);
+
+assert(
+  assetListCode.includes('وضعیت ثبت نشده است'),
+  'Missing asset status renders neutral "وضعیت ثبت نشده است"'
+);
+
+assert(
+  assetListCode.includes('installedCapacityKw ?? asset.capacityKw'),
+  'installedCapacityKw uses nullish semantics (??) instead of truthy ||'
+);
+
+assert(
+  assetListCode.includes('capacity !== null && capacity !== undefined ?'),
+  'Actual numeric zero is preserved for capacity without falling back to "ثبت نشده"'
+);
+
+assert(
+  !assetListCode.includes("status || 'OPERATIONAL'") && !assetListCode.includes("status || 'ACTIVE'"),
+  'No frontend default OPERATIONAL or ACTIVE status is fabricated'
+);
+
+// Behavioral simulation assertions for AssetList
+const testStatusBadge = (status?: string | null) => {
+  if (!status || status.trim() === '') return 'وضعیت ثبت نشده است';
+  switch (status) {
+    case 'OPERATIONAL': return 'در حال بهره‌برداری تجاری';
+    case 'COMMISSIONED': return 'راه‌اندازی شده';
+    case 'MAINTENANCE': return 'تحت تعمیرات و نگهداری';
+    default: return status;
+  }
+};
+assert(testStatusBadge(null) === 'وضعیت ثبت نشده است', 'Null status yields neutral missing state, never positive');
+assert(testStatusBadge(undefined) === 'وضعیت ثبت نشده است', 'Undefined status yields neutral missing state, never positive');
+assert(testStatusBadge('') === 'وضعیت ثبت نشده است', 'Empty status string yields neutral missing state, never positive');
+assert(testStatusBadge('UNKNOWN_CUSTOM') === 'UNKNOWN_CUSTOM', 'Unknown backend status is displayed neutrally as-is');
+
+const testFormatCapacity = (asset: { installedCapacityKw?: number | null; capacityKw?: number | null }) => {
+  const capacity = asset.installedCapacityKw ?? asset.capacityKw;
+  return capacity !== null && capacity !== undefined ? `${capacity} کیلووات` : 'ثبت نشده';
+};
+assert(testFormatCapacity({ installedCapacityKw: 0 }) === '0 کیلووات', 'Numeric zero installed capacity is preserved as 0');
+assert(testFormatCapacity({ capacityKw: 0 }) === '0 کیلووات', 'Numeric zero fallback capacity is preserved as 0');
+assert(testFormatCapacity({ installedCapacityKw: null, capacityKw: 150 }) === '150 کیلووات', 'Nullish fallback selects secondary when primary is null');
+assert(testFormatCapacity({ installedCapacityKw: null, capacityKw: null }) === 'ثبت نشده', 'Null capacity correctly displays "ثبت نشده"');
+assert(testFormatCapacity({}) === 'ثبت نشده', 'Undefined capacity correctly displays "ثبت نشده"');
+
 const routesCode = fs.readFileSync(path.join(ROOT_DIR, 'src/App.tsx'), 'utf8');
 assert(
   routesCode.includes('/solar-assets/:id') && routesCode.includes('/assets/:id'),

@@ -570,7 +570,7 @@ export default function PortfolioDashboard() {
                           <td className="py-3 font-semibold text-stone-800">{a.assetCode}</td>
                           <td className="py-3 text-stone-700">{a.name}</td>
                           <td className="py-3 text-stone-700">
-                            {a.installedCapacityKw !== null ? `${a.installedCapacityKw} kW` : <span className="text-stone-400">ثبت‌نشده</span>}
+                            {a.installedCapacityKw !== null && a.installedCapacityKw !== undefined ? `${a.installedCapacityKw} kW` : <span className="text-stone-400">ثبت‌نشده</span>}
                           </td>
                           <td className="py-3">
                             <span className="text-xs px-2 py-0.5 rounded bg-stone-100 text-stone-700">
@@ -734,16 +734,16 @@ export default function PortfolioDashboard() {
                       <td className="py-3 font-semibold text-stone-800">{p.projectCode}</td>
                       <td className="py-3 text-stone-700">{p.title}</td>
                       <td className="py-3 text-stone-700">
-                        {p.capexIRR !== null ? `${p.capexIRR.toLocaleString()} ریال` : <span className="text-stone-400 italic">نامشخص</span>}
+                        {p.capexIRR !== null && p.capexIRR !== undefined ? `${p.capexIRR.toLocaleString()} ریال` : <span className="text-stone-400 italic">نامشخص</span>}
                       </td>
                       <td className="py-3 text-stone-700">
-                        {p.financingRequestedIRR !== null ? `${p.financingRequestedIRR.toLocaleString()} ریال` : <span className="text-stone-400 italic">ندارد</span>}
+                        {p.financingRequestedIRR !== null && p.financingRequestedIRR !== undefined ? `${p.financingRequestedIRR.toLocaleString()} ریال` : <span className="text-stone-400 italic">ندارد</span>}
                       </td>
                       <td className="py-3 text-stone-700">
-                        {p.financingSecuredIRR !== null ? `${p.financingSecuredIRR.toLocaleString()} ریال` : <span className="text-stone-400 italic">-</span>}
+                        {p.financingSecuredIRR !== null && p.financingSecuredIRR !== undefined ? `${p.financingSecuredIRR.toLocaleString()} ریال` : <span className="text-stone-400 italic">-</span>}
                       </td>
                       <td className="py-3 text-stone-700">
-                        {p.ownerEquityIRR !== null ? `${p.ownerEquityIRR.toLocaleString()} ریال` : <span className="text-stone-400 italic">نامشخص</span>}
+                        {p.ownerEquityIRR !== null && p.ownerEquityIRR !== undefined ? `${p.ownerEquityIRR.toLocaleString()} ریال` : <span className="text-stone-400 italic">نامشخص</span>}
                       </td>
                     </tr>
                   ))}

@@ -27,7 +27,15 @@ export default function SolarAssetsList() {
     fetchAssets();
   }, []);
 
-  const getStatusBadge = (status?: string) => {
+  const getStatusBadge = (status?: string | null) => {
+    if (!status || status.trim() === '') {
+      return (
+        <span className="bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 text-xs px-2.5 py-1 rounded-full border border-slate-200 dark:border-zinc-700 font-medium">
+          وضعیت ثبت نشده است
+        </span>
+      );
+    }
+
     switch (status) {
       case 'OPERATIONAL':
         return (
@@ -50,7 +58,7 @@ export default function SolarAssetsList() {
       default:
         return (
           <span className="bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-300 text-xs px-2.5 py-1 rounded-full border border-slate-200 dark:border-zinc-700 font-medium">
-            {status || 'فعال'}
+            {status}
           </span>
         );
     }
@@ -120,7 +128,7 @@ export default function SolarAssetsList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {assets.map((asset) => {
             const displayName = asset.name || asset.projectName || 'دارایی بدون عنوان';
-            const capacity = asset.installedCapacityKw || asset.capacityKw;
+            const capacity = asset.installedCapacityKw ?? asset.capacityKw;
             const locationStr = asset.location?.city || asset.location || 'محل مشخص نشده';
 
             return (
@@ -140,7 +148,7 @@ export default function SolarAssetsList() {
                         {displayName}
                       </h3>
                     </div>
-                    {getStatusBadge(asset.status || asset.projectStatus)}
+                    {getStatusBadge(asset.status ?? asset.projectStatus)}
                   </div>
 
                   <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-zinc-800 text-xs text-slate-600 dark:text-zinc-400">
@@ -151,7 +159,7 @@ export default function SolarAssetsList() {
                     <div className="flex items-center gap-2">
                       <Zap size={14} className="text-amber-500 shrink-0" />
                       <span className="font-mono font-bold text-slate-800 dark:text-zinc-200">
-                        {capacity ? `${capacity} کیلووات` : 'ثبت نشده'}
+                        {capacity !== null && capacity !== undefined ? `${capacity} کیلووات` : 'ثبت نشده'}
                       </span>
                     </div>
                   </div>
