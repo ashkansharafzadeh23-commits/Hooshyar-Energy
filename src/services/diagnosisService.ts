@@ -30,22 +30,38 @@ export const diagnosisService = {
    * Generates evidence-based diagnosis for an asset / alert
    */
   generateDiagnosis: async (params: {
-    assetId: string;
+    assetId?: string;
     alertId?: string;
     componentId?: string;
+    equipmentType?: string;
     symptoms?: string[];
+    description?: string;
+    photos?: any[];
+    documents?: any[];
+    billData?: any;
+    locationCity?: string;
     triggerAiAssisted?: boolean;
   }): Promise<MaintenanceDiagnosis> => {
-    const { assetId, alertId, componentId, triggerAiAssisted } = params;
+    const { alertId, componentId, triggerAiAssisted } = params;
 
-    const asset = assetRepository.getAssetById(assetId);
-    if (!asset) {
-      throw new Error('دارایی انرژی مورد نظر یافت نشد.');
+    const isUnregistered = !params.assetId || params.assetId === 'UNREGISTERED' || params.assetId === 'STANDALONE';
+    let asset: any = null;
+
+    if (!isUnregistered && params.assetId) {
+      asset = assetRepository.getAssetById(params.assetId);
+      if (!asset) {
+        throw new Error('دارایی انرژی مورد نظر یافت نشد.');
+      }
     }
-    const projectId = asset.projectId;
+
+    const projectId = asset ? asset.projectId : 'CUSTOMER_DIRECT';
+    const effectiveAssetId = asset ? asset.id : 'UNREGISTERED';
 
     let alert = alertId ? maintenanceRepository.getAlertById(alertId) : undefined;
     const collectedSymptoms: string[] = [...(params.symptoms || [])];
+    if (params.description) {
+      collectedSymptoms.push(`شرح مشکل: ${params.description}`);
+    }
 
     if (alert) {
       collectedSymptoms.push(`${alert.title}: ${alert.description}`);
@@ -55,8 +71,8 @@ export const diagnosisService = {
     }
 
     // 1. Check Warranties (Strict validation: invalid/missing/past dates never become ACTIVE)
-    const dbWarranties = assetRepository.getEquipmentWarranties(assetId);
-    const passportWarranties = (asset as any).equipmentPassport?.warranties || [];
+    const dbWarranties = asset ? assetRepository.getEquipmentWarranties(asset.id) : [];
+    const passportWarranties = (asset as any)?.equipmentPassport?.warranties || [];
     const warranties = dbWarranties.length > 0 ? dbWarranties : passportWarranties;
 
     let warrantyStatus: 'ACTIVE' | 'EXPIRING' | 'EXPIRED' | 'INSUFFICIENT_DATA' = 'INSUFFICIENT_DATA';
@@ -122,20 +138,20 @@ export const diagnosisService = {
     }
 
     // 2. Fetch Recent Telemetry & Context
-    const recentReadings = monitoringRepository.getTelemetryReadings(assetId);
+    const recentReadings = asset ? monitoringRepository.getTelemetryReadings(asset.id) : [];
     const hasTelemetryData = recentReadings.length > 0;
 
     // 3. Evidence-Based Root Cause & Action Derivation
-    const symptomsText = collectedSymptoms.join(' ').toLowerCase();
+    const symptomsText = (collectedSymptoms.join(' ') + ' ' + (params.equipmentType || '')).toLowerCase();
     const likelyRootCauses: DiagnosisRootCause[] = [];
     const recommendedActions: DiagnosisAction[] = [];
     let confidenceScore = 80;
     let diagnosisStatus: 'INSUFFICIENT_DATA' | 'POSSIBLE_CAUSE_IDENTIFIED' | 'MANUAL_REVIEW_REQUIRED' | 'ACTION_RECOMMENDED' = 'ACTION_RECOMMENDED';
 
-    const isInverterRelated = symptomsText.includes('inverter') || symptomsText.includes('اینورتر') || alert?.alertType === 'INVERTER_FAULT' || alert?.metricType === 'V_DC';
-    const isBatteryRelated = symptomsText.includes('battery') || symptomsText.includes('soc') || symptomsText.includes('باتری') || alert?.metricType === 'BATTERY_SOC';
+    const isInverterRelated = symptomsText.includes('inverter') || symptomsText.includes('اینورتر') || alert?.alertType === 'INVERTER_FAULT' || alert?.metricType === 'V_DC' || params.equipmentType === 'INVERTER';
+    const isBatteryRelated = symptomsText.includes('battery') || symptomsText.includes('soc') || symptomsText.includes('باتری') || alert?.metricType === 'BATTERY_SOC' || params.equipmentType === 'BATTERY';
     const isTempRelated = symptomsText.includes('temperature') || symptomsText.includes('دما') || symptomsText.includes('حرارت') || alert?.metricType === 'MODULE_TEMPERATURE';
-    const isPerformanceDrop = symptomsText.includes('performance') || symptomsText.includes('افت') || symptomsText.includes('تولید') || alert?.metricType === 'PERFORMANCE_DEVIATION' || alert?.metricType === 'PERFORMANCE_RATIO';
+    const isPerformanceDrop = symptomsText.includes('performance') || symptomsText.includes('افت') || symptomsText.includes('تولید') || alert?.metricType === 'PERFORMANCE_DEVIATION' || alert?.metricType === 'PERFORMANCE_RATIO' || params.equipmentType === 'PANEL';
     const isGridRelated = symptomsText.includes('frequency') || symptomsText.includes('voltage') || symptomsText.includes('فرکانس') || symptomsText.includes('ولتاژ') || alert?.metricType === 'FREQUENCY' || alert?.metricType === 'VOLTAGE';
     const isTelemetryLoss = symptomsText.includes('loss') || symptomsText.includes('مفقودی') || symptomsText.includes('قطع ارتباط') || alert?.source === 'TELEMETRY_LOSS';
 
@@ -240,12 +256,18 @@ export const diagnosisService = {
     }
 
     // Explicitly assemble verified FACTS (not inferred)
-    const facts: string[] = [
+    const facts: string[] = asset ? [
       `دارایی: ${asset.name || asset.assetCode} (نوع: ${asset.assetType || 'خورشیدی'})`,
       `ظرفیت نامی: ${asset.installedCapacityKw || 0} کیلووات`,
       `وضعیت تله‌متری: ${hasTelemetryData ? `${recentReadings.length} قرائت در دسترس` : 'فاقد سوابق تله‌متری'}`,
       `وضعیت گارانتی تجهیزات: ${warrantyStatus} (${warrantyImpact.warrantyNotes || ''})`
+    ] : [
+      `تجهیز مورد بررسی: ${params.equipmentType || 'سامانه یا تجهیز خورشیدی'}`,
+      `محل استقرار: ${params.locationCity || 'ثبت‌نشده'}`,
+      `وضعیت تله‌متری: فاقد اتصال برخط به دیتالاگر (تجهیز مستقل)`,
+      `وضعیت گارانتی: اطلاعات گارانتی در دسترس نیست یا ثبت نشده است.`
     ];
+
     if (alert) {
       facts.push(`هشدار دریافتی: کد ${alert.alertCode}، عنوان: ${alert.title} (شدت: ${alert.severity})`);
       if (alert.metricType) {
@@ -258,6 +280,43 @@ export const diagnosisService = {
       rc => `[استنتاج تحلیلی - احتمال ${(rc.probability * 100).toFixed(0)}٪]: ${rc.cause}`
     );
 
+    // Required Tools, Parts, Safety Guidance
+    const requiredTools: string[] = [];
+    const requiredParts: string[] = [];
+    const safetyGuidance: string[] = [
+      'هشدار ایمنی ولتاژ بالا: مدارهای استرینگ DC نیروگاه خورشیدی حتی در روزهای ابری برق‌دار و خطرناک هستند.',
+      'پیش از هرگونه دستکاری یا بازرسی مکانیکی، کلید قطع زیر بار DC (Isolator) و کلید مینیاتوری AC را قطع نمایید.',
+      'هرگز اتصالات کانکتورهای MC4 را در شرایط زیر بار قطع یا وصل نکنید (خطر ایجاد قوس الکتریکی شدید Arc Flash).',
+      'در صورت مشاهده بوی سوختگی، صدای جرقه یا دود، بلافاصله کلید اصلی تابلو را قطع و از تجهیز فاصله بگیرید.'
+    ];
+
+    if (isInverterRelated) {
+      requiredTools.push('مولتی‌متر دیجیتال کلمپی ۱۰۰۰ ولت DC با استاندارد CAT III/IV', 'تستر مقاومت عایقی و میگر (Megohmmeter)', 'تستر توالی فاز و فرکانس شبکه AC');
+      requiredParts.push('سرج ارستر / محافظ اضافه ولتاژ DC (Surge Protective Device - SPD)', 'فیوزهای سرامیکی تندکار استرینگ gPV', 'فن خنک‌کننده یا برد پاور/کنترل اینورتر');
+    } else if (isBatteryRelated) {
+      requiredTools.push('تستر مقاومت داخلی باتری و ولت‌متر میلی‌ولت دقیق', 'دستگاه تست دشارژ و لود بانک باتری', 'تجهیزات حفاظت فردی ضداسید و شوک الکتریکی');
+      requiredParts.push('کابل‌های ارتباطی جامپر باتری با روکش نسوز', 'فیوز حفاظتی خط باتری استاندارد NH', 'ماژول بالانسر ولتاژ سلول‌های باتری');
+    } else if (isTempRelated || isPerformanceDrop) {
+      requiredTools.push('دوربین ترموویژن مادون قرمز جهت شناسایی Hotspot', 'دستگاه سنجش تابش خورشیدی (Solar Pyranometer / Solarmeter)', 'آچار استاندارد باز و بست و پرس کانکتورهای MC4');
+      requiredParts.push('دیودهای بای‌پاس جعبه تقسیم پنل (Bypass Diode)', 'کانکتورهای استاندارد ضدآب MC4 نر و مادگی', 'کابل خورشیدی ۴ یا ۶ میلی‌متر مربع مقاوم در برابر اشعه UV');
+    } else {
+      requiredTools.push('جعبه ابزار تخصصی عایق الکتریکی ۱۰۰۰ ولت خورشیدی', 'مولتی‌متر دیجیتال صنعتی');
+      requiredParts.push('کانکتورها و اتصالات ضدآب خورشیدی', 'ترمینال‌های ریلی استاندارد');
+    }
+
+    const evidenceCategorized = {
+      OBSERVED: facts,
+      USER_REPORTED: collectedSymptoms,
+      DOCUMENT_EXTRACTED: params.billData ? [`اطلاعات استخراج‌شده از قبض برق: مصرف ${params.billData.kwh || 'نامشخص'} کیلووات‌ساعت`] : [],
+      TELEMETRY_VERIFIED: hasTelemetryData ? [`تله‌متری زنده متصل: ${recentReadings.length} قرائت در بازه اخیر`] : ['داده تله‌متری زنده در دسترس نیست'],
+      AI_INFERENCE: inferences,
+      NOT_AVAILABLE: [
+        ...(hasTelemetryData ? [] : ['داده‌های تله‌متری زنده سنسورها']),
+        ...(warranties.length > 0 ? [] : ['پرونده گارانتی رسمی ثبت‌شده']),
+        ...(!params.billData ? ['قبض برق و داده‌های دقیق صورتحساب'] : [])
+      ]
+    };
+
     // 4. Optional AI Enrichment Layer
     let diagnosisMethod: DiagnosisMethod = 'EXPERT_RULESET';
     let rawAiResponse: string | undefined = undefined;
@@ -266,11 +325,11 @@ export const diagnosisService = {
     if (ai && triggerAiAssisted !== false) {
       try {
         const prompt = `شما یک مهندس ارشد و کارشناس عیب‌یابی نیروگاه‌های خورشیدی و سیستم‌های انرژی تجدیدپذیر هستید.
-اطلاعات دارایی:
-- نام و نوع دارایی: ${asset.name || asset.assetCode} (${asset.assetType})
-- ظرفیت نصب شده: ${asset.installedCapacityKw} کیلووات
+اطلاعات دارایی یا تجهیز:
+- نام و نوع تجهیز: ${asset ? `${asset.name || asset.assetCode} (${asset.assetType})` : params.equipmentType || 'تجهیز خورشیدی'}
+- ظرفیت تقریبی: ${asset ? `${asset.installedCapacityKw} کیلووات` : 'نامشخص'}
 - نشانه‌ها و هشدارهای دریافتی: ${collectedSymptoms.join(' | ') || 'بررسی وضعیت عمومی'}
-- وضعیت گارانتی تجهیزات: ${warrantyImpact.hasWarrantyCoverage ? 'دارد: ' + warrantyImpact.warrantyNotes : 'ندارد'}
+- وضعیت گارانتی تجهیزات: ${warrantyImpact.hasWarrantyCoverage ? 'دارد: ' + warrantyImpact.warrantyNotes : 'ندارد یا نامشخص'}
 
 بر اساس این شواهد، لطفاً تحلیل فنی علت ریشه‌ای و ۳ اقدام پیشنهادی دارای اولویت را ارائه دهید.
 پاسخ را خلاصه، تخصصی و به زبان فارسی بنویسید.`;
@@ -305,7 +364,7 @@ export const diagnosisService = {
 
     const created = maintenanceRepository.createDiagnosis({
       alertId,
-      assetId,
+      assetId: effectiveAssetId,
       projectId,
       componentId,
       diagnosisStatus,
@@ -319,7 +378,11 @@ export const diagnosisService = {
       confidenceScore,
       warrantyImpact,
       diagnosisMethod,
-      rawAiResponse
+      rawAiResponse,
+      evidenceCategorized,
+      requiredTools,
+      requiredParts,
+      safetyGuidance
     });
 
     return created;

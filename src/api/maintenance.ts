@@ -463,6 +463,242 @@ maintenanceRouter.post('/assets/:assetId/maintenance', (req: Request, res: Respo
 });
 
 /**
+ * GET /api/cases, /api/maintenance/cases
+ * List maintenance cases with role-aware and customer filtering
+ */
+maintenanceRouter.get(['/cases', '/maintenance/cases'], (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const roleUpper = req.user?.role?.toUpperCase();
+  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+  const isTech = ['technician', 'professional', 'expert'].includes(req.user?.role?.toLowerCase() || '');
+
+  const projectId = req.query.projectId ? String(req.query.projectId) : undefined;
+  const assetId = req.query.assetId ? String(req.query.assetId) : undefined;
+  const status = req.query.status ? String(req.query.status) : undefined;
+
+  let allCases = maintenanceRepository.getAllCases();
+
+  if (isTech && !isAdmin) {
+    allCases = allCases.filter(c => c.assignedTechnicianId === userId);
+  } else if (!isAdmin && userId) {
+    const userProjects = projectRepository.findAll().filter(p => p.ownerId === userId);
+    const userProjectIds = new Set(userProjects.map(p => p.id));
+    allCases = allCases.filter(c => c.reportedBy === userId || userProjectIds.has(c.projectId) || c.projectId === 'CUSTOMER_DIRECT');
+  }
+
+  if (projectId) {
+    allCases = allCases.filter(c => c.projectId === projectId);
+  }
+  if (assetId) {
+    allCases = allCases.filter(c => c.assetId === assetId);
+  }
+  if (status && status !== 'ALL') {
+    allCases = allCases.filter(c => c.status === status);
+  }
+
+  allCases.sort((a, b) => new Date(b.createdAt || b.reportedAt).getTime() - new Date(a.createdAt || a.reportedAt).getTime());
+  return res.json(allCases);
+});
+
+/**
+ * POST /api/cases, /api/maintenance/cases
+ * Create customer maintenance request (with optional asset linkage or unregistered equipment)
+ */
+maintenanceRouter.post(['/cases', '/maintenance/cases'], async (req: Request, res: Response) => {
+  const {
+    assetId,
+    componentId,
+    equipmentType,
+    title,
+    description,
+    priority,
+    category,
+    symptoms,
+    diagnosisId,
+    assignedTechnicianId,
+    assignedTechnicianName,
+    assignedTechnicianPhone,
+    scheduledDate
+  } = req.body;
+
+  if (!title || !description) {
+    return res.status(400).json({ error: 'عنوان و شرح پرونده تعمیراتی الزامی است.' });
+  }
+
+  let finalProjectId = 'CUSTOMER_DIRECT';
+  let finalAssetId = 'UNREGISTERED';
+
+  if (assetId && assetId !== 'UNREGISTERED' && assetId !== 'STANDALONE') {
+    const asset = assetRepository.getAssetById(assetId);
+    if (!asset) {
+      return res.status(404).json({ error: 'دارایی انرژی انتخاب شده یافت نشد.' });
+    }
+    const access = checkProjectAccess(asset.projectId, req.user?.id, req.user?.role);
+    if (!access.allowed) {
+      return res.status(access.status || 403).json({ error: access.error });
+    }
+    finalProjectId = asset.projectId;
+    finalAssetId = asset.id;
+  }
+
+  try {
+    const created = maintenanceCaseService.createCase(
+      {
+        projectId: finalProjectId,
+        assetId: finalAssetId,
+        componentId,
+        diagnosisId,
+        title,
+        description,
+        priority: priority || 'MEDIUM',
+        category: category || 'CORRECTIVE',
+        assignedTechnicianId,
+        assignedTechnicianName,
+        assignedTechnicianPhone,
+        scheduledDate
+      },
+      req.user?.id || 'CUSTOMER'
+    );
+
+    return res.status(201).json(created);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'خطا در ثبت درخواست تعمیرات' });
+  }
+});
+
+/**
+ * POST /api/diagnose, /api/maintenance/diagnose
+ * Evidence-based preliminary AI diagnosis for customer problem reports
+ */
+maintenanceRouter.post(['/diagnose', '/maintenance/diagnose'], async (req: Request, res: Response) => {
+  try {
+    const {
+      assetId,
+      componentId,
+      equipmentType,
+      symptoms,
+      description,
+      photos,
+      documents,
+      billData,
+      locationCity,
+      triggerAiAssisted
+    } = req.body;
+
+    const diagnosis = await diagnosisService.generateDiagnosis({
+      assetId,
+      componentId,
+      equipmentType,
+      symptoms,
+      description,
+      photos,
+      documents,
+      billData,
+      locationCity,
+      triggerAiAssisted: triggerAiAssisted ?? true
+    });
+
+    return res.json(diagnosis);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'خطا در انجام عیب‌یابی هوشمند' });
+  }
+});
+
+/**
+ * GET/POST /api/technicians/matching, /api/maintenance/technicians/matching
+ * Match verified approved technicians based on location and symptoms
+ */
+const handleTechnicianMatching = (req: Request, res: Response) => {
+  try {
+    const params = req.method === 'POST' ? req.body : req.query;
+    const symptoms = Array.isArray(params.symptoms)
+      ? params.symptoms
+      : params.symptoms
+        ? String(params.symptoms).split(',')
+        : [];
+    const location = params.location ? String(params.location) : undefined;
+    const equipmentType = params.equipmentType ? String(params.equipmentType) : undefined;
+    const category = params.category ? String(params.category) : undefined;
+    const projectId = params.projectId ? String(params.projectId) : undefined;
+    const assetId = params.assetId ? String(params.assetId) : undefined;
+
+    const matches = technicianMatchingService.matchTechnicians({
+      projectId,
+      assetId,
+      location,
+      equipmentType,
+      category,
+      symptoms
+    });
+
+    return res.json(matches);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'خطا در انطباق متخصصان مجاز' });
+  }
+};
+maintenanceRouter.get(['/technicians/matching', '/maintenance/technicians/matching'], handleTechnicianMatching);
+maintenanceRouter.post(['/technicians/matching', '/maintenance/technicians/matching'], handleTechnicianMatching);
+
+/**
+ * POST /api/maintenance/:maintenanceCaseId/select-technician, /api/cases/:maintenanceCaseId/select-technician
+ * Customer selects or requests an approved technician for their maintenance case
+ */
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/select-technician', '/cases/:maintenanceCaseId/select-technician'], (req: Request, res: Response) => {
+  const caseId = getParam(req.params.maintenanceCaseId);
+  const mCase = maintenanceRepository.getCaseById(caseId);
+  if (!mCase) {
+    return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
+  }
+
+  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
+  const roleUpper = req.user?.role?.toUpperCase();
+  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+
+  if (!isReporter && !isAdmin) {
+    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
+    if (!access.allowed) {
+      return res.status(access.status || 403).json({ error: access.error });
+    }
+  }
+
+  const { technicianId, scheduledDate, notes } = req.body;
+  if (!technicianId) {
+    return res.status(400).json({ error: 'شناسه متخصص الزامی است.' });
+  }
+
+  const pro = professionalRepository.getProfessionalById(technicianId);
+  if (!pro) {
+    return res.status(404).json({ error: 'متخصص مورد نظر یافت نشد.' });
+  }
+
+  if (pro.status !== 'approved' && (pro as any).approvalStatus !== 'APPROVED') {
+    return res.status(400).json({ error: 'تنها متخصصان دارای تاییدیه رسمی صلاحیت ارزیابی مجاز به پذیرش پرونده هستند.' });
+  }
+
+  try {
+    const updated = maintenanceCaseService.transitionCaseStatus(caseId, 'ASSIGNED', req.user?.id || 'CUSTOMER', {
+      technicianId: pro.id,
+      technicianName: pro.fullName || 'متخصص انرژی خورشیدی',
+      technicianPhone: pro.phone,
+      scheduledDate
+    });
+
+    maintenanceRepository.createAssignmentHistory({
+      maintenanceCaseId: caseId,
+      technicianId: pro.id,
+      assignedBy: req.user?.id || 'CUSTOMER',
+      assignedAt: new Date().toISOString(),
+      status: 'ASSIGNED',
+      notes: notes || 'تخصیص از طریق درگاه هوشمند تعمیرات و نگهداری'
+    });
+
+    return res.json(updated);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message || 'خطا در تخصیص متخصص' });
+  }
+});
+
+/**
  * GET /api/technician/cases
  * Retrieve maintenance cases for technician workspace
  */
@@ -494,10 +730,10 @@ maintenanceRouter.get('/technician/cases', (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/maintenance/:maintenanceCaseId
+ * GET /api/maintenance/:maintenanceCaseId, /api/cases/:maintenanceCaseId
  * Retrieve single maintenance case with actions, history, and diagnosis
  */
-maintenanceRouter.get('/maintenance/:maintenanceCaseId', (req: Request, res: Response) => {
+maintenanceRouter.get(['/maintenance/:maintenanceCaseId', '/cases/:maintenanceCaseId'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
@@ -508,12 +744,13 @@ maintenanceRouter.get('/maintenance/:maintenanceCaseId', (req: Request, res: Res
   const isAssignedTechnician = mCase.assignedTechnicianId === req.user?.id;
   const techRoles = ['technician', 'professional', 'expert', 'expert', 'technician'];
   const isTechRole = techRoles.includes(req.user?.role?.toLowerCase() || '');
+  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
   
   if (isAssignedTechnician) {
     // Allow access without project check
   } else if (isTechRole) {
     return res.status(403).json({ error: 'شما به عنوان تکنسین تنها به پرونده‌های محول شده به خودتان دسترسی دارید.' });
-  } else {
+  } else if (!isReporter) {
     const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
     if (!access.allowed) {
       return res.status(access.status || 403).json({ error: access.error });
@@ -756,23 +993,53 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/start', (req: Request, r
 });
 
 /**
- * POST /api/maintenance/:maintenanceCaseId/actions
- * Log an action taken during maintenance
+ * GET /api/maintenance/:maintenanceCaseId/actions, /api/cases/:maintenanceCaseId/actions
+ * Retrieve actions logged for a maintenance case
  */
-maintenanceRouter.post('/api/maintenance/:maintenanceCaseId/actions', (req: Request, res: Response) => {
-  // Handled below
-});
-
-maintenanceRouter.post('/maintenance/:maintenanceCaseId/actions', (req: Request, res: Response) => {
+maintenanceRouter.get(['/maintenance/:maintenanceCaseId/actions', '/cases/:maintenanceCaseId/actions'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed && mCase.assignedTechnicianId !== req.user.id) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
+  const isAssigned = mCase.assignedTechnicianId === req.user?.id;
+  const roleUpper = req.user?.role?.toUpperCase();
+  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+
+  if (!isReporter && !isAssigned && !isAdmin) {
+    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
+    if (!access.allowed) {
+      return res.status(access.status || 403).json({ error: access.error });
+    }
+  }
+
+  const actions = maintenanceRepository.getActions(caseId);
+  return res.json(actions);
+});
+
+/**
+ * POST /api/maintenance/:maintenanceCaseId/actions, /api/cases/:maintenanceCaseId/actions
+ * Log an action taken during maintenance
+ */
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/actions', '/cases/:maintenanceCaseId/actions'], (req: Request, res: Response) => {
+  const caseId = getParam(req.params.maintenanceCaseId);
+  const mCase = maintenanceRepository.getCaseById(caseId);
+  if (!mCase) {
+    return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
+  }
+
+  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
+  const isAssigned = mCase.assignedTechnicianId === req.user?.id;
+  const roleUpper = req.user?.role?.toUpperCase();
+  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+
+  if (!isReporter && !isAssigned && !isAdmin) {
+    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
+    if (!access.allowed) {
+      return res.status(access.status || 403).json({ error: access.error });
+    }
   }
 
   const {
@@ -861,20 +1128,26 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/submit-verification', (r
 });
 
 /**
- * POST /api/maintenance/:maintenanceCaseId/verify
- * Project Owner / EPC reviews and verifies maintenance work
+ * POST /api/maintenance/:maintenanceCaseId/verify, /api/cases/:maintenanceCaseId/verify
+ * Project Owner / EPC / Customer reviews and verifies maintenance work
  */
-maintenanceRouter.post('/maintenance/:maintenanceCaseId/verify', (req: Request, res: Response) => {
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/verify', '/cases/:maintenanceCaseId/verify'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  // Only project managers, owners or admins can verify - NOT the technician!
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
+  const roleUpper = req.user?.role?.toUpperCase();
+  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+
+  // Only project managers, owners, reporter customer or admins can verify - NOT the technician!
+  if (!isReporter && !isAdmin) {
+    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
+    if (!access.allowed) {
+      return res.status(access.status || 403).json({ error: access.error });
+    }
   }
 
   const { verificationPassed, verificationNotes } = req.body;
@@ -899,19 +1172,25 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/verify', (req: Request, 
 });
 
 /**
- * POST /api/maintenance/:maintenanceCaseId/close
+ * POST /api/maintenance/:maintenanceCaseId/close, /api/cases/:maintenanceCaseId/close
  * Close and archive completed maintenance case, auto-resolve alerts & check post-performance
  */
-maintenanceRouter.post('/maintenance/:maintenanceCaseId/close', (req: Request, res: Response) => {
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/close', '/cases/:maintenanceCaseId/close'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
+  const roleUpper = req.user?.role?.toUpperCase();
+  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+
+  if (!isReporter && !isAdmin) {
+    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
+    if (!access.allowed) {
+      return res.status(access.status || 403).json({ error: access.error });
+    }
   }
 
   // Auto-resolve associated alerts

@@ -98,6 +98,7 @@ export default function App() {
               <Route path="/contractor-dashboard" element={<ContractorDashboard />} />
               <Route path="/ads-portal" element={<AdsPortal />} />
               <Route path="/smart-maintenance" element={<SmartMaintenance />} />
+              <Route path="/maintenance" element={<SmartMaintenance />} />
               <Route path="/technicians" element={<TechniciansList />} />
               <Route path="/technician-auth" element={<TechnicianAuth />} />
               <Route path="/technician-dashboard" element={<TechnicianDashboard />} />

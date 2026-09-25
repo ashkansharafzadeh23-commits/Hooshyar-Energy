@@ -18,8 +18,8 @@ export const maintenanceCaseService = {
    */
   createCase: (
     data: {
-      projectId: string;
-      assetId: string;
+      projectId?: string;
+      assetId?: string;
       alertIds?: string[];
       componentId?: string;
       title: string;
@@ -34,19 +34,29 @@ export const maintenanceCaseService = {
     },
     userId: string
   ): MaintenanceCase => {
-    const asset = assetRepository.getAssetById(data.assetId);
-    if (!asset) {
-      throw new Error('دارایی انرژی انتخاب شده یافت نشد.');
+    let projectId = data.projectId;
+    let assetId = data.assetId;
+    const isUnregistered = !data.assetId || data.assetId === 'UNREGISTERED' || data.assetId === 'STANDALONE';
+
+    if (!isUnregistered && data.assetId) {
+      const asset = assetRepository.getAssetById(data.assetId);
+      if (!asset) {
+        throw new Error('دارایی انرژی انتخاب شده یافت نشد.');
+      }
+      projectId = asset.projectId;
+      assetId = asset.id;
+    } else {
+      projectId = projectId || 'CUSTOMER_DIRECT';
+      assetId = 'UNREGISTERED';
     }
 
-    const projectId = asset.projectId;
     const alertIds = data.alertIds || [];
 
     const initialStatus: MaintenanceCaseStatus = data.assignedTechnicianId ? 'ASSIGNED' : 'OPEN';
 
     const newCase = maintenanceRepository.createCase({
-      projectId,
-      assetId: data.assetId,
+      projectId: projectId!,
+      assetId: assetId!,
       alertIds,
       componentId: data.componentId,
       title: data.title,
@@ -62,7 +72,9 @@ export const maintenanceCaseService = {
       actionsTaken: [],
       sparePartsUsed: [],
       totalCostIrr: 0,
-      totalLaborHours: 0
+      totalLaborHours: 0,
+      reportedBy: userId,
+      reportedAt: new Date().toISOString()
     });
 
     // Mark associated alerts as CASE_CREATED
@@ -76,13 +88,19 @@ export const maintenanceCaseService = {
       }
     }
 
-    // Log project activity
-    projectRepository.addActivity({
-      projectId,
-      userId,
-      type: 'MAINTENANCE_CASE_CREATED',
-      description: `ثبت تیکت تعمیرات و نگهداری (${newCase.caseNumber}): ${newCase.title}`
-    });
+    // Log project activity if linked to real project
+    if (projectId && projectId !== 'CUSTOMER_DIRECT') {
+      try {
+        projectRepository.addActivity({
+          projectId,
+          userId,
+          type: 'MAINTENANCE_CASE_CREATED',
+          description: `ثبت تیکت تعمیرات و نگهداری (${newCase.caseNumber}): ${newCase.title}`
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
 
     return newCase;
   },
@@ -216,12 +234,18 @@ export const maintenanceCaseService = {
 
     const updated = maintenanceRepository.updateCase(caseId, updates);
 
-    projectRepository.addActivity({
-      projectId: mCase.projectId,
-      userId: actorUserId,
-      type: 'MAINTENANCE_STATUS_CHANGED',
-      description: `تغییر وضعیت پرونده تعمیرات ${mCase.caseNumber} به ${newStatus}`
-    });
+    if (mCase.projectId && mCase.projectId !== 'CUSTOMER_DIRECT') {
+      try {
+        projectRepository.addActivity({
+          projectId: mCase.projectId,
+          userId: actorUserId,
+          type: 'MAINTENANCE_STATUS_CHANGED',
+          description: `تغییر وضعیت پرونده تعمیرات ${mCase.caseNumber} به ${newStatus}`
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
 
     return updated!;
   },

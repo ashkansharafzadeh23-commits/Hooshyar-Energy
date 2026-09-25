@@ -152,6 +152,17 @@ export interface MaintenanceDiagnosis {
   confidenceScore?: number;
   rawAiResponse?: any;
   generatedBy?: string; // 'DETERMINISTIC_ENGINE' | 'AI_ASSISTED' | user ID
+  evidenceCategorized?: {
+    OBSERVED?: string[];
+    USER_REPORTED?: string[];
+    DOCUMENT_EXTRACTED?: string[];
+    TELEMETRY_VERIFIED?: string[];
+    AI_INFERENCE?: string[];
+    NOT_AVAILABLE?: string[];
+  };
+  requiredTools?: string[];
+  requiredParts?: string[];
+  safetyGuidance?: string[];
   createdAt: string;
 }
 

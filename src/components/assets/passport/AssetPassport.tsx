@@ -141,6 +141,30 @@ export const AssetPassport: React.FC<AssetPassportProps> = ({
             }
           }
         }
+
+        // Maintenance History
+        try {
+          const maintRes = await fetch(`/api/assets/${assetId}/maintenance-history`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+          });
+          if (maintRes.ok) {
+            const mData = await maintRes.json();
+            const items = Array.isArray(mData) ? mData : mData.historyItems || [];
+            setMaintenanceLogs(items.map((m: any) => ({
+              id: m.id || m.maintenanceCaseId,
+              assetId: assetId,
+              maintenanceType: m.category || 'CORRECTIVE',
+              description: m.title || m.resolutionSummary || 'سرویس و نگهداری ثبت‌شده',
+              performedDate: m.completedDate || m.performedAt || m.createdAt,
+              performedBy: m.assignedTechnicianName || m.performedBy || 'تیم O&M',
+              status: m.status || 'COMPLETED',
+              cost: m.totalCostIrr || m.cost,
+              notes: m.closureNotes || m.resolutionSummary
+            })));
+          }
+        } catch {
+          // ignore
+        }
       } catch (err: any) {
         setError(err?.message || 'خطا در بارگذاری اطلاعات شناسنامه دارایی');
       } finally {

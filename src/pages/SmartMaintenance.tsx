@@ -13,7 +13,11 @@ import {
   Building,
   CheckCircle,
   ShieldCheck,
-  Loader2
+  Loader2,
+  Wrench,
+  Search,
+  Sparkles,
+  ArrowLeft
 } from 'lucide-react';
 import { AdBanner } from '../components/AdBanner';
 import { AlertDashboard } from '../components/maintenance/AlertDashboard';
@@ -22,6 +26,9 @@ import { CaseList } from '../components/maintenance/CaseList';
 import { CaseDetailModal } from '../components/maintenance/CaseDetailModal';
 import { TechnicianMatcher } from '../components/maintenance/TechnicianMatcher';
 import { MaintenanceHistory } from '../components/maintenance/MaintenanceHistory';
+import { CustomerMaintenanceRequest } from '../components/maintenance/CustomerMaintenanceRequest';
+import { CustomerCaseTracking } from '../components/maintenance/CustomerCaseTracking';
+import { ApprovedProfessionalsDirectory } from '../components/maintenance/ApprovedProfessionalsDirectory';
 import { 
   AssetAlert, 
   MaintenanceCase, 
@@ -32,7 +39,7 @@ import {
 } from '../types/maintenance';
 
 export default function SmartMaintenance() {
-  const [activeTab, setActiveTab] = useState<'ALERTS' | 'DIAGNOSIS' | 'CASES' | 'MATCHING' | 'HISTORY' | 'CALCULATOR'>('ALERTS');
+  const [activeTab, setActiveTab] = useState<'NEW_REQUEST' | 'CASES' | 'TRACKING' | 'TECHNICIANS' | 'ALERTS' | 'DIAGNOSIS' | 'MATCHING' | 'HISTORY' | 'CALCULATOR'>('NEW_REQUEST');
   
   // Projects and selection
   const [projects, setProjects] = useState<any[]>([]);
@@ -50,6 +57,12 @@ export default function SmartMaintenance() {
   const [matchingCase, setMatchingCase] = useState<MaintenanceCase | null>(null);
   const [technicians, setTechnicians] = useState<TechnicianMatch[]>([]);
   const [assignmentHistories, setAssignmentHistories] = useState<MaintenanceAssignmentHistory[]>([]);
+
+  // Customer tracking specific state
+  const [trackingCaseId, setTrackingCaseId] = useState<string | null>(null);
+  const [trackingInputCode, setTrackingInputCode] = useState<string>('');
+  const [trackingLookupError, setTrackingLookupError] = useState<string | null>(null);
+  const [preselectedTechForRequest, setPreselectedTechForRequest] = useState<TechnicianMatch | null>(null);
 
   // Loaders
   const [loading, setLoading] = useState(false);
@@ -108,7 +121,7 @@ export default function SmartMaintenance() {
   const fetchAlerts = async (projectId?: string) => {
     try {
       const pid = projectId || selectedProjectId;
-      const url = pid ? `/api/maintenance/alerts?projectId=${pid}` : '/api/maintenance/alerts';
+      const url = pid ? `/api/projects/${pid}/alerts` : '/api/alerts';
       const res = await fetch(url, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
@@ -140,10 +153,48 @@ export default function SmartMaintenance() {
     fetchCases(pid);
   };
 
+  // Fast tracking code lookup
+  const handleLookupTrackingCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trackingInputCode.trim()) return;
+    setTrackingLookupError(null);
+    const code = trackingInputCode.trim();
+
+    // Check existing loaded cases
+    const localMatch = cases.find(
+      c => c.caseNumber?.toLowerCase() === code.toLowerCase() ||
+           c.maintenanceCode?.toLowerCase() === code.toLowerCase() ||
+           c.id === code
+    );
+    if (localMatch) {
+      setTrackingCaseId(localMatch.id);
+      setActiveTab('TRACKING');
+      setTrackingInputCode('');
+      return;
+    }
+
+    // Call API by caseId or code
+    try {
+      const res = await fetch(`/api/maintenance/${encodeURIComponent(code)}`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const found = await res.json();
+        setTrackingCaseId(found.id);
+        setActiveTab('TRACKING');
+        setTrackingInputCode('');
+      } else {
+        setTrackingLookupError('پرونده‌ای با این کد رهگیری یافت نشد.');
+      }
+    } catch {
+      setTrackingLookupError('خطا در جستجوی کد رهگیری.');
+    }
+  };
+
   // Acknowledge Alert
   const handleAcknowledgeAlert = async (alertId: string) => {
     try {
-      const res = await fetch(`/api/maintenance/alerts/${alertId}/acknowledge`, {
+      const res = await fetch(`/api/alerts/${alertId}/acknowledge`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ note: 'بررسی اولیه توسط مسئول پایش انجام شد.' })
@@ -159,7 +210,7 @@ export default function SmartMaintenance() {
   // Dismiss Alert
   const handleDismissAlert = async (alertId: string) => {
     try {
-      const res = await fetch(`/api/maintenance/alerts/${alertId}/dismiss`, {
+      const res = await fetch(`/api/alerts/${alertId}/dismiss`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ reason: 'هشدار گذرا یا کاذب ارزیابی شد.' })
@@ -178,7 +229,7 @@ export default function SmartMaintenance() {
     setActiveTab('DIAGNOSIS');
     setDiagLoading(true);
     try {
-      const res = await fetch(`/api/maintenance/alerts/${alert.id}/diagnose`, {
+      const res = await fetch(`/api/alerts/${alert.id}/diagnose`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ triggerAiAssisted: true })
@@ -203,7 +254,7 @@ export default function SmartMaintenance() {
         body: JSON.stringify({
           projectId: alert.projectId,
           assetId: alert.assetId,
-          alertId: alert.id,
+          alertIds: [alert.id],
           title: `رسیدگی به: ${alert.title}`,
           description: alert.description || `ارجاع خرابی از هشدار شماره ${alert.alertCode}`,
           priority: alert.severity === 'CRITICAL' ? 'URGENT' : alert.severity === 'HIGH' ? 'HIGH' : 'MEDIUM'
@@ -228,7 +279,7 @@ export default function SmartMaintenance() {
         body: JSON.stringify({
           projectId: alert.projectId,
           assetId: alert.assetId,
-          alertId: alert.id,
+          alertIds: [alert.id],
           title: `اقدام اصلاحی: ${alert.title}`,
           description: diagnosis.confidenceScore !== undefined && diagnosis.confidenceScore !== null
             ? `تشخیص ثبت‌شده با سطح اطمینان ${Math.round(diagnosis.confidenceScore * 100)}%`
@@ -251,7 +302,7 @@ export default function SmartMaintenance() {
     setSelectedCase(mCase);
     setModalLoading(true);
     try {
-      const res = await fetch(`/api/maintenance/cases/${mCase.id}/actions`, {
+      const res = await fetch(`/api/maintenance/${mCase.id}/actions`, {
         headers: getAuthHeaders()
       });
       if (res.ok) {
@@ -268,14 +319,13 @@ export default function SmartMaintenance() {
   // Add Action to Case
   const handleAddAction = async (caseId: string, actionData: any) => {
     try {
-      const res = await fetch(`/api/maintenance/cases/${caseId}/actions`, {
+      const res = await fetch(`/api/maintenance/${caseId}/actions`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(actionData)
       });
       if (res.ok) {
-        // Refresh actions & case
-        const actRes = await fetch(`/api/maintenance/cases/${caseId}/actions`, { headers: getAuthHeaders() });
+        const actRes = await fetch(`/api/maintenance/${caseId}/actions`, { headers: getAuthHeaders() });
         if (actRes.ok) {
           const acts = await actRes.json();
           setCaseActions(Array.isArray(acts) ? acts : acts.actions || []);
@@ -290,7 +340,7 @@ export default function SmartMaintenance() {
   // Verify Case
   const handleVerifyCase = async (caseId: string) => {
     try {
-      const res = await fetch(`/api/maintenance/cases/${caseId}/verify`, {
+      const res = await fetch(`/api/maintenance/${caseId}/verify`, {
         method: 'POST',
         headers: getAuthHeaders()
       });
@@ -312,7 +362,7 @@ export default function SmartMaintenance() {
   // Close Case
   const handleCloseCase = async (caseId: string, closeData: any) => {
     try {
-      const res = await fetch(`/api/maintenance/cases/${caseId}/close`, {
+      const res = await fetch(`/api/maintenance/${caseId}/close`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(closeData)
@@ -332,8 +382,14 @@ export default function SmartMaintenance() {
     setActiveTab('MATCHING');
     setMatchLoading(true);
     try {
-      const res = await fetch(`/api/maintenance/cases/${mCase.id}/match-technicians`, {
-        headers: getAuthHeaders()
+      const res = await fetch(`/api/technicians/matching`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          projectId: mCase.projectId,
+          assetId: mCase.assetId,
+          symptoms: [mCase.title, mCase.description]
+        })
       });
       if (res.ok) {
         const data = await res.json();
@@ -349,7 +405,7 @@ export default function SmartMaintenance() {
   // Assign Technician
   const handleAssignTechnician = async (caseId: string, technicianId: string, notes?: string) => {
     try {
-      const res = await fetch(`/api/maintenance/cases/${caseId}/assign`, {
+      const res = await fetch(`/api/maintenance/${caseId}/select-technician`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -375,8 +431,8 @@ export default function SmartMaintenance() {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          projectId: selectedProjectId || 'default-project',
-          assetId: 'ast-default',
+          projectId: selectedProjectId || 'CUSTOMER_DIRECT',
+          assetId: 'UNREGISTERED',
           title: newCaseTitle,
           description: newCaseDesc,
           priority: newCasePriority
@@ -399,64 +455,99 @@ export default function SmartMaintenance() {
         <AdBanner />
 
         {/* Page Top Header */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full w-fit mb-2">
-              <Settings size={14} />
-              سامانه جامع پایش، هشدار و مدیریت تعمیرات (O&M)
+        <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full w-fit mb-2">
+                <Wrench size={14} />
+                خدمات تخصصی بهره‌برداری، تعمیرات و نگهداری هوشمند (O&M)
+              </div>
+              <h1 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
+                تعمیرات و نگهداری هوشمند
+              </h1>
+              <p className="text-xs md:text-sm text-slate-500 mt-1">
+                سامانه یکپارچه تشخیص عیب، درخواست سرویس، اعزام کارشناسان مجاز و ثبت سوابق در شناسنامه فنی نیروگاه
+              </p>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-              مدیریت هوشمند عملیات و نگهداری نیروگاه
-            </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              تبدیل داده‌های تله‌متری و انحراف عملکرد به هشدار، ریشه‌یابی فنی، پرونده تعمیراتی و اعزام تکنسین
-            </p>
+
+            {/* Quick Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setPreselectedTechForRequest(null);
+                  setActiveTab('NEW_REQUEST');
+                }}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2"
+              >
+                <Plus size={16} />
+                <span>ثبت درخواست تعمیرات جدید</span>
+              </button>
+
+              {/* Project Switcher if available */}
+              {projects.length > 0 && (
+                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 text-xs">
+                  <Building size={14} className="text-slate-400 mr-1" />
+                  <span className="font-bold text-slate-600">پروژه:</span>
+                  <select
+                    value={selectedProjectId}
+                    onChange={e => handleProjectChange(e.target.value)}
+                    className="font-bold bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-slate-800 outline-none"
+                  >
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.title || p.projectCode || p.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Project Switcher */}
-          {projects.length > 0 && (
-            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200">
-              <Building size={16} className="text-slate-400 mr-1" />
-              <span className="text-xs font-bold text-slate-600">پروژه:</span>
-              <select
-                value={selectedProjectId}
-                onChange={e => handleProjectChange(e.target.value)}
-                className="text-xs font-bold bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-slate-800 outline-none focus:ring-2 focus:ring-blue-500"
+          {/* Quick Tracking Search Bar */}
+          <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <form onSubmit={handleLookupTrackingCode} className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-80">
+                <Search size={14} className="absolute right-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={trackingInputCode}
+                  onChange={e => setTrackingInputCode(e.target.value)}
+                  placeholder="پیگیری سریع با کد پرونده (مثال: MC-2026-0001)..."
+                  className="w-full pr-8 pl-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors"
               >
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.title || p.projectCode || p.id}
-                  </option>
-                ))}
-              </select>
+                رهگیری
+              </button>
+            </form>
+
+            {trackingLookupError && (
+              <span className="text-[11px] text-rose-600 font-bold">{trackingLookupError}</span>
+            )}
+
+            <div className="text-[11px] text-slate-400">
+              تعداد پرونده‌های شما: <strong className="text-slate-700">{cases.length}</strong>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Navigation Tabs */}
         <div className="flex flex-wrap border-b border-slate-200 bg-white px-4 rounded-2xl shadow-sm gap-2 text-xs font-bold text-slate-600">
           <button
-            onClick={() => setActiveTab('ALERTS')}
+            onClick={() => setActiveTab('NEW_REQUEST')}
             className={`py-3.5 px-4 border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === 'ALERTS'
+              activeTab === 'NEW_REQUEST'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent hover:text-slate-900'
             }`}
           >
-            <AlertTriangle size={16} />
-            داشبورد هشدارها ({alerts.filter(a => a.status === 'TRIGGERED' || a.status === 'ACKNOWLEDGED').length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('DIAGNOSIS')}
-            className={`py-3.5 px-4 border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === 'DIAGNOSIS'
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent hover:text-slate-900'
-            }`}
-          >
-            <Stethoscope size={16} />
-            تشخیص و ریشه‌یابی فنی
+            <Plus size={16} />
+            ثبت درخواست و عیب‌یابی هوشمند
           </button>
 
           <button
@@ -468,19 +559,41 @@ export default function SmartMaintenance() {
             }`}
           >
             <FileText size={16} />
-            پرونده‌های تعمیراتی ({cases.filter(c => c.status !== 'CLOSED').length})
+            پیگیری و پرونده‌های من ({cases.length})
           </button>
 
+          {activeTab === 'TRACKING' && (
+            <button
+              onClick={() => setActiveTab('TRACKING')}
+              className="py-3.5 px-4 border-b-2 border-indigo-600 text-indigo-600 transition-all flex items-center gap-2"
+            >
+              <Search size={16} />
+              رهگیری پرونده انتخابی
+            </button>
+          )}
+
           <button
-            onClick={() => setActiveTab('MATCHING')}
+            onClick={() => setActiveTab('TECHNICIANS')}
             className={`py-3.5 px-4 border-b-2 transition-all flex items-center gap-2 ${
-              activeTab === 'MATCHING'
+              activeTab === 'TECHNICIANS'
                 ? 'border-purple-600 text-purple-600'
                 : 'border-transparent hover:text-slate-900'
             }`}
           >
-            <UserPlus size={16} />
-            تطبیق و ارجاع به تکنسین
+            <ShieldCheck size={16} />
+            شبکه متخصصان مجاز O&M
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ALERTS')}
+            className={`py-3.5 px-4 border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === 'ALERTS'
+                ? 'border-amber-600 text-amber-600'
+                : 'border-transparent hover:text-slate-900'
+            }`}
+          >
+            <AlertTriangle size={16} />
+            مرکز پایش و هشدارها ({alerts.filter(a => a.status === 'TRIGGERED' || a.status === 'ACKNOWLEDGED').length})
           </button>
 
           <button
@@ -508,7 +621,58 @@ export default function SmartMaintenance() {
           </button>
         </div>
 
-        {/* Tab 1: Alert Dashboard */}
+        {/* Tab 1: Customer Maintenance Request Flow */}
+        {activeTab === 'NEW_REQUEST' && (
+          <CustomerMaintenanceRequest
+            preselectedTechnician={preselectedTechForRequest}
+            onCaseCreated={newCase => {
+              setCases(prev => [newCase, ...prev]);
+              setTrackingCaseId(newCase.id);
+            }}
+            onGoToCases={() => setActiveTab('CASES')}
+            onTrackCase={id => {
+              setTrackingCaseId(id);
+              setActiveTab('TRACKING');
+            }}
+          />
+        )}
+
+        {/* Tab 2: Case Tracking Specific View */}
+        {activeTab === 'TRACKING' && trackingCaseId && (
+          <CustomerCaseTracking
+            caseId={trackingCaseId}
+            onBack={() => setActiveTab('CASES')}
+            onCaseUpdated={updated => {
+              setCases(prev => prev.map(c => c.id === updated.id ? updated : c));
+            }}
+          />
+        )}
+
+        {/* Tab 3: Case List */}
+        {activeTab === 'CASES' && (
+          <CaseList
+            cases={cases}
+            loading={loading}
+            onSelectCase={c => {
+              setTrackingCaseId(c.id);
+              setActiveTab('TRACKING');
+            }}
+            onAssignTechnician={handleOpenTechnicianMatching}
+            onNewCase={() => setActiveTab('NEW_REQUEST')}
+          />
+        )}
+
+        {/* Tab 4: Approved Professionals Directory */}
+        {activeTab === 'TECHNICIANS' && (
+          <ApprovedProfessionalsDirectory
+            onRequestWithTech={tech => {
+              setPreselectedTechForRequest(tech);
+              setActiveTab('NEW_REQUEST');
+            }}
+          />
+        )}
+
+        {/* Tab 5: Alert Dashboard */}
         {activeTab === 'ALERTS' && (
           <AlertDashboard
             alerts={alerts}
@@ -523,7 +687,7 @@ export default function SmartMaintenance() {
           />
         )}
 
-        {/* Tab 2: Diagnosis & Warranty View */}
+        {/* Tab 6: Diagnosis & Warranty View */}
         {activeTab === 'DIAGNOSIS' && (
           <DiagnosisView
             selectedAlert={selectedAlert}
@@ -537,18 +701,7 @@ export default function SmartMaintenance() {
           />
         )}
 
-        {/* Tab 3: Case List */}
-        {activeTab === 'CASES' && (
-          <CaseList
-            cases={cases}
-            loading={loading}
-            onSelectCase={handleSelectCase}
-            onAssignTechnician={handleOpenTechnicianMatching}
-            onNewCase={() => setShowNewCaseModal(true)}
-          />
-        )}
-
-        {/* Tab 4: Technician Matching */}
+        {/* Tab 7: Technician Matching */}
         {activeTab === 'MATCHING' && (
           <TechnicianMatcher
             mCase={matchingCase}
@@ -559,7 +712,7 @@ export default function SmartMaintenance() {
           />
         )}
 
-        {/* Tab 5: Maintenance History & KPIs */}
+        {/* Tab 8: Maintenance History & KPIs */}
         {activeTab === 'HISTORY' && (
           <MaintenanceHistory
             cases={cases}
@@ -568,7 +721,7 @@ export default function SmartMaintenance() {
           />
         )}
 
-        {/* Tab 6: Power Balance Calculator (Preserved) */}
+        {/* Tab 9: Power Balance Calculator */}
         {activeTab === 'CALCULATOR' && (
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
             <h2 className="text-lg font-bold text-slate-900">ماشین‌حساب توازن انرژی مصرف و تولید</h2>
