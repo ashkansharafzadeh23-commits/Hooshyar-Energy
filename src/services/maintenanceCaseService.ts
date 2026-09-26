@@ -22,6 +22,8 @@ export const maintenanceCaseService = {
       assetId?: string;
       alertIds?: string[];
       componentId?: string;
+      equipmentType?: string;
+      symptoms?: string[];
       title: string;
       description: string;
       priority?: MaintenanceCasePriority;
@@ -31,6 +33,12 @@ export const maintenanceCaseService = {
       assignedTechnicianName?: string;
       assignedTechnicianPhone?: string;
       scheduledDate?: string;
+      contactName?: string;
+      contactPhone?: string;
+      photos?: string[];
+      documents?: string[];
+      billDoc?: any;
+      attachments?: any[];
     },
     userId: string
   ): MaintenanceCase => {
@@ -59,6 +67,8 @@ export const maintenanceCaseService = {
       assetId: assetId!,
       alertIds,
       componentId: data.componentId,
+      equipmentType: data.equipmentType,
+      symptoms: data.symptoms || [],
       title: data.title,
       description: data.description,
       priority: data.priority || 'MEDIUM',
@@ -68,7 +78,13 @@ export const maintenanceCaseService = {
       assignedTechnicianId: data.assignedTechnicianId,
       assignedTechnicianName: data.assignedTechnicianName,
       assignedTechnicianPhone: data.assignedTechnicianPhone,
+      contactName: data.contactName,
+      contactPhone: data.contactPhone,
       scheduledDate: data.scheduledDate,
+      photos: data.photos || [],
+      documents: data.documents || [],
+      billDoc: data.billDoc,
+      attachments: data.attachments || [],
       actionsTaken: [],
       sparePartsUsed: [],
       totalCostIrr: 0,
@@ -120,6 +136,7 @@ export const maintenanceCaseService = {
       closureNotes?: string;
       verificationNotes?: string;
       rejectionReason?: string;
+      notes?: string;
     }
   ): MaintenanceCase => {
     const mCase = maintenanceRepository.getCaseById(caseId);

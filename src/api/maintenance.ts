@@ -30,6 +30,58 @@ function getParam(param: string | string[] | undefined): string {
   return param || '';
 }
 
+/**
+ * Authoritative case permission checker.
+ * Strictly enforces project boundary, reporter ownership, and assigned technician isolation.
+ * CUSTOMER_DIRECT cases are private to the reporter, assigned technician, or system admin.
+ */
+export function checkCaseAccess(
+  mCase: MaintenanceCase,
+  user: { id?: string; role?: string } | undefined,
+  options?: { requireReporterOrAdmin?: boolean; requireTechnicianOrAdmin?: boolean }
+): { allowed: boolean; status?: number; error?: string; isReporter: boolean; isAssignedTech: boolean; isAdmin: boolean } {
+  if (!user || !user.id) {
+    return { allowed: false, status: 401, error: 'احراز هویت الزامی است.', isReporter: false, isAssignedTech: false, isAdmin: false };
+  }
+  const roleUpper = user.role?.toUpperCase();
+  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || user.role === 'admin';
+  const isReporter = Boolean(mCase.reportedBy && mCase.reportedBy === user.id);
+  const isAssignedTech = Boolean(mCase.assignedTechnicianId && mCase.assignedTechnicianId === user.id);
+
+  if (isAdmin) {
+    return { allowed: true, isReporter, isAssignedTech, isAdmin: true };
+  }
+
+  if (options?.requireReporterOrAdmin && !isReporter) {
+    return { allowed: false, status: 403, error: 'تنها ثبت‌کننده پرونده یا مدیر سیستم مجاز به این عملیات است.', isReporter, isAssignedTech, isAdmin };
+  }
+
+  if (options?.requireTechnicianOrAdmin && !isAssignedTech) {
+    return { allowed: false, status: 403, error: 'تنها تکنسین منتسب به این پرونده مجاز به این عملیات است.', isReporter, isAssignedTech, isAdmin };
+  }
+
+  if (isReporter || isAssignedTech) {
+    return { allowed: true, isReporter, isAssignedTech, isAdmin: false };
+  }
+
+  const techRoles = ['technician', 'professional', 'expert'];
+  const isTechRole = techRoles.includes(user.role?.toLowerCase() || '');
+  if (isTechRole) {
+    return { allowed: false, status: 403, error: 'شما به عنوان تکنسین تنها به پرونده‌های محول شده به خودتان دسترسی دارید.', isReporter, isAssignedTech, isAdmin };
+  }
+
+  if (mCase.projectId === 'CUSTOMER_DIRECT') {
+    return { allowed: false, status: 403, error: 'شما دسترسی به این پرونده را ندارید.', isReporter, isAssignedTech, isAdmin };
+  }
+
+  const projAccess = checkProjectAccess(mCase.projectId, user.id, user.role);
+  if (!projAccess.allowed) {
+    return { allowed: false, status: projAccess.status || 403, error: projAccess.error, isReporter, isAssignedTech, isAdmin };
+  }
+
+  return { allowed: true, isReporter, isAssignedTech, isAdmin: false };
+}
+
 // ==========================================
 // 1. ALERT ENDPOINTS
 // ==========================================
@@ -483,7 +535,7 @@ maintenanceRouter.get(['/cases', '/maintenance/cases'], (req: Request, res: Resp
   } else if (!isAdmin && userId) {
     const userProjects = projectRepository.findAll().filter(p => p.ownerId === userId);
     const userProjectIds = new Set(userProjects.map(p => p.id));
-    allCases = allCases.filter(c => c.reportedBy === userId || userProjectIds.has(c.projectId) || c.projectId === 'CUSTOMER_DIRECT');
+    allCases = allCases.filter(c => c.reportedBy === userId || (c.projectId !== 'CUSTOMER_DIRECT' && userProjectIds.has(c.projectId)));
   }
 
   if (projectId) {
@@ -518,7 +570,14 @@ maintenanceRouter.post(['/cases', '/maintenance/cases'], async (req: Request, re
     assignedTechnicianId,
     assignedTechnicianName,
     assignedTechnicianPhone,
-    scheduledDate
+    scheduledDate,
+    contactName,
+    contactPhone,
+    photos,
+    documents,
+    billDoc,
+    billData,
+    attachments
   } = req.body;
 
   if (!title || !description) {
@@ -542,11 +601,46 @@ maintenanceRouter.post(['/cases', '/maintenance/cases'], async (req: Request, re
   }
 
   try {
+    const initialAttachments: any[] = Array.isArray(attachments) ? [...attachments] : [];
+    if (Array.isArray(photos)) {
+      photos.forEach((p: any, idx: number) => {
+        initialAttachments.push({
+          id: `att-photo-${Date.now()}-${idx}`,
+          maintenanceCaseId: '',
+          name: p.name || `photo_${idx + 1}.jpg`,
+          type: 'PHOTO',
+          url: p.preview || p.data || '',
+          data: p.data || p.preview || '',
+          uploadedBy: req.user?.id || 'CUSTOMER',
+          uploadedAt: new Date().toISOString(),
+          status: 'UPLOADED'
+        });
+      });
+    }
+
+    const effectiveBill = billDoc || billData;
+    if (effectiveBill) {
+      initialAttachments.push({
+        id: `att-bill-${Date.now()}`,
+        maintenanceCaseId: '',
+        name: effectiveBill.name || 'electricity_bill.pdf',
+        type: 'BILL',
+        url: effectiveBill.url || effectiveBill.preview || '',
+        data: effectiveBill.data || '',
+        uploadedBy: req.user?.id || 'CUSTOMER',
+        uploadedAt: new Date().toISOString(),
+        status: effectiveBill.status || 'UNVERIFIED',
+        extractedData: effectiveBill.extractedData
+      });
+    }
+
     const created = maintenanceCaseService.createCase(
       {
         projectId: finalProjectId,
         assetId: finalAssetId,
         componentId,
+        equipmentType,
+        symptoms: Array.isArray(symptoms) ? symptoms : [],
         diagnosisId,
         title,
         description,
@@ -555,7 +649,18 @@ maintenanceRouter.post(['/cases', '/maintenance/cases'], async (req: Request, re
         assignedTechnicianId,
         assignedTechnicianName,
         assignedTechnicianPhone,
-        scheduledDate
+        scheduledDate,
+        contactName,
+        contactPhone,
+        photos: Array.isArray(photos) ? photos.map((p: any) => p.name || 'photo.jpg') : [],
+        documents: Array.isArray(documents) ? documents.map((d: any) => d.name || 'document.pdf') : [],
+        billDoc: effectiveBill ? {
+          name: effectiveBill.name || 'electricity_bill.pdf',
+          status: effectiveBill.status || 'UNVERIFIED',
+          extractedData: effectiveBill.extractedData,
+          uploadedAt: new Date().toISOString()
+        } : undefined,
+        attachments: initialAttachments
       },
       req.user?.id || 'CUSTOMER'
     );
@@ -650,15 +755,13 @@ maintenanceRouter.post(['/maintenance/:maintenanceCaseId/select-technician', '/c
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
-  const roleUpper = req.user?.role?.toUpperCase();
-  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
+  }
 
-  if (!isReporter && !isAdmin) {
-    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-    if (!access.allowed) {
-      return res.status(access.status || 403).json({ error: access.error });
-    }
+  if (!caseAccess.isReporter && !caseAccess.isAdmin) {
+    return res.status(403).json({ error: 'تنها ثبت‌کننده پرونده یا مدیر سامانه مجاز به انتخاب متخصص هستند.' });
   }
 
   const { technicianId, scheduledDate, notes } = req.body;
@@ -740,21 +843,9 @@ maintenanceRouter.get(['/maintenance/:maintenanceCaseId', '/cases/:maintenanceCa
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  // If user is the assigned technician, allow access
-  const isAssignedTechnician = mCase.assignedTechnicianId === req.user?.id;
-  const techRoles = ['technician', 'professional', 'expert', 'expert', 'technician'];
-  const isTechRole = techRoles.includes(req.user?.role?.toLowerCase() || '');
-  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
-  
-  if (isAssignedTechnician) {
-    // Allow access without project check
-  } else if (isTechRole) {
-    return res.status(403).json({ error: 'شما به عنوان تکنسین تنها به پرونده‌های محول شده به خودتان دسترسی دارید.' });
-  } else if (!isReporter) {
-    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-    if (!access.allowed) {
-      return res.status(access.status || 403).json({ error: access.error });
-    }
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const actions = maintenanceRepository.getActions(caseId);
@@ -790,19 +881,19 @@ maintenanceRouter.get(['/maintenance/:maintenanceCaseId', '/cases/:maintenanceCa
 });
 
 /**
- * PATCH /api/maintenance/:maintenanceCaseId
+ * PATCH /api/maintenance/:maintenanceCaseId, /api/cases/:maintenanceCaseId
  * Update details of a maintenance case
  */
-maintenanceRouter.patch('/maintenance/:maintenanceCaseId', (req: Request, res: Response) => {
+maintenanceRouter.patch(['/maintenance/:maintenanceCaseId', '/cases/:maintenanceCaseId'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const allowedUpdates = [
@@ -836,16 +927,16 @@ maintenanceRouter.patch('/maintenance/:maintenanceCaseId', (req: Request, res: R
  * POST /api/maintenance/:maintenanceCaseId/assign
  * Assign technician to maintenance case
  */
-maintenanceRouter.post('/maintenance/:maintenanceCaseId/assign', (req: Request, res: Response) => {
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/assign', '/cases/:maintenanceCaseId/assign'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const { technicianId, notes, scheduledAt } = req.body;
@@ -891,16 +982,16 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/assign', (req: Request, 
  * POST /api/maintenance/:maintenanceCaseId/accept
  * Assigned technician accepts the case
  */
-maintenanceRouter.post('/maintenance/:maintenanceCaseId/accept', (req: Request, res: Response) => {
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/accept', '/cases/:maintenanceCaseId/accept'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  // Only assigned technician or admin can accept
-  if (req.user?.role !== 'admin' && mCase.assignedTechnicianId !== req.user.id) {
-    return res.status(403).json({ error: 'تنها تکنسین منتسب به این پرونده مجاز به پذیرش کار است.' });
+  const caseAccess = checkCaseAccess(mCase, req.user, { requireTechnicianOrAdmin: true });
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const updated = maintenanceRepository.updateCase(caseId, {
@@ -929,16 +1020,16 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/accept', (req: Request, 
  * POST /api/maintenance/:maintenanceCaseId/schedule
  * Schedule execution date
  */
-maintenanceRouter.post('/maintenance/:maintenanceCaseId/schedule', (req: Request, res: Response) => {
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/schedule', '/cases/:maintenanceCaseId/schedule'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed && mCase.assignedTechnicianId !== req.user.id) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const { scheduledAt } = req.body;
@@ -965,16 +1056,16 @@ maintenanceRouter.post('/maintenance/:maintenanceCaseId/schedule', (req: Request
  * POST /api/maintenance/:maintenanceCaseId/start
  * Start maintenance execution
  */
-maintenanceRouter.post('/maintenance/:maintenanceCaseId/start', (req: Request, res: Response) => {
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/start', '/cases/:maintenanceCaseId/start'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed && mCase.assignedTechnicianId !== req.user.id) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const caseAccess = checkCaseAccess(mCase, req.user, { requireTechnicianOrAdmin: true });
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const updated = maintenanceRepository.updateCase(caseId, {
@@ -1003,16 +1094,9 @@ maintenanceRouter.get(['/maintenance/:maintenanceCaseId/actions', '/cases/:maint
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
-  const isAssigned = mCase.assignedTechnicianId === req.user?.id;
-  const roleUpper = req.user?.role?.toUpperCase();
-  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
-
-  if (!isReporter && !isAssigned && !isAdmin) {
-    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-    if (!access.allowed) {
-      return res.status(access.status || 403).json({ error: access.error });
-    }
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const actions = maintenanceRepository.getActions(caseId);
@@ -1021,7 +1105,7 @@ maintenanceRouter.get(['/maintenance/:maintenanceCaseId/actions', '/cases/:maint
 
 /**
  * POST /api/maintenance/:maintenanceCaseId/actions, /api/cases/:maintenanceCaseId/actions
- * Log an action taken during maintenance
+ * Log an action taken during maintenance (assigned technician or admin only)
  */
 maintenanceRouter.post(['/maintenance/:maintenanceCaseId/actions', '/cases/:maintenanceCaseId/actions'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
@@ -1030,16 +1114,9 @@ maintenanceRouter.post(['/maintenance/:maintenanceCaseId/actions', '/cases/:main
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
-  const isAssigned = mCase.assignedTechnicianId === req.user?.id;
-  const roleUpper = req.user?.role?.toUpperCase();
-  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
-
-  if (!isReporter && !isAssigned && !isAdmin) {
-    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-    if (!access.allowed) {
-      return res.status(access.status || 403).json({ error: access.error });
-    }
+  const caseAccess = checkCaseAccess(mCase, req.user, { requireTechnicianOrAdmin: true });
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const {
@@ -1088,19 +1165,19 @@ maintenanceRouter.post(['/maintenance/:maintenanceCaseId/actions', '/cases/:main
 });
 
 /**
- * POST /api/maintenance/:maintenanceCaseId/submit-verification
+ * POST /api/maintenance/:maintenanceCaseId/submit-verification, /api/cases/:maintenanceCaseId/submit-verification
  * Technician submits work for review/verification
  */
-maintenanceRouter.post('/maintenance/:maintenanceCaseId/submit-verification', (req: Request, res: Response) => {
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/submit-verification', '/cases/:maintenanceCaseId/submit-verification'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed && mCase.assignedTechnicianId !== req.user.id) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const caseAccess = checkCaseAccess(mCase, req.user, { requireTechnicianOrAdmin: true });
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const actions = maintenanceRepository.getActions(caseId);
@@ -1138,16 +1215,14 @@ maintenanceRouter.post(['/maintenance/:maintenanceCaseId/verify', '/cases/:maint
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
-  const roleUpper = req.user?.role?.toUpperCase();
-  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
+  }
 
   // Only project managers, owners, reporter customer or admins can verify - NOT the technician!
-  if (!isReporter && !isAdmin) {
-    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-    if (!access.allowed) {
-      return res.status(access.status || 403).json({ error: access.error });
-    }
+  if (caseAccess.isAssignedTech && !caseAccess.isAdmin && !caseAccess.isReporter) {
+    return res.status(403).json({ error: 'تکنسین مجری مجاز به تایید و تحویل نهایی کار خود نمی‌باشد. تایید باید توسط کارفرما یا مدیر پروژه انجام شود.' });
   }
 
   const { verificationPassed, verificationNotes } = req.body;
@@ -1182,14 +1257,14 @@ maintenanceRouter.post(['/maintenance/:maintenanceCaseId/close', '/cases/:mainte
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const isReporter = (mCase.reportedBy && mCase.reportedBy === req.user?.id) || mCase.projectId === 'CUSTOMER_DIRECT';
-  const roleUpper = req.user?.role?.toUpperCase();
-  const isAdmin = roleUpper === 'ADMIN' || roleUpper === 'SUPER_ADMIN' || req.user?.role === 'admin';
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
+  }
 
-  if (!isReporter && !isAdmin) {
-    const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-    if (!access.allowed) {
-      return res.status(access.status || 403).json({ error: access.error });
+  if (!caseAccess.isReporter && !caseAccess.isAdmin) {
+    if (mCase.projectId === 'CUSTOMER_DIRECT') {
+      return res.status(403).json({ error: 'تنها ثبت‌کننده پرونده یا مدیر سامانه مجاز به بستن پرونده هستند.' });
     }
   }
 
@@ -1272,9 +1347,9 @@ maintenanceRouter.get('/maintenance/:maintenanceCaseId/technician-matches', (req
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const matches = technicianMatchingService.matchTechnicians({
@@ -1288,16 +1363,16 @@ maintenanceRouter.get('/maintenance/:maintenanceCaseId/technician-matches', (req
   return res.json(matches);
 });
 
-maintenanceRouter.get('/maintenance/cases/:maintenanceCaseId/match-technicians', (req: Request, res: Response) => {
+maintenanceRouter.get(['/cases/:maintenanceCaseId/technician-matches', '/maintenance/cases/:maintenanceCaseId/match-technicians', '/cases/:maintenanceCaseId/match-technicians'], (req: Request, res: Response) => {
   const caseId = getParam(req.params.maintenanceCaseId);
   const mCase = maintenanceRepository.getCaseById(caseId);
   if (!mCase) {
     return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
   }
 
-  const access = checkProjectAccess(mCase.projectId, req.user?.id, req.user?.role);
-  if (!access.allowed) {
-    return res.status(access.status || 403).json({ error: access.error });
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
   }
 
   const matches = technicianMatchingService.matchTechnicians({
@@ -1309,6 +1384,67 @@ maintenanceRouter.get('/maintenance/cases/:maintenanceCaseId/match-technicians',
   });
 
   return res.json(matches);
+});
+
+/**
+ * GET /api/maintenance/:maintenanceCaseId/attachments, /api/cases/:maintenanceCaseId/attachments
+ * List evidence attachments for a maintenance case
+ */
+maintenanceRouter.get(['/maintenance/:maintenanceCaseId/attachments', '/cases/:maintenanceCaseId/attachments'], (req: Request, res: Response) => {
+  const caseId = getParam(req.params.maintenanceCaseId);
+  const mCase = maintenanceRepository.getCaseById(caseId);
+  if (!mCase) {
+    return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
+  }
+
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
+  }
+
+  return res.json(mCase.attachments || []);
+});
+
+/**
+ * POST /api/maintenance/:maintenanceCaseId/attachments, /api/cases/:maintenanceCaseId/attachments
+ * Add an evidence attachment to a maintenance case
+ */
+maintenanceRouter.post(['/maintenance/:maintenanceCaseId/attachments', '/cases/:maintenanceCaseId/attachments'], (req: Request, res: Response) => {
+  const caseId = getParam(req.params.maintenanceCaseId);
+  const mCase = maintenanceRepository.getCaseById(caseId);
+  if (!mCase) {
+    return res.status(404).json({ error: 'پرونده تعمیراتی یافت نشد.' });
+  }
+
+  const caseAccess = checkCaseAccess(mCase, req.user);
+  if (!caseAccess.allowed) {
+    return res.status(caseAccess.status || 403).json({ error: caseAccess.error });
+  }
+
+  const { name, type, url, data, mimeType, sizeBytes, status, extractedData } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'نام فایل الزامی است.' });
+  }
+
+  const newAttachment = {
+    id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    maintenanceCaseId: caseId,
+    name,
+    type: type || 'PHOTO',
+    url: url || data || '',
+    data: data || '',
+    mimeType,
+    sizeBytes,
+    status: status || 'UPLOADED',
+    extractedData,
+    uploadedBy: req.user?.id || 'USER',
+    uploadedAt: new Date().toISOString()
+  };
+
+  const updatedAttachments = [...(mCase.attachments || []), newAttachment];
+  maintenanceRepository.updateCase(caseId, { attachments: updatedAttachments });
+
+  return res.status(201).json(newAttachment);
 });
 
 /**

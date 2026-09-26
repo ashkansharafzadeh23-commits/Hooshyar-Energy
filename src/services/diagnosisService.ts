@@ -299,21 +299,51 @@ export const diagnosisService = {
     } else if (isTempRelated || isPerformanceDrop) {
       requiredTools.push('دوربین ترموویژن مادون قرمز جهت شناسایی Hotspot', 'دستگاه سنجش تابش خورشیدی (Solar Pyranometer / Solarmeter)', 'آچار استاندارد باز و بست و پرس کانکتورهای MC4');
       requiredParts.push('دیودهای بای‌پاس جعبه تقسیم پنل (Bypass Diode)', 'کانکتورهای استاندارد ضدآب MC4 نر و مادگی', 'کابل خورشیدی ۴ یا ۶ میلی‌متر مربع مقاوم در برابر اشعه UV');
-    } else {
-      requiredTools.push('جعبه ابزار تخصصی عایق الکتریکی ۱۰۰۰ ولت خورشیدی', 'مولتی‌متر دیجیتال صنعتی');
-      requiredParts.push('کانکتورها و اتصالات ضدآب خورشیدی', 'ترمینال‌های ریلی استاندارد');
+    } else if (isGridRelated) {
+      requiredTools.push('دستگاه سنجش کیفیت توان و آنالایزر شبکه AC');
+      requiredParts.push('رله اضافه/کاهش ولتاژ و فرکانس');
+    } else if (isTelemetryLoss) {
+      requiredTools.push('تستر کابل شبکه RJ45 و مولتی‌متر تست پیوستگی RS-485');
+      requiredParts.push('مودم/روتر صنعتی ۴G یا مبدل ارتباطی RS-485 به TCP/IP');
     }
+
+    if (params.photos && params.photos.length > 0) {
+      facts.push(`تصاویر ارسالی: ${params.photos.length} تصویر پیوست پرونده`);
+    }
+
+    const docExtracted: string[] = [];
+    if (params.billData) {
+      const kwhVal = params.billData.kwh || params.billData.extractedData?.periodGenerationKwh;
+      const billStatus = params.billData.status || (kwhVal ? 'EXTRACTION_AVAILABLE' : 'UNVERIFIED');
+      if (billStatus === 'EXTRACTION_AVAILABLE' && kwhVal) {
+        docExtracted.push(`اطلاعات استخراج‌شده از قبض برق: مصرف/تولید دوره ${kwhVal} کیلووات‌ساعت (تایید محاسباتی)`);
+      } else if (billStatus === 'UNVERIFIED') {
+        docExtracted.push(`مدرک قبض بارگذاری شده است؛ نیازمند استخراج/تطبیق کارشناسی با سامانه توانیر (تاییدنشده)`);
+      } else {
+        docExtracted.push(`مدرک بارگذاری شده: ${params.billData.name || 'فایل ضمیمه'} (وضعیت: ${billStatus})`);
+      }
+      if (params.billData.extractedData?.meterNumber) {
+        docExtracted.push(`شماره بدنه کنتور: ${params.billData.extractedData.meterNumber}`);
+      }
+    } else if (params.documents && params.documents.length > 0) {
+      docExtracted.push(`مدارک فنی بارگذاری شده (${params.documents.length} فایل) - در انتظار بررسی میدانی کارشناس`);
+    }
+
+    const photoEvidence = params.photos && params.photos.length > 0 
+      ? params.photos.map((p, idx) => `تصویر ${idx + 1}: ${p.name || 'تصویر تجهیز'}`)
+      : [];
 
     const evidenceCategorized = {
       OBSERVED: facts,
       USER_REPORTED: collectedSymptoms,
-      DOCUMENT_EXTRACTED: params.billData ? [`اطلاعات استخراج‌شده از قبض برق: مصرف ${params.billData.kwh || 'نامشخص'} کیلووات‌ساعت`] : [],
+      PHOTO_OBSERVED: photoEvidence,
+      DOCUMENT_EXTRACTED: docExtracted,
       TELEMETRY_VERIFIED: hasTelemetryData ? [`تله‌متری زنده متصل: ${recentReadings.length} قرائت در بازه اخیر`] : ['داده تله‌متری زنده در دسترس نیست'],
       AI_INFERENCE: inferences,
       NOT_AVAILABLE: [
         ...(hasTelemetryData ? [] : ['داده‌های تله‌متری زنده سنسورها']),
         ...(warranties.length > 0 ? [] : ['پرونده گارانتی رسمی ثبت‌شده']),
-        ...(!params.billData ? ['قبض برق و داده‌های دقیق صورتحساب'] : [])
+        ...(!params.billData && (!params.documents || params.documents.length === 0) ? ['قبض برق و داده‌های دقیق صورتحساب'] : [])
       ]
     };
 

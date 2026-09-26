@@ -66,7 +66,13 @@ export const CustomerMaintenanceRequest: React.FC<CustomerMaintenanceRequestProp
 
   // Step 3: Photos & Documents
   const [photos, setPhotos] = useState<{ id: string; name: string; preview: string; base64: string }[]>([]);
-  const [billDoc, setBillDoc] = useState<{ name: string; preview?: string } | null>(null);
+  const [billDoc, setBillDoc] = useState<{
+    name: string;
+    preview?: string;
+    data?: string;
+    status?: 'NOT_PROVIDED' | 'UPLOADED_PENDING_EXTRACTION' | 'EXTRACTION_AVAILABLE' | 'EXTRACTION_FAILED' | 'UNVERIFIED';
+    extractedData?: any;
+  } | null>(null);
 
   // Step 4: AI Diagnosis & Evidence
   const [diagnosing, setDiagnosing] = useState(false);
@@ -185,6 +191,11 @@ export const CustomerMaintenanceRequest: React.FC<CustomerMaintenanceRequestProp
         description: problemDescription,
         locationCity,
         photos: photos.map(p => ({ name: p.name, data: p.base64 })),
+        billData: billDoc ? {
+          name: billDoc.name,
+          status: billDoc.status || 'UNVERIFIED',
+          data: billDoc.data
+        } : undefined,
         triggerAiAssisted: true
       };
 
@@ -266,7 +277,13 @@ export const CustomerMaintenanceRequest: React.FC<CustomerMaintenanceRequestProp
         assignedTechnicianPhone: effectiveTech?.phone,
         contactName: contactName || undefined,
         contactPhone: contactPhone || undefined,
-        scheduledDate: scheduledDate || undefined
+        scheduledDate: scheduledDate || undefined,
+        photos: photos.map(p => ({ name: p.name, data: p.base64 })),
+        billDoc: billDoc ? {
+          name: billDoc.name,
+          status: billDoc.status || 'UNVERIFIED',
+          data: billDoc.data
+        } : undefined
       };
 
       const res = await fetch('/api/cases', {
@@ -834,7 +851,19 @@ export const CustomerMaintenanceRequest: React.FC<CustomerMaintenanceRequestProp
                   accept=".pdf,image/*"
                   onChange={e => {
                     const f = e.target.files?.[0];
-                    if (f) setBillDoc({ name: f.name });
+                    if (f) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        const res = reader.result as string;
+                        setBillDoc({
+                          name: f.name,
+                          preview: res,
+                          data: res,
+                          status: 'UNVERIFIED'
+                        });
+                      };
+                      reader.readAsDataURL(f);
+                    }
                   }}
                   className="hidden"
                 />
@@ -842,12 +871,21 @@ export const CustomerMaintenanceRequest: React.FC<CustomerMaintenanceRequestProp
             </div>
 
             {billDoc && (
-              <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                <span className="font-mono text-slate-700 font-bold truncate max-w-xs">{billDoc.name}</span>
+              <div className="p-3 bg-white rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-blue-600" />
+                    <span className="font-mono text-slate-800 font-bold truncate max-w-xs">{billDoc.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 w-fit">
+                    <AlertTriangle size={12} />
+                    <span>وضعیت مدرک: بارگذاری شده (نیازمند استخراج/تطبیق کارشناسی - تاییدنشده)</span>
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={() => setBillDoc(null)}
-                  className="text-rose-600 hover:text-rose-700 text-xs font-bold"
+                  className="text-rose-600 hover:text-rose-700 text-xs font-bold self-end sm:self-center"
                 >
                   حذف
                 </button>
@@ -958,6 +996,21 @@ export const CustomerMaintenanceRequest: React.FC<CustomerMaintenanceRequestProp
                   </ul>
                 </div>
               </div>
+
+              {/* 3. DOCUMENT_EXTRACTED / Bill Evidence */}
+              {diagnosis.evidenceCategorized?.DOCUMENT_EXTRACTED && diagnosis.evidenceCategorized.DOCUMENT_EXTRACTED.length > 0 && (
+                <div className="p-4 rounded-2xl border border-blue-200 bg-blue-50/50 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-900">
+                    <FileText size={16} className="text-blue-600" />
+                    <span>شواهد مستندات و قبوض برق (DOCUMENT_EXTRACTED):</span>
+                  </div>
+                  <ul className="space-y-1 text-xs text-blue-800 list-disc list-inside">
+                    {diagnosis.evidenceCategorized.DOCUMENT_EXTRACTED.map((doc, idx) => (
+                      <li key={idx}>{doc}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Inferences / Possible Causes */}
               <div className="p-5 rounded-2xl border border-indigo-100 bg-indigo-50/40 space-y-3">

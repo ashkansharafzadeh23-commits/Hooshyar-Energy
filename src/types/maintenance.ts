@@ -155,6 +155,7 @@ export interface MaintenanceDiagnosis {
   evidenceCategorized?: {
     OBSERVED?: string[];
     USER_REPORTED?: string[];
+    PHOTO_OBSERVED?: string[];
     DOCUMENT_EXTRACTED?: string[];
     TELEMETRY_VERIFIED?: string[];
     AI_INFERENCE?: string[];
@@ -214,6 +215,21 @@ export interface MaintenanceHistorySummary {
   cases: MaintenanceCase[];
 }
 
+export interface CaseAttachment {
+  id: string;
+  maintenanceCaseId: string;
+  name: string;
+  type: 'PHOTO' | 'DOCUMENT' | 'BILL' | 'OTHER';
+  url: string;
+  data?: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  sizeBytes?: number;
+  mimeType?: string;
+  status?: 'UPLOADED' | 'PROCESSED' | 'FAILED' | 'UNVERIFIED' | 'NOT_PROVIDED' | 'EXTRACTION_AVAILABLE';
+  extractedData?: any;
+}
+
 export interface MaintenanceCase {
   id: string;
   maintenanceCode: string; // MNT-HSE-000001
@@ -221,6 +237,8 @@ export interface MaintenanceCase {
   projectId: string;
   assetId: string;
   componentId?: string;
+  equipmentType?: string;
+  symptoms?: string[];
   alertIds: string[];
   title: string;
   description: string;
@@ -229,6 +247,8 @@ export interface MaintenanceCase {
   status: MaintenanceStatus;
   reportedBy: string;
   reportedAt: string;
+  contactName?: string;
+  contactPhone?: string;
   diagnosisId?: string;
   assignedTechnicianId?: string;
   assignedTechnicianName?: string;
@@ -247,6 +267,17 @@ export interface MaintenanceCase {
   resolutionSummary?: string;
   rootCause?: string;
   actionsTaken?: any;
+  photos?: string[];
+  documents?: string[];
+  billDoc?: {
+    name: string;
+    url?: string;
+    data?: string;
+    status: 'NOT_PROVIDED' | 'UPLOADED_PENDING_EXTRACTION' | 'EXTRACTION_AVAILABLE' | 'EXTRACTION_FAILED' | 'UNVERIFIED';
+    extractedData?: any;
+    uploadedAt?: string;
+  };
+  attachments?: CaseAttachment[];
   downtimeMinutes?: number | null;
   laborCost?: number | null;
   partsCost?: number | null;
