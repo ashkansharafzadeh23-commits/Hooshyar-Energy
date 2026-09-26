@@ -1,3 +1,4 @@
+import path from 'path';
 import { db } from '../db/index.js';
 import {
   TelemetrySource,
@@ -5,6 +6,8 @@ import {
   AssetPerformanceSnapshot,
   AssetHealthAssessment
 } from '../types/monitoring.js';
+
+const globalSolarCache = new Map<string, any>();
 
 export const monitoringRepository = {
   // Telemetry Sources
@@ -109,12 +112,32 @@ export const monitoringRepository = {
     return (db as any).getAlerts ? (db as any).getAlerts() : [];
   },
 
-  // City Solar Irradiance Cache (PH-4 clean abstraction)
+  // City Solar Irradiance Cache (PH-4 clean abstraction with runtime memory cache)
   getCityIrradianceCache: (city: string): any => {
-    return (db as any).getCityIrradianceCache ? (db as any).getCityIrradianceCache(city) : null;
+    if (globalSolarCache.has(city)) {
+      return globalSolarCache.get(city);
+    }
+    const diskCached = (db as any).getCityIrradianceCache ? (db as any).getCityIrradianceCache(city) : null;
+    if (diskCached) {
+      globalSolarCache.set(city, diskCached);
+    }
+    return diskCached;
   },
 
   setCityIrradianceCache: (cacheData: any): any => {
-    return (db as any).setCityIrradianceCache ? (db as any).setCityIrradianceCache(cacheData) : null;
+    if (cacheData && cacheData.city) {
+      globalSolarCache.set(cacheData.city, cacheData);
+    }
+    try {
+      const repoDbPath = path.resolve(process.cwd(), 'db.json');
+      const activeDbPath = path.resolve((db as any).getDBPath ? (db as any).getDBPath() : '');
+      // Never mutate baseline repo db.json with dynamic test records
+      if (process.env.NODE_ENV === 'test' || activeDbPath === repoDbPath) {
+        return cacheData;
+      }
+      return (db as any).setCityIrradianceCache ? (db as any).setCityIrradianceCache(cacheData) : cacheData;
+    } catch {
+      return cacheData;
+    }
   }
 };

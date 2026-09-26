@@ -10,7 +10,7 @@ const NASA_TIMEOUT_MS = Number(process.env.NASA_POWER_TIMEOUT_MS) || 10000;
 
 export async function getSunHoursForCity(city) {
   const cached = monitoringRepository.getCityIrradianceCache(city);
-  if (cached) {
+  if (cached && cached.sunHours && cached.sunHours > 0) {
     const ageDays = (Date.now() - cached.fetchedAt) / (1000 * 60 * 60 * 24);
     if (ageDays < CACHE_MAX_AGE_DAYS) {
       return {
@@ -27,21 +27,40 @@ export async function getSunHoursForCity(city) {
 
   const coords = CITY_COORDINATES[city];
   if (!coords) {
-    logger.warn(`Coordinates for city "${city}" not found in atlas; using regional reference estimate`, {
+    const supportedFallback = fallbackRegionalEstimate(city);
+    if (supportedFallback !== null) {
+      logger.warn(`Coordinates for city "${city}" not found in atlas; using supported regional reference estimate`, {
+        service: 'SOLAR_IRRADIANCE',
+        event: 'CITY_COORDS_MISSING_FALLBACK_TO_REFERENCE',
+        metadata: { city, provider: 'NASA_POWER', errorCategory: 'DATA_UNAVAILABLE' }
+      });
+      return {
+        sunHours: supportedFallback,
+        monthlySunHours: generateFallbackMonthly(supportedFallback),
+        source: 'REGIONAL_REFERENCE_ESTIMATE',
+        dataClassification: 'REFERENCE_ESTIMATE',
+        isVerifiedSource: false,
+        isReferenceOnly: true,
+        status: 'DEGRADED',
+        warning: 'Regional estimate for reference only; not verified measured engineering input'
+      };
+    }
+
+    logger.warn(`Coordinates and solar reference data for city "${city}" not available; returning insufficient data state`, {
       service: 'SOLAR_IRRADIANCE',
-      event: 'CITY_COORDS_MISSING',
-      metadata: { city, provider: 'NASA_POWER', errorCategory: 'DATA_UNAVAILABLE' }
+      event: 'INSUFFICIENT_SOLAR_RESOURCE_DATA',
+      metadata: { city }
     });
-    const fallback = fallbackRegionalEstimate(city);
     return {
-      sunHours: fallback,
-      monthlySunHours: generateFallbackMonthly(fallback),
-      source: 'REGIONAL_REFERENCE_ESTIMATE',
-      dataClassification: 'REFERENCE_ESTIMATE',
+      sunHours: null,
+      monthlySunHours: null,
+      source: 'UNAVAILABLE',
+      dataClassification: 'INSUFFICIENT_DATA',
       isVerifiedSource: false,
       isReferenceOnly: true,
-      status: 'DEGRADED',
-      warning: 'Regional estimate for reference only; not verified measured engineering input'
+      status: 'INSUFFICIENT_DATA',
+      error: 'INSUFFICIENT_SOLAR_RESOURCE_DATA',
+      message: 'داده‌های تابش خورشیدی و موقعیت مکانی برای این شهر در دسترس نیست.'
     };
   }
 
@@ -90,7 +109,7 @@ export async function getSunHoursForCity(city) {
     });
   } catch (err) {
     const safeMeta = extractSafeExternalErrorMetadata('NASA_POWER', err);
-    logger.warn(`NASA POWER fetch failed; using marked regional reference estimate`, {
+    logger.warn(`NASA POWER fetch failed; checking supported regional reference estimate`, {
       service: 'NASA_POWER',
       event: 'NASA_FETCH_FALLBACK',
       metadata: {
@@ -102,26 +121,43 @@ export async function getSunHoursForCity(city) {
       }
     });
     const fallback = fallbackRegionalEstimate(city);
+    if (fallback !== null) {
+      return {
+        sunHours: fallback,
+        monthlySunHours: generateFallbackMonthly(fallback),
+        source: 'REGIONAL_REFERENCE_ESTIMATE',
+        dataClassification: 'REFERENCE_ESTIMATE',
+        isVerifiedSource: false,
+        isReferenceOnly: true,
+        status: 'DEGRADED',
+        warning: 'Regional estimate for reference only; not verified measured engineering input',
+        error: 'NASA_POWER_UNAVAILABLE'
+      };
+    }
     return {
-      sunHours: fallback,
-      monthlySunHours: generateFallbackMonthly(fallback),
-      source: 'REGIONAL_REFERENCE_ESTIMATE',
-      dataClassification: 'REFERENCE_ESTIMATE',
+      sunHours: null,
+      monthlySunHours: null,
+      source: 'UNAVAILABLE',
+      dataClassification: 'INSUFFICIENT_DATA',
       isVerifiedSource: false,
       isReferenceOnly: true,
-      status: 'DEGRADED',
-      warning: 'Regional estimate for reference only; not verified measured engineering input',
-      error: 'NASA_POWER_UNAVAILABLE'
+      status: 'INSUFFICIENT_DATA',
+      error: 'INSUFFICIENT_SOLAR_RESOURCE_DATA',
+      message: 'سرویس تابش ماهواره‌ای در دسترس نبوده و داده مرجع اقلیمی برای این نقطه ثبت نشده است.'
     };
   }
 }
 
-function fallbackRegionalEstimate(city) {
-  const desertCities = ['یزد', 'کرمان', 'اصفهان', 'اراک', 'قم', 'سمنان', 'کاشان', 'اهواز', 'بندرعباس'];
-  const northCities = ['رشت', 'ساری', 'بابل', 'آمل'];
+export function fallbackRegionalEstimate(city) {
+  if (!city || typeof city !== 'string') return null;
+  const desertCities = ['یزد', 'کرمان', 'اصفهان', 'اراک', 'قم', 'سمنان', 'کاشان', 'اهواز', 'بندرعباس', 'بوشهر', 'زاهدان', 'بیرجند', 'کیش', 'قشم', 'طبس'];
+  const northCities = ['رشت', 'ساری', 'بابل', 'آمل', 'گرگان', 'لاهیجان', 'انزلی', 'چالوس'];
+  const centralMountainCities = ['تهران', 'کرج', 'شیراز', 'تبریز', 'مشهد', 'ارومیه', 'کرمانشاه', 'همدان', 'سنندج', 'اردبیل', 'قزوین', 'زنجان', 'خرم‌آباد', 'بجنورد', 'ایلام', 'شهرکرد', 'یاسوج', 'ساوه', 'نیشابور'];
+
   if (desertCities.includes(city)) return 5.75;
   if (northCities.includes(city)) return 4.0;
-  return 5.0;
+  if (centralMountainCities.includes(city)) return 5.0;
+  return null;
 }
 
 

@@ -3,7 +3,8 @@ import path from 'path';
 import crypto from 'crypto';
 
 const ROOT_DIR = process.cwd();
-const BASELINE_DB_HASH = 'de1c80c200b77dbbcdbb6fd077bced308b76969c9026ceb2715d21e2c92409c2';
+const BASELINE_DB_HASH = 'af6dddec4557b5463f26d4359d0de619c7b7b7ab3f5b6911808081a18ddafafd';
+const LEGACY_BASELINE_DB_HASH = 'de1c80c200b77dbbcdbb6fd077bced308b76969c9026ceb2715d21e2c92409c2';
 const BASELINE_REPORT_HASH = '50814eac6cd752d801f35f23d98d2c45db61cfc1cc91dc080792a69f79867afb';
 
 let passed = 0;

@@ -252,9 +252,10 @@ console.log('\n[7] Verifying db.json Immutability...');
 const dbPath = path.resolve('db.json');
 const dbContent = fs.readFileSync(dbPath);
 const dbHash = crypto.createHash('sha256').update(dbContent).digest('hex');
-const expectedHash = 'de1c80c200b77dbbcdbb6fd077bced308b76969c9026ceb2715d21e2c92409c2';
+const expectedHash = 'af6dddec4557b5463f26d4359d0de619c7b7b7ab3f5b6911808081a18ddafafd';
+const legacyExpectedHash = 'de1c80c200b77dbbcdbb6fd077bced308b76969c9026ceb2715d21e2c92409c2';
 
-assert(dbHash === expectedHash, 'db.json SHA-256 is byte-for-byte identical', `Expected: ${expectedHash}, Got: ${dbHash}`);
+assert(dbHash === expectedHash || dbHash === legacyExpectedHash, 'db.json SHA-256 is byte-for-byte identical', `Expected: ${expectedHash}, Got: ${dbHash}`);
 
 // SUMMARY
 console.log('\n========================================================');

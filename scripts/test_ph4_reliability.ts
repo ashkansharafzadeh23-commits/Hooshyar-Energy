@@ -287,13 +287,18 @@ async function runPH4Tests() {
   // -------------------------------------------------------------
   console.log(`\n--- TEST 7: NASA SOLAR IRRADIANCE FACTUAL BOUNDARIES ---`);
 
-  // City with fallback regional estimate
-  const regionalResult = await getSunHoursForCity('شهر_ناشناخته_تستی');
+  // City with supported fallback regional estimate (Lahijan has regional atlas estimate, not NASA coordinates)
+  const regionalResult = await getSunHoursForCity('لاهیجان');
   assert(regionalResult.dataClassification === 'REFERENCE_ESTIMATE', 'Fallback solar estimate has dataClassification = REFERENCE_ESTIMATE');
   assert(regionalResult.isVerifiedSource === false, 'Fallback solar estimate isVerifiedSource === false');
   assert(regionalResult.isReferenceOnly === true, 'Fallback solar estimate isReferenceOnly === true');
   assert(regionalResult.source === 'REGIONAL_REFERENCE_ESTIMATE', 'Fallback solar estimate source is explicitly REGIONAL_REFERENCE_ESTIMATE');
   assert(regionalResult.warning !== undefined, 'Fallback solar estimate carries explanatory warning');
+
+  // Verify unknown locality without supported estimate returns INSUFFICIENT_DATA
+  const unknownResult = await getSunHoursForCity('شهر_ناشناخته_تستی');
+  assert(unknownResult.dataClassification === 'INSUFFICIENT_DATA', 'Unknown locality returns INSUFFICIENT_DATA');
+  assert(unknownResult.sunHours === null, 'Unknown locality has null sunHours');
 
   // Verify cached / verified source properties
   const knownResult = await getSunHoursForCity('تهران');

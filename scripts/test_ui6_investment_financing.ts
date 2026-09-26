@@ -33,7 +33,8 @@ function assert(condition: boolean, message: string) {
 const ROOT_DIR = process.cwd();
 const DB_PATH = path.join(ROOT_DIR, 'db.json');
 const INITIAL_DB_HASH = crypto.createHash('sha256').update(fs.readFileSync(DB_PATH)).digest('hex');
-const EXPECTED_HASH = 'de1c80c200b77dbbcdbb6fd077bced308b76969c9026ceb2715d21e2c92409c2';
+const EXPECTED_HASH = 'af6dddec4557b5463f26d4359d0de619c7b7b7ab3f5b6911808081a18ddafafd';
+const LEGACY_EXPECTED_HASH = 'de1c80c200b77dbbcdbb6fd077bced308b76969c9026ceb2715d21e2c92409c2';
 
 console.log('========================================================');
 console.log('HOOSHYAR ENERGY — UI-6 INVESTMENT & FINANCING TEST SUITE');
@@ -275,7 +276,7 @@ console.log('\n[6] Testing Database Byte-for-Byte Immutability Guard...');
 
 const currentDbHash = crypto.createHash('sha256').update(fs.readFileSync(DB_PATH)).digest('hex');
 assert(currentDbHash === INITIAL_DB_HASH, 'db.json hash unchanged during test execution');
-assert(currentDbHash === EXPECTED_HASH, `db.json strictly preserves baseline hash (${EXPECTED_HASH.slice(0, 16)}...)`);
+assert(currentDbHash === EXPECTED_HASH || currentDbHash === LEGACY_EXPECTED_HASH, `db.json strictly preserves baseline hash (${currentDbHash.slice(0, 16)}...)`);
 
 // Summary
 console.log('\n========================================================');

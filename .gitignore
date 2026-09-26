@@ -4,5 +4,9 @@ dist/
 coverage/
 .DS_Store
 *.log
+server_log.txt
+output.json
+analyze_out*.json
+*.patch
 .env*
 !.env.example
