@@ -8,22 +8,49 @@ export async function runRuleEngine(body) {
   let resError = null;
   const res = {
     status: (code) => ({
-      json: (data) => { resError = { status: code, data }; return resError; }
+      json: (data) => { resError = { status: code, data }; return { error: resError }; }
     })
   };
 
   // 3.1 اعتبارسنجی ورودی
-    const { targets, locationType, appliances, actualMonthlyKwh, area, city } = req.body;
+    const { targets, locationType, appliances, actualMonthlyKwh, monthlyKwh, area, city, usableArea } = req.body;
     
-    if (!area || area <= 0 || !locationType) {
-      return res.status(400).json({ error: "insufficient_data", missingInfo: ["area", "locationType"] });
+    if (area === undefined || area === null || isNaN(Number(area)) || Number(area) <= 0) {
+      return res.status(400).json({
+        error: "مساحت محل احداث باید یک مقدار عددی مثبت باشد.",
+        code: "INVALID_AREA",
+        missingInfo: ["area"]
+      });
+    }
+
+    if (!locationType) {
+      return res.status(400).json({
+        error: "نوع کاربری ملک یا محل احداث مشخص نشده است.",
+        code: "INVALID_LOCATION_TYPE",
+        missingInfo: ["locationType"]
+      });
+    }
+
+    if (!city) {
+      return res.status(400).json({
+        error: "شهر محل احداث مشخص نشده است.",
+        code: "INVALID_CITY",
+        missingInfo: ["city"]
+      });
     }
   
     // 3.2 Rule Engine - محاسبات قطعی
     let dailyKwh = 0;
+    const rawMonthly = actualMonthlyKwh !== undefined ? actualMonthlyKwh : monthlyKwh;
+    const parsedMonthly = (rawMonthly !== undefined && rawMonthly !== null && rawMonthly !== '') ? Number(rawMonthly) : null;
     
-    if (actualMonthlyKwh && actualMonthlyKwh > 0) {
-      dailyKwh = actualMonthlyKwh / 30;
+    if (parsedMonthly !== null && !isNaN(parsedMonthly)) {
+      if (parsedMonthly > 0) {
+        dailyKwh = parsedMonthly / 30;
+      } else {
+        // تفکیک مقدار واقعی صفر از مفقودی
+        dailyKwh = 0;
+      }
     } else if (appliances && appliances.length > 0) {
       let rawDaily = 0;
       for (const app of appliances) {
@@ -35,13 +62,18 @@ export async function runRuleEngine(body) {
       if (locationType === 'agricultural') diversityFactor = 0.8;
       dailyKwh = rawDaily * diversityFactor;
     } else {
-      // تخمین متراژی
+      // تخمین متراژی در صورت عدم ارائه مصرف
+      const numArea = Number(area);
       if (locationType === 'residential') {
-        dailyKwh = (area / 100) * 20;
+        dailyKwh = (numArea / 100) * 20;
       } else if (locationType === 'industrial_warehouse') {
-        dailyKwh = (area / 100) * 40;
+        dailyKwh = (numArea / 100) * 40;
       } else if (locationType === 'factory') {
-        return res.status(400).json({ error: "insufficient_data", missingInfo: ["appliances", "actualMonthlyKwh"] });
+        return res.status(400).json({
+          error: "برای کاربری صنعتی یا کارخانه‌ای، ثبت مشخصات مصرف‌کننده‌ها یا مقدار قبض برق الزامی است.",
+          code: "INSUFFICIENT_DATA",
+          missingInfo: ["appliances", "actualMonthlyKwh"]
+        });
       } else if (locationType === 'agricultural') {
         dailyKwh = 50; // بر اساس توان پمپ (پیشفرض)
       }
@@ -54,7 +86,7 @@ export async function runRuleEngine(body) {
       }
     };
   
-    const isSolar = targets && targets.includes("solar");
+    const isSolar = !targets || targets.includes("solar");
     const isGenerator = targets && targets.includes("generator");
     const isPowerbank = targets && targets.includes("powerbank");
   
@@ -71,13 +103,18 @@ export async function runRuleEngine(body) {
   
     let sourceLabel = "داده تابش خورشیدی ماهواره‌ای NASA POWER (میانگین ۲۲ ساله)";
     if (sunHoursSource !== "nasa_power_api" && sunHoursSource !== "nasa_power_api_cached") {
-      sourceLabel = "تخمین تقریبی منطقه‌ای (داده دقیق ماهواره‌ای برای این شهر هنوز ثبت نشده)";
+      sourceLabel = "تخمین تقریبی منطقه‌ای (داده مرجع اقلیمی - تاییدنشده ماهواره‌ای)";
     }
   
     if (isSolar) {
-      const requiredKwp = dailyKwh / (sunHours * 0.775);
-      const usableAreaM2 = area * 0.75; // اگر پشت‌بام باشد. اینجا فرض می‌کنیم همیشه ۷۵٪
-      const maxKwpBySpace = usableAreaM2 / 6.5;
+      const numArea = Number(area);
+      // مساحت مفید: در صورت ارائه مساحت قابل استفاده توسط کاربر از همان استفاده می‌شود، در غیر این صورت مساحت کل
+      const usableAreaM2 = (usableArea !== undefined && usableArea !== null && !isNaN(Number(usableArea)) && Number(usableArea) > 0)
+        ? Number(usableArea)
+        : numArea;
+
+      const requiredKwp = (sunHours && sunHours > 0 && dailyKwh > 0) ? +(dailyKwh / (sunHours * 0.775)).toFixed(2) : 0;
+      const maxKwpBySpace = +(usableAreaM2 / 6.5).toFixed(2);
       
       let spaceConstrained = false;
       let finalKwp = requiredKwp;
@@ -86,6 +123,9 @@ export async function runRuleEngine(body) {
         finalKwp = maxKwpBySpace;
         spaceConstrained = true;
       }
+
+      const annualGenerationKwh = Math.round(finalKwp * (sunHours || 4.5) * 365 * 0.775);
+      const requiredAreaM2 = +(finalKwp * 6.5).toFixed(1);
   
       let catalogPanels = req.body.catalogPanels || [];
       let panelOptions = [];
@@ -126,26 +166,35 @@ export async function runRuleEngine(body) {
         }
   
         if (uniqueOptions.length > 0) {
-          // economy = کمترین totalCost
           const economy = [...uniqueOptions].sort((a, b) => a.totalCost - b.totalCost)[0];
-          // balanced = کمترین costPerWatt
           const balanced = [...uniqueOptions].sort((a, b) => a.costPerWatt - b.costPerWatt)[0];
-          // spaceSaving = بیشترین wattPerM2
           const spaceSaving = [...uniqueOptions].sort((a, b) => b.wattPerM2 - a.wattPerM2)[0];
-  
           panelOptions = { economy, balanced, spaceSaving };
         }
       } else {
-        // مقدار پیش‌فرض 550 وات
-        const count = Math.ceil((finalKwp * 1000) / 550);
+        const count = finalKwp > 0 ? Math.ceil((finalKwp * 1000) / 550) : 0;
         panelOptions = {
-          default: { panelWattage: 550, panelCount: count, actualSystemKwp: +(count * 550 / 1000).toFixed(2) }
+          default: {
+            panelWattage: 550,
+            panelCount: count,
+            actualSystemKwp: +(count * 550 / 1000).toFixed(2),
+            requiredAreaM2
+          }
         };
       }
+
+      const defaultCount = finalKwp > 0 ? Math.ceil((finalKwp * 1000) / 550) : 0;
   
       engineResult.solar = {
         requiredKwp: +(requiredKwp).toFixed(2),
         finalKwp: +(finalKwp).toFixed(2),
+        panelCount: panelOptions?.default?.panelCount ?? defaultCount,
+        panelWattage: 550,
+        annualGenerationKwh,
+        estimatedAnnualKwh: annualGenerationKwh,
+        requiredAreaM2,
+        usableAreaM2,
+        totalAreaM2: numArea,
         spaceConstrained,
         catalogAvailable,
         panelOptions,
@@ -260,11 +309,23 @@ export default async function handler(req, res) {
   if (ruleRes.error) return res.status(ruleRes.error.status).json(ruleRes.error.data);
   const engineResult = ruleRes.engineResult;
 
-// 3.3 فراخوانی Claude API
+// 3.3 فراخوانی AI (اختیاری و تفسیری)
   const generateFallback = (errorMsg, status = 'UNAVAILABLE') => {
     return {
-      summary: "تحلیل پایه بر اساس موتور قوانین انجام شد. (" + errorMsg + ")",
+      summary: "تحلیل بر پایه محاسبات مهندسی قطعی و داده‌های تابش انجام شد. (" + errorMsg + ")",
       aiStatus: status,
+      aiUnavailable: status === 'UNAVAILABLE' || status === 'NOT_CONFIGURED',
+      recommendation: {
+        summary: "تحلیل بر پایه محاسبات مهندسی قطعی و داده‌های تابش انجام شد.",
+        energySavingTips: [
+          { title: "بهینه‌سازی زاویه نصب", description: "تنظیم زاویه متناسب با عرض جغرافیایی موجب بیشینه شدن دریافت تابش سالانه خواهد شد." },
+          { title: "سرویس و شستشوی دوره‌ای", description: "شستشوی منظم پنل‌ها از افت راندمان ناشی از گرد و غبار جلوگیری می‌کند." }
+        ]
+      },
+      energySavingTips: [
+        { title: "بهینه‌سازی زاویه نصب", description: "تنظیم زاویه متناسب با عرض جغرافیایی موجب بیشینه شدن دریافت تابش سالانه خواهد شد." },
+        { title: "سرویس و شستشوی دوره‌ای", description: "شستشوی منظم پنل‌ها از افت راندمان ناشی از گرد و غبار جلوگیری می‌کند." }
+      ],
       dailyConsumptionEstimate: engineResult.dailyConsumptionEstimate || { dailyKwh: 0, monthlyKwh: 0 },
       solar: engineResult.solar || {},
       generator: engineResult.generator || {},
@@ -273,8 +334,7 @@ export default async function handler(req, res) {
       requiredAccessories: engineResult.requiredAccessories || [],
       estimatedTotalCost: (engineResult.solar?.estimatedTotalCost || 0) + (engineResult.generator?.estimatedTotalCost || 0),
       warnings: [
-        { severity: "warning", message: "این پیشنهاد اولیه بر پایه موتور محاسباتی قطعی است؛ بازدید حضوری کارشناس توصیه می‌شود" },
-        { severity: "error", message: errorMsg }
+        { severity: "info", message: "این پیشنهاد اولیه بر پایه موتور محاسباتی قطعی و استاندارد مهندسی است." }
       ],
       missingInfo: []
     };
@@ -378,8 +438,16 @@ export default async function handler(req, res) {
     }
     
     const finalResult = JSON.parse(textContent);
+    // استقلال موتور مهندسی: داده‌های عددی مهندسی همواره از موتور قطعی تأمین می‌شوند
+    finalResult.solar = engineResult.solar;
     finalResult.dataSource = engineResult.dataSource;
+    finalResult.dailyConsumptionEstimate = engineResult.dailyConsumptionEstimate;
     finalResult.aiStatus = 'SUCCESS';
+    finalResult.aiUnavailable = false;
+    finalResult.recommendation = {
+      summary: finalResult.summary,
+      energySavingTips: finalResult.energySavingTips || []
+    };
     return res.status(200).json(finalResult);
     
   } catch (err) {
@@ -388,6 +456,6 @@ export default async function handler(req, res) {
       event: 'AI_EXCEPTION',
       metadata: { errorMessage: err.message }
     });
-    return res.status(200).json(generateFallback("خطا در ارتباط یا زمان پاسخ‌دهی هوش مصنوعی", "UNAVAILABLE"));
+    return res.status(200).json(generateFallback("سرویس تحلیل هوشمند موقتاً در دسترس نیست", "UNAVAILABLE"));
   }
 }

@@ -75,28 +75,82 @@ app.use(cookieParser());
 // 5. Global API Rate Limiter
 app.use("/api", rateLimiters.generalApi.middleware());
 
-app.use("/api/auth", authRouter);
-app.use("/api/professionals", professionalsRouter);
-app.use("/api/contractors", contractorsRouter);
-app.use("/api/ads", adsRouter);
-app.use("/api/user", userRouter);
-app.use("/api/subscription", subscriptionRouter);
-app.use("/api/assets", assetsRouter);
-app.use("/api/projects", projectsRouter);
-app.use("/api/investment", investmentRouter);
-app.use("/api/execution", executionRouter);
-app.use("/api", financeRouter);
-app.use("/api", procurementRouter);
-app.use("/api", assetRouter);
-app.use("/api", financingRouter);
-app.use("/api", monitoringRouter);
-app.use("/api", maintenanceRouter);
-app.use("/api/rfq", rfqRouter);
-app.use("/api/enterprise", enterpriseRouter);
-
+// Health endpoints (public)
 app.use("/health", healthRouter);
 app.use("/api/health", healthRouter);
 
+// Bridge for Vercel Serverless Functions
+const runVercelHandler = (handler: any) => async (req: any, res: any) => {
+  try {
+    req.query = { ...req.query, ...req.params };
+    await handler(req, res);
+  } catch (error) {
+    console.error("Vercel Handler Error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+};
+
+// Public and Customer Solar Analysis Endpoints
+app.post("/api/analyze/followup", verifyAuthToken, async (req, res) => {
+  const user = req.user;
+  const originalJson = res.json.bind(res);
+  res.json = function (body) {
+    if (user && res.statusCode === 200 && body.updatedResult) {
+      db.addHistory({
+        userId: user.id,
+        input: body.updatedInput,
+        resultSummary: "پیگیری: " + body.reply,
+        fullResult: body.updatedResult,
+      });
+    }
+    return originalJson(body);
+  };
+  await runVercelHandler(followupHandler)(req, res);
+});
+
+app.post("/api/analyze", verifyAuthToken, async (req, res) => {
+  const user = req.user;
+  if (user) {
+    const isSubscribed = user.activeSubscriptionId && db.getSubscriptionById(user.activeSubscriptionId)?.endDate > new Date().toISOString();
+    if (!isSubscribed) {
+      const history = db.getHistoryByUserId(user.id);
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const monthlyAnalyses = history.filter(h => {
+        const d = new Date(h.createdAt);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+      if (monthlyAnalyses.length >= 3) {
+        return res.status(402).json({ error: "شما از سقف تحلیل رایگان این ماه (۳ بار) عبور کرده‌اید. برای تحلیل بیشتر، اشتراک تهیه کنید." });
+      }
+    }
+  }
+
+  // Intercept res.json to save history
+  const originalJson = res.json.bind(res);
+  res.json = function (body) {
+    if (res.statusCode === 200 && body && typeof body === 'object') {
+      if (user) {
+        const hist = db.addHistory({
+          userId: user.id,
+          input: req.body,
+          resultSummary: body.summary || "تحلیل خورشیدی هوشیار",
+          fullResult: body,
+        });
+        body.analysisId = hist.id;
+      } else if (!body.analysisId) {
+        body.analysisId = 'anl_guest_' + Date.now();
+      }
+    }
+    return originalJson(body);
+  };
+
+  await runVercelHandler(analyzeHandler)(req, res);
+});
+
+// Marketplace & Public Products / Vendors
 app.get("/api/vendors", (req, res) => {
   const vendors = (db.getVendors() || [])
     .filter((v: any) => v.status === "approved" || v.isPublished === true)
@@ -144,77 +198,9 @@ app.get("/api/products", (req, res) => {
   res.json(db.getProducts());
 });
 
-// Bridge for Vercel Serverless Functions
-const runVercelHandler = (handler) => async (req, res) => {
-  try {
-    req.query = { ...req.query, ...req.params };
-    await handler(req, res);
-  } catch (error) {
-    console.error("Vercel Handler Error:", error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  }
-};
-
-app.post("/api/analyze/followup", verifyAuthToken, async (req, res) => {
-  const user = req.user;
-  // For simplicity, we just pass to handler, but we could save history here too.
-  const originalJson = res.json.bind(res);
-  res.json = function (body) {
-    if (user && res.statusCode === 200 && body.updatedResult) {
-      db.addHistory({
-        userId: user.id,
-        input: body.updatedInput,
-        resultSummary: "پیگیری: " + body.reply,
-        fullResult: body.updatedResult,
-      });
-    }
-    return originalJson(body);
-  };
-  await runVercelHandler(followupHandler)(req, res);
-});
-
-app.post("/api/analyze", verifyAuthToken, async (req, res) => {
-  const user = req.user;
-  if (user) {
-    const isSubscribed = user.activeSubscriptionId && db.getSubscriptionById(user.activeSubscriptionId)?.endDate > new Date().toISOString();
-    if (!isSubscribed) {
-      const history = db.getHistoryByUserId(user.id);
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      const monthlyAnalyses = history.filter(h => {
-        const d = new Date(h.createdAt);
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-      });
-      if (monthlyAnalyses.length >= 3) {
-        return res.status(402).json({ error: "شما از سقف تحلیل رایگان این ماه (۳ بار) عبور کرده‌اید. برای تحلیل بیشتر، اشتراک تهیه کنید." });
-      }
-    }
-  }
-
-  // Intercept res.json to save history
-  const originalJson = res.json.bind(res);
-  res.json = function (body) {
-    if (user && res.statusCode === 200) {
-      const hist = db.addHistory({
-        userId: user.id,
-        input: req.body,
-        resultSummary: body.summary || "بدون خلاصه",
-        fullResult: body,
-      });
-      body.analysisId = hist.id;
-    }
-    return originalJson(body);
-  };
-
-  await runVercelHandler(analyzeHandler)(req, res);
-});
-
 app.post("/api/vendor/register", runVercelHandler(vendorRegisterHandler));
 app.post("/api/vendor/products", runVercelHandler(vendorProductsHandler));
 app.get("/api/vendor/products", runVercelHandler(vendorProductsHandler));
-app.get("/api/vendors/:id", runVercelHandler(vendorIdHandler));
 app.post("/api/energy/recommend", runVercelHandler(recommendHandler));
 app.post("/api/energy/analyze-images", runVercelHandler(analyzeImagesHandler));
 app.post("/api/energy/optimize-layout", runVercelHandler(optimizeLayoutHandler));
@@ -235,6 +221,26 @@ app.post("/api/plan-powerplant", async (req, res) => {
     res.status(500).json({ error: "Analysis failed" });
   }
 });
+
+// Domain sub-routers
+app.use("/api/auth", authRouter);
+app.use("/api/professionals", professionalsRouter);
+app.use("/api/contractors", contractorsRouter);
+app.use("/api/ads", adsRouter);
+app.use("/api/user", userRouter);
+app.use("/api/subscription", subscriptionRouter);
+app.use("/api/assets", assetsRouter);
+app.use("/api/projects", projectsRouter);
+app.use("/api/investment", investmentRouter);
+app.use("/api/execution", executionRouter);
+app.use("/api", financeRouter);
+app.use("/api", procurementRouter);
+app.use("/api", assetRouter);
+app.use("/api", financingRouter);
+app.use("/api", monitoringRouter);
+app.use("/api", maintenanceRouter);
+app.use("/api/rfq", rfqRouter);
+app.use("/api/enterprise", enterpriseRouter);
 
 // Fallback for unmatched API routes: return JSON 404, never index.html
 app.all("/api/*", (req, res) => {

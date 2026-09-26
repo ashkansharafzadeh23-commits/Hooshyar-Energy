@@ -1,4 +1,84 @@
 {
+  "solarAssets": [],
+  "assetDocuments": [],
+  "assetAuditLogs": [],
+  "users": [],
+  "otps": [],
+  "professionals": [],
+  "ads": [],
+  "analysisHistory": [],
+  "transactions": [],
+  "subscriptions": [],
+  "cityIrradianceCache": [
+    {
+      "city": "تهران",
+      "sunHours": 5.1895,
+      "fetchedAt": 1789118136508,
+      "coords": {
+        "lat": 35.6892,
+        "lon": 51.389
+      },
+      "monthlySunHours": {
+        "JAN": 2.7142,
+        "FEB": 3.5107,
+        "MAR": 4.6918,
+        "APR": 5.6738,
+        "MAY": 6.9542,
+        "JUN": 8.0153,
+        "JUL": 7.6253,
+        "AUG": 7.1381,
+        "SEP": 6.0204,
+        "OCT": 4.421,
+        "NOV": 2.9712,
+        "DEC": 2.4504
+      }
+    },
+    {
+      "city": "اصفهان",
+      "sunHours": 5.7751,
+      "fetchedAt": 1790414586874,
+      "coords": {
+        "lat": 32.6546,
+        "lon": 51.668
+      },
+      "monthlySunHours": {
+        "JAN": 3.3528,
+        "FEB": 4.369,
+        "MAR": 5.5618,
+        "APR": 6.2652,
+        "MAY": 7.3949,
+        "JUN": 8.3798,
+        "JUL": 7.9421,
+        "AUG": 7.561,
+        "SEP": 6.5378,
+        "OCT": 5.0474,
+        "NOV": 3.6931,
+        "DEC": 3.1284
+      }
+    }
+  ],
+  "subscriptionPlans": [
+    {
+      "id": "plan_free",
+      "name": "رایگان",
+      "priceIRR": 0,
+      "durationDays": null,
+      "features": [
+        "۳ تحلیل رایگان در ماه"
+      ]
+    },
+    {
+      "id": "plan_pro",
+      "name": "حرفه‌ای",
+      "priceIRR": 990000,
+      "durationDays": 30,
+      "features": [
+        "تحلیل نامحدود",
+        "دسترسی به تاریخچه کامل",
+        "اولویت در نمایش پیشنهاد فروشندگان"
+      ]
+    }
+  ],
   "vendors": [
     {
       "id": "vendor_001",
@@ -142,31 +222,6 @@
       "createdAt": "2026-08-07T15:53:16.204Z"
     }
   ],
-  "cityIrradianceCache": [
-    {
-      "city": "تهران",
-      "sunHours": 5.1895,
-      "fetchedAt": 1789118136508,
-      "coords": {
-        "lat": 35.6892,
-        "lon": 51.389
-      },
-      "monthlySunHours": {
-        "JAN": 2.7142,
-        "FEB": 3.5107,
-        "MAR": 4.6918,
-        "APR": 5.6738,
-        "MAY": 6.9542,
-        "JUN": 8.0153,
-        "JUL": 7.6253,
-        "AUG": 7.1381,
-        "SEP": 6.0204,
-        "OCT": 4.421,
-        "NOV": 2.9712,
-        "DEC": 2.4504
-      }
-    }
-  ],
   "energyProjects": [],
   "financialModels": [],
   "financialAssumptionSets": [],
@@ -180,30 +235,6 @@
   "projectMilestones": [],
   "changeRequests": [],
   "contractRevisions": [],
-  "subscriptionPlans": [
-    {
-      "id": "plan_free",
-      "name": "رایگان",
-      "priceIRR": 0,
-      "durationDays": null,
-      "features": [
-        "۳ تحلیل رایگان در ماه"
-      ]
-    },
-    {
-      "id": "plan_pro",
-      "name": "حرفه‌ای",
-      "priceIRR": 990000,
-      "durationDays": 30,
-      "features": [
-        "تحلیل نامحدود",
-        "دسترسی به تاریخچه کامل",
-        "اولویت در نمایش پیشنهاد فروشندگان"
-      ]
-    }
-  ],
-  "transactions": [],
-  "subscriptions": [],
   "energyAssets": [],
   "telemetrySources": [],
   "telemetryReadings": []

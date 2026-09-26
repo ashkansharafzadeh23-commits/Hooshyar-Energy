@@ -56,6 +56,7 @@ export default function SolarAnalysisExperience() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Check for previous analysis in local storage
   const [hasPreviousLocal, setHasPreviousLocal] = useState<boolean>(false);
@@ -94,12 +95,27 @@ export default function SolarAnalysisExperience() {
 
   // Execution of the real analysis engine
   const executeAnalysis = async () => {
-    // Validate inputs strictly before executing
-    if (!province || !city || !monthlyKwh || monthlyKwh <= 0 || !area || area <= 0) {
-      setErrorMessage('لطفاً کلیه اطلاعات الزامی شامل استان، شهر، میزان مصرف ماهانه و مساحت را تکمیل فرمایید.');
+    // Validate inputs strictly before executing (preserving genuine 0 vs missing)
+    if (!province || !city) {
+      setErrorMessage('لطفاً استان و شهر محل احداث را مشخص فرمایید.');
       setCurrentStep(7);
       return;
     }
+
+    if (monthlyKwh === null || monthlyKwh === undefined || isNaN(monthlyKwh) || monthlyKwh < 0) {
+      setErrorMessage('لطفاً میزان مصرف ماهانه (کیلووات‌ساعت) را مشخص فرمایید (برای اماکن فاقد مصرف، عدد ۰ معتبر است).');
+      setCurrentStep(7);
+      return;
+    }
+
+    if (area === null || area === undefined || isNaN(area) || area <= 0) {
+      setErrorMessage('مساحت کل محل احداث باید یک مقدار عددی مثبت و بزرگتر از صفر باشد.');
+      setCurrentStep(7);
+      return;
+    }
+
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     setCurrentStep(6);
     setProgressStage('VALIDATING_INPUTS');
@@ -151,7 +167,18 @@ export default function SolarAnalysisExperience() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'خطا در ارتباط با موتور محاسباتی. لطفاً مجدداً تلاش کنید.');
+        const serverError = errorData.error || errorData.message;
+        if (response.status === 400) {
+          throw new Error(serverError || 'اطلاعات وارد شده ناقص یا نامعتبر است. لطفاً ورودی‌ها را بررسی فرمایید.');
+        } else if (response.status === 401 || response.status === 403) {
+          throw new Error(serverError || 'خطای دسترسی یا احراز هویت. لطفاً وضعیت ورود خود را بررسی فرمایید.');
+        } else if (response.status === 402) {
+          throw new Error(serverError || 'سقف تحلیل‌های رایگان ماهانه به پایان رسیده است.');
+        } else if (response.status === 504 || response.status === 408) {
+          throw new Error('زمان انتظار برای دریافت پاسخ محاسباتی به پایان رسید. لطفاً مجدداً تلاش کنید.');
+        } else {
+          throw new Error(serverError || 'خطا در ارتباط با موتور محاسباتی. لطفاً مجدداً تلاش کنید.');
+        }
       }
 
       const data = await response.json();
@@ -183,6 +210,8 @@ export default function SolarAnalysisExperience() {
     } catch (err: any) {
       setErrorMessage(err.message || 'خطا در پردازش تحلیل خورشیدی');
       setCurrentStep(7);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -415,7 +444,7 @@ export default function SolarAnalysisExperience() {
   // Extract real calculated metrics from deterministic engine result - strictly no frontend formulas!
   const solar = analysisResult.solar || {};
   const dataSource = analysisResult.dataSource || {};
-  const rec = analysisResult.recommendation || {};
+  const rec = analysisResult.recommendation || { summary: analysisResult.summary, energySavingTips: analysisResult.energySavingTips };
 
   const finalKwp = solar.finalKwp ?? null;
   const panelCount = solar.panelOptions?.default?.panelCount 
@@ -481,7 +510,7 @@ export default function SolarAnalysisExperience() {
       <AIResultExplanation
         summary={rec.summary}
         energySavingTips={rec.energySavingTips}
-        aiStatus={analysisResult.aiUnavailable ? 'UNAVAILABLE' : 'SUCCESS'}
+        aiStatus={analysisResult.aiStatus || (analysisResult.aiUnavailable ? 'UNAVAILABLE' : 'SUCCESS')}
         recommendedCapacityKwp={finalKwp}
         locationLabel={city}
       />
